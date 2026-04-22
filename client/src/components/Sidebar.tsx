@@ -1,6 +1,6 @@
 import { motion } from "framer-motion";
 import { Link } from "wouter";
-import { ChevronRight, MessageCircle } from "lucide-react";
+import { ChevronRight, MessageCircle, LayoutGrid } from "lucide-react";
 
 interface SidebarProps {
   isOpen: boolean;
@@ -70,9 +70,9 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
           ))}
         </nav>
 
-        {/* Chat Link */}
+        {/* Chat & Google Links */}
         <motion.div
-          className="pt-4 border-t border-sidebar-border"
+          className="pt-4 border-t border-sidebar-border space-y-2"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 0.5 }}
@@ -81,6 +81,12 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
             <a className="flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-semibold bg-primary/10 hover:bg-primary/20 text-primary transition-colors">
               <MessageCircle className="w-4 h-4" />
               AI 채팅
+            </a>
+          </Link>
+          <Link href="/google">
+            <a className="flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-semibold bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 transition-colors">
+              <LayoutGrid className="w-4 h-4" />
+              Google Workspace
             </a>
           </Link>
         </motion.div>
@@ -127,8 +133,8 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
           ))}
         </nav>
 
-        {/* Chat Link */}
-        <div className="pt-4 border-t border-sidebar-border">
+        {/* Chat & Google Links */}
+        <div className="pt-4 border-t border-sidebar-border space-y-2">
           <Link href="/chat">
             <a
               className="flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-semibold bg-primary/10 hover:bg-primary/20 text-primary transition-colors"
@@ -136,6 +142,15 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
             >
               <MessageCircle className="w-4 h-4" />
               AI 채팅
+            </a>
+          </Link>
+          <Link href="/google">
+            <a
+              className="flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-semibold bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 transition-colors"
+              onClick={onClose}
+            >
+              <LayoutGrid className="w-4 h-4" />
+              Google Workspace
             </a>
           </Link>
         </div>

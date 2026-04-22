@@ -1,0 +1,1 @@
+ALTER TABLE `apiSettings` ADD CONSTRAINT `user_provider_unique` UNIQUE(`userId`,`provider`);

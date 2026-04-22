@@ -9,6 +9,7 @@ import { appRouter } from "../routers";
 import { createContext } from "./context";
 import { serveStatic, setupVite } from "./vite";
 import telegramRouter, { initializeTelegramBot } from "../webhooks/telegram";
+import googleCallbackRouter from "../webhooks/google-callback";
 
 function isPortAvailable(port: number): Promise<boolean> {
   return new Promise(resolve => {
@@ -40,6 +41,9 @@ async function startServer() {
   
   // Telegram webhook routes
   app.use("/api/webhooks", telegramRouter);
+
+  // Google OAuth callback route
+  app.use("/api/webhooks", googleCallbackRouter);
   
   // tRPC API
   app.use(

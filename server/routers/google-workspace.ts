@@ -24,6 +24,8 @@ const googleAuthManager = new GoogleAuthManager(
   sessionManager
 );
 
+export { googleAuthManager };
+
 export const googleWorkspaceRouter = router({
   /**
    * Get authorization URL for OAuth flow

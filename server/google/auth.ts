@@ -40,30 +40,44 @@ export class GoogleAuthManager {
    * Exchange authorization code for tokens
    */
   async exchangeCodeForTokens(code: string, userId: string): Promise<void> {
-    try {
-      const { tokens } = await this.oauth2Client.getToken(code);
+    const params = new URLSearchParams({
+      code,
+      client_id: this.config.clientId,
+      client_secret: this.config.clientSecret,
+      redirect_uri: this.config.redirectUri,
+      grant_type: "authorization_code",
+    });
 
-      if (!tokens.access_token) {
-        throw new Error("No access token received");
-      }
+    console.log("[GoogleAuth] Exchanging code, client_id:", this.config.clientId.slice(0, 20) + "...");
 
-      // Store tokens in session
-      const expiresIn = tokens.expiry_date
-        ? Math.floor((tokens.expiry_date - Date.now()) / 1000)
-        : 3600;
+    const response = await fetch("https://oauth2.googleapis.com/token", {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: params.toString(),
+    });
 
-      await this.sessionManager.setGoogleTokens(
-        userId,
-        tokens.access_token,
-        tokens.refresh_token || "",
-        expiresIn
-      );
+    const data = await response.json() as any;
 
-      // Set credentials for future API calls
-      this.oauth2Client.setCredentials(tokens);
-    } catch (error) {
-      throw new Error(`Failed to exchange code for tokens: ${error instanceof Error ? error.message : String(error)}`);
+    if (!response.ok) {
+      console.error("[GoogleAuth] Token exchange failed:", data);
+      throw new Error(data.error_description || data.error || "Token exchange failed");
     }
+
+    if (!data.access_token) {
+      throw new Error("No access token received");
+    }
+
+    await this.sessionManager.setGoogleTokens(
+      userId,
+      data.access_token,
+      data.refresh_token || "",
+      data.expires_in || 3600
+    );
+
+    this.oauth2Client.setCredentials({
+      access_token: data.access_token,
+      refresh_token: data.refresh_token,
+    });
   }
 
   /**

@@ -9,7 +9,8 @@ import { appRouter } from "../routers";
 import { createContext } from "./context";
 import { serveStatic, setupVite } from "./vite";
 import telegramRouter, { initializeTelegramBot } from "../webhooks/telegram";
-import googleCallbackRouter from "../webhooks/google-callback";
+import googleCallbackRouter, { initializeGoogleAuth } from "../webhooks/google-callback";
+import { googleAuthManager } from "../routers/google-workspace";
 
 function isPortAvailable(port: number): Promise<boolean> {
   return new Promise(resolve => {
@@ -43,6 +44,7 @@ async function startServer() {
   app.use("/api/webhooks", telegramRouter);
 
   // Google OAuth callback route
+  initializeGoogleAuth(googleAuthManager);
   app.use("/api/webhooks", googleCallbackRouter);
   
   // tRPC API
@@ -69,6 +71,7 @@ async function startServer() {
 
   server.listen(port, () => {
     console.log(`Server running on http://localhost:${port}/`);
+    console.log(`[Google] CLIENT_ID set: ${!!process.env.GOOGLE_CLIENT_ID}, SECRET set: ${!!process.env.GOOGLE_CLIENT_SECRET}`);
   });
   
   // Initialize Telegram bot

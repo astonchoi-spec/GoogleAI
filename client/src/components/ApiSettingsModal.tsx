@@ -18,6 +18,7 @@ import {
 } from "@/components/ui/dialog";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
+import { toast } from "sonner";
 
 interface ApiSettingsModalProps {
   isOpen: boolean;
@@ -95,23 +96,21 @@ export default function ApiSettingsModal({ isOpen, onClose }: ApiSettingsModalPr
 
   const handleSaveKey = async (provider: Provider) => {
     if (!apiKeys[provider].trim()) return;
-
     try {
-      await saveMutation.mutateAsync({
-        provider,
-        apiKey: apiKeys[provider],
-      });
+      await saveMutation.mutateAsync({ provider, apiKey: apiKeys[provider] });
       setApiKeys((prev) => ({ ...prev, [provider]: "" }));
+      toast.success(`${provider} API 키가 저장되었습니다.`);
     } catch (error) {
-      console.error("Failed to save API key:", error);
+      toast.error(`저장 실패: ${error instanceof Error ? error.message : "오류가 발생했습니다"}`);
     }
   };
 
   const handleDeleteKey = async (provider: Provider) => {
     try {
       await deleteMutation.mutateAsync({ provider });
+      toast.success(`${provider} API 키가 삭제되었습니다.`);
     } catch (error) {
-      console.error("Failed to delete API key:", error);
+      toast.error(`삭제 실패: ${error instanceof Error ? error.message : "오류가 발생했습니다"}`);
     }
   };
 

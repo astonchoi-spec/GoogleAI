@@ -1,26 +1,31 @@
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import NotFound from "@/pages/NotFound";
-import { Route, Switch } from "wouter";
+import { Route, Switch, useLocation } from "wouter";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import Home from "./pages/Home";
 import Chat from "./pages/Chat";
 import Login from "./pages/Login";
 import Google from "./pages/Google";
+import Navbar from "./components/Navbar";
 
 function Router() {
-  // make sure to consider if you need authentication for certain routes
+  const [location] = useLocation();
+  const showNav = location !== "/";
+
   return (
-    <Switch>
-      <Route path={"/"} component={Home} />
-      <Route path={"/chat"} component={Chat} />
-      <Route path={"/google"} component={Google} />
-      <Route path={"/login"} component={Login} />
-      <Route path={"/404"} component={NotFound} />
-      {/* Final fallback route */}
-      <Route component={NotFound} />
-    </Switch>
+    <>
+      {showNav && <Navbar />}
+      <Switch>
+        <Route path={"/"} component={Home} />
+        <Route path={"/chat"} component={Chat} />
+        <Route path={"/google"} component={Google} />
+        <Route path={"/login"} component={Login} />
+        <Route path={"/404"} component={NotFound} />
+        <Route component={NotFound} />
+      </Switch>
+    </>
   );
 }
 

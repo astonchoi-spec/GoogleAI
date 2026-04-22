@@ -175,6 +175,36 @@ export const googleWorkspaceRouter = router({
       }),
 
     /**
+     * Get events by month (year + month, 1-based) including Korean holidays
+     */
+    getMonthEvents: publicProcedure
+      .input(z.object({ year: z.number(), month: z.number() }))
+      .query(async ({ ctx, input }: any) => {
+        const userId = ctx.user?.id.toString() || "anonymous";
+        const auth = await googleAuthManager.getAuthenticatedClient(userId);
+        const calendar = new CalendarConnector(auth);
+        const start = new Date(input.year, input.month - 1, 1);
+        const end = new Date(input.year, input.month, 1);
+
+        // Fetch personal events + Korean holiday calendar in parallel
+        const [events, holidays] = await Promise.allSettled([
+          calendar.getEventsByDateRange(start, end),
+          calendar.getEventsByDateRangeFromCalendar(
+            "ko.south_korea#holiday@group.v.calendar.google.com",
+            start, end
+          ),
+        ]);
+
+        const allEvents = [
+          ...(events.status === "fulfilled" ? events.value : []),
+          ...(holidays.status === "fulfilled"
+            ? holidays.value.map(h => ({ ...h, isHoliday: true }))
+            : []),
+        ];
+        return { events: allEvents };
+      }),
+
+    /**
      * Delete event
      */
     deleteEvent: publicProcedure
@@ -190,6 +220,29 @@ export const googleWorkspaceRouter = router({
 
   // Drive operations
   drive: router({
+    /**
+     * List files in a folder (default: root)
+     */
+    listFolder: publicProcedure
+      .input(z.object({ folderId: z.string().default("root"), maxResults: z.number().default(50) }))
+      .query(async ({ ctx, input }: any) => {
+        const userId = ctx.user?.id.toString() || "anonymous";
+        const auth = await googleAuthManager.getAuthenticatedClient(userId);
+        const drive = new DriveConnector(auth);
+        const files = await drive.searchFiles(
+          `'${input.folderId}' in parents and trashed = false`,
+          input.maxResults
+        );
+        // folders first, then files, alphabetically
+        files.sort((a: any, b: any) => {
+          const aFolder = a.mimeType === "application/vnd.google-apps.folder";
+          const bFolder = b.mimeType === "application/vnd.google-apps.folder";
+          if (aFolder !== bFolder) return aFolder ? -1 : 1;
+          return a.name.localeCompare(b.name, "ko");
+        });
+        return { files };
+      }),
+
     /**
      * Search files
      */
@@ -246,6 +299,32 @@ export const googleWorkspaceRouter = router({
         const drive = new DriveConnector(auth);
         await drive.shareFile(input.fileId, input.email, input.role);
         return { success: true };
+      }),
+
+    /**
+     * Upload file (base64 encoded)
+     */
+    uploadFile: publicProcedure
+      .input(
+        z.object({
+          fileName: z.string(),
+          mimeType: z.string(),
+          base64Content: z.string(),
+          parentFolderId: z.string().optional(),
+        })
+      )
+      .mutation(async ({ ctx, input }: any) => {
+        const userId = ctx.user?.id.toString() || "anonymous";
+        const auth = await googleAuthManager.getAuthenticatedClient(userId);
+        const drive = new DriveConnector(auth);
+        const buffer = Buffer.from(input.base64Content, "base64");
+        const fileId = await drive.uploadFile({
+          fileName: input.fileName,
+          mimeType: input.mimeType,
+          fileContent: buffer,
+          parentFolderId: input.parentFolderId,
+        });
+        return { fileId };
       }),
   }),
 

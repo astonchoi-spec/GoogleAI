@@ -62,6 +62,48 @@ export class DriveConnector {
   }
 
   /**
+   * Download file content as Buffer
+   * Google native files (Docs/Sheets/Slides) are exported to PDF
+   */
+  async downloadFile(fileId: string, mimeType: string): Promise<{ buffer: Buffer; fileName: string; exportMime: string }> {
+    const GOOGLE_EXPORT_MAP: Record<string, { mime: string; ext: string }> = {
+      "application/vnd.google-apps.document":     { mime: "application/pdf", ext: ".pdf" },
+      "application/vnd.google-apps.spreadsheet":  { mime: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", ext: ".xlsx" },
+      "application/vnd.google-apps.presentation": { mime: "application/pdf", ext: ".pdf" },
+    };
+
+    try {
+      const meta = await this.drive.files.get({ fileId, fields: "name" });
+      const baseName = meta.data.name || fileId;
+
+      const exportInfo = GOOGLE_EXPORT_MAP[mimeType];
+      if (exportInfo) {
+        const res = await this.drive.files.export(
+          { fileId, mimeType: exportInfo.mime },
+          { responseType: "arraybuffer" }
+        );
+        return {
+          buffer: Buffer.from(res.data as ArrayBuffer),
+          fileName: baseName + exportInfo.ext,
+          exportMime: exportInfo.mime,
+        };
+      }
+
+      const res = await this.drive.files.get(
+        { fileId, alt: "media" },
+        { responseType: "arraybuffer" }
+      );
+      return {
+        buffer: Buffer.from(res.data as ArrayBuffer),
+        fileName: baseName,
+        exportMime: mimeType,
+      };
+    } catch (error) {
+      throw new Error(`Failed to download file: ${error instanceof Error ? error.message : String(error)}`);
+    }
+  }
+
+  /**
    * Upload file
    */
   async uploadFile(options: UploadFileOptions): Promise<string> {

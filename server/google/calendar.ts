@@ -170,6 +170,29 @@ export class CalendarConnector {
   }
 
   /**
+   * Get events from a specific calendar (e.g., holiday calendar)
+   */
+  async getEventsByDateRangeFromCalendar(calendarId: string, startDate: Date, endDate: Date): Promise<CalendarEvent[]> {
+    const response = await this.calendar.events.list({
+      calendarId,
+      timeMin: startDate.toISOString(),
+      timeMax: endDate.toISOString(),
+      singleEvents: true,
+      orderBy: "startTime",
+    });
+    return (response.data.items || []).map((event) => ({
+      id: event.id || "",
+      title: event.summary || "",
+      description: event.description || "",
+      startTime: new Date(event.start?.dateTime || event.start?.date || ""),
+      endTime: new Date(event.end?.dateTime || event.end?.date || ""),
+      attendees: [],
+      location: event.location || "",
+      isAllDay: !event.start?.dateTime,
+    }));
+  }
+
+  /**
    * Get events for specific date range
    */
   async getEventsByDateRange(startDate: Date, endDate: Date): Promise<CalendarEvent[]> {

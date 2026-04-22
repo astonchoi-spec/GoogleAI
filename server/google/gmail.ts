@@ -90,9 +90,12 @@ export class GmailConnector {
    */
   async sendEmail(options: GmailSendOptions): Promise<string> {
     try {
+      const encodeHeader = (value: string) =>
+        `=?UTF-8?B?${Buffer.from(value, "utf-8").toString("base64")}?=`;
+
       const email = [
         `To: ${options.to}`,
-        `Subject: ${options.subject}`,
+        `Subject: ${encodeHeader(options.subject)}`,
         ...(options.cc ? [`Cc: ${options.cc}`] : []),
         ...(options.bcc ? [`Bcc: ${options.bcc}`] : []),
         "Content-Type: text/plain; charset=utf-8",

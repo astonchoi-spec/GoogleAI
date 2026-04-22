@@ -174,6 +174,34 @@
   - Desktop and mobile sidebars both updated
   - Quick access from Home page to /chat
 
+## Google Workspace Expansion - Session 9 (2026-04-23)
+
+- [x] Monthly Google Calendar view
+  - Added month grid UI with today/current selection state
+  - Merged personal events with Korean holiday calendar
+  - Added day detail panel with delete actions
+
+- [x] Drive file workflow
+  - Added folder listing and upload endpoint
+  - Added file download/export support for Telegram delivery
+  - Supports Google Docs, Sheets, and Slides exports
+
+- [x] Gmail reliability
+  - Encoded email subject headers as UTF-8 Base64
+  - Improved compatibility for non-ASCII subjects
+
+- [x] Telegram Google Workspace command bridge
+  - Added intent parsing for Gmail, Calendar, Drive, and Sheets actions
+  - Executes Workspace commands before falling back to normal chat replies
+
+- [x] Navigation and UX polish
+  - Added persistent navbar outside the home page
+  - Added toast feedback for engine switching and message send failures
+
+- [x] Runtime and callback fixes
+  - Fixed static asset path resolution for source and built server runs
+  - Changed Google OAuth callback to redirect back into the app
+
 ## Critical Bug Fix - Session 8 (2026-04-22)
 
 - [x] Diagnose Telegram ↔ Web 양방향 동기화 불가 원인
@@ -214,12 +242,6 @@
   - API key save/delete confirmations
   - Error notifications
   - Success feedback
-
-- [ ] Google Workspace integration
-  - Gmail integration (read emails, send responses)
-  - Google Calendar integration (view events, create reminders)
-  - Google Drive integration (file access, document sharing)
-  - Google Sheets integration (data analysis)
 
 - [ ] Advanced chat features
   - Message editing capability

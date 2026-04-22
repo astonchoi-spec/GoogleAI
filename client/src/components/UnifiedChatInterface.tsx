@@ -4,6 +4,7 @@
  */
 
 import { useState, useRef, useEffect } from "react";
+import { toast } from "sonner";
 import { motion, AnimatePresence } from "framer-motion";
 import { Send, Loader2, Settings2, MessageCircle, Sliders, Smartphone, Globe, Check, LogIn } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -82,9 +83,10 @@ export default function UnifiedChatInterface() {
     try {
       await switchEngineMutation.mutateAsync({ engine: selectedEngine, modelKey: selectedModel });
       setSwitchSuccess(true);
+      toast.success("엔진이 변경되었습니다.");
       setTimeout(() => setSwitchSuccess(false), 2000);
     } catch (error) {
-      console.error("Failed to switch engine:", error);
+      toast.error("엔진 변경에 실패했습니다.");
     }
   };
 
@@ -194,6 +196,7 @@ export default function UnifiedChatInterface() {
       };
       setMessages((prev) => [...prev, aiMsg]);
     } catch (error) {
+      toast.error("메시지 전송에 실패했습니다.");
       console.error("Error sending message:", error);
     } finally {
       setIsLoading(false);
@@ -202,9 +205,9 @@ export default function UnifiedChatInterface() {
 
   const getSourceIcon = (source: "web" | "telegram") => {
     return source === "telegram" ? (
-      <Smartphone className="w-3 h-3" title="Telegram" />
+      <Smartphone className="w-3 h-3" />
     ) : (
-      <Globe className="w-3 h-3" title="Web" />
+      <Globe className="w-3 h-3" />
     );
   };
 

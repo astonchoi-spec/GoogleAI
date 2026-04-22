@@ -56,12 +56,7 @@ router.get("/google/callback", async (req: Request, res: Response) => {
     // Exchange code for tokens
     await googleAuthManager.exchangeCodeForTokens(code as string, userId);
 
-    // Redirect to success page or return success response
-    res.json({
-      ok: true,
-      message: "Successfully authenticated with Google",
-      userId,
-    });
+    res.redirect("/?google=connected");
   } catch (error) {
     console.error("[Google Callback] Error:", error);
     res.status(500).json({

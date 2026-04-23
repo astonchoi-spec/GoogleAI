@@ -27,6 +27,21 @@ class RedisService {
     return client.hSet(key, field, value);
   }
 
+  async hget(key: string, field: string): Promise<string | null> {
+    const client = await this.getClient();
+    return client.hGet(key, field);
+  }
+
+  async hgetall(key: string): Promise<Record<string, string>> {
+    const client = await this.getClient();
+    return client.hGetAll(key);
+  }
+
+  async hdel(key: string, field: string): Promise<number> {
+    const client = await this.getClient();
+    return client.hDel(key, field);
+  }
+
   async publish(channel: string, message: string): Promise<number> {
     const client = await this.getClient();
     return client.publish(channel, message);

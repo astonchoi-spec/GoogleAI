@@ -279,3 +279,142 @@
   - Security audit
   - Performance testing
   - Final QA testing
+
+## Work Log - 2026-04-24
+
+- [x] 작업 11. 알림 엔진
+  - `server/alerts/alertEngine.ts` 추가
+  - BullMQ `alerts` 큐와 10초 반복 Worker 구성
+  - Redis `active:alerts` 기반 알림 저장/조회/삭제
+  - 가격, RSI, 펀딩비, 김프 알림 조건 체크
+  - Telegram 발송 연동 및 1회 발동 후 비활성화 처리
+  - 커밋: `1be11d8 feat: add alert engine`
+
+- [x] 작업 12. 선물 리스크 계산기
+  - `server/trading/riskCalculator.ts` 추가
+  - 롱/숏 청산가, 손절가, 1R/2R/3R 목표가, 최대손실 계산
+  - AI 채팅 출력용 한국어 리스크 리포트 포맷 추가
+  - 커밋: `5e776c5 feat: add futures risk calculator`
+
+- [x] 작업 13. 사업성 분석 엔진
+  - `server/realestate/feasibilityEngine.ts` 추가
+  - PF 개발사업 수입, 비용, 사업이익, IRR, DSCR, 손익분기 분양률 계산
+  - 사업성 판정: 사업성 양호 / 보통 / 미흡
+  - AI 채팅 출력용 한국어 사업성 보고서 포맷 추가
+  - 커밋: `a33699f feat: add real estate feasibility engine`
+
+- [x] 작업 14. 공공데이터 API 연동
+  - `server/realestate/publicDataAPI.ts` 추가
+  - 토지이용규제, 건축물대장, 실거래가 조회 함수 추가
+  - `DATA_GO_KR_API_KEY` 환경변수 추가
+  - JSON/XML 응답 및 API 오류 처리
+  - 커밋: `55b0fe4 feat: add public data api client`
+
+- [x] 작업 15. PF 딜 파이프라인
+  - `server/realestate/dealPipeline.ts` 추가
+  - Google Sheets `PF딜관리` 시트 기반 딜 CRUD 일부 구현
+  - 단계 변경, 포트폴리오 요약, Calendar 마일스톤 이벤트 생성
+  - 커밋: `f29715a feat: add pf deal pipeline`
+
+- [x] 작업 16. DART 공시 API 연동
+  - `server/finance/dartAPI.ts` 추가
+  - 공시 목록, 재무제표, 회사 기본정보 조회 함수 추가
+  - `DART_API_KEY` 환경변수 추가
+  - DART `status/message` 오류 처리
+  - 커밋: `76d8505 feat: add dart api client`
+
+- [x] 검증
+  - 각 작업 후 `npm.cmd run check` 통과
+  - 각 작업 후 `npm.cmd run build` 통과
+  - 신규 모듈 import 및 API 키 누락 경로 확인
+
+## Phase 3 Workflow - 통합 연결
+
+### 목표
+
+- Phase 2에서 만든 독립 백엔드 모듈을 기존 tRPC, AI 채팅, UI에 연결한다.
+- 기존 홈 / AI 채팅 / Google Workspace 동작은 유지한다.
+- 조회성 기능과 실행성 기능을 분리해서 실사용 중 오동작 위험을 줄인다.
+
+### 작업 17. tRPC 라우터 등록
+
+- [ ] `server/trpc/routers/trading.ts` 생성
+  - 거래소 잔고 조회
+  - 포지션 조회
+  - 기술적 분석 조회
+  - 선물 리스크 계산
+  - 알림 목록/추가/삭제
+
+- [ ] `server/trpc/routers/realestate.ts` 생성
+  - PF 딜 목록/추가/단계 변경/요약
+  - 사업성 분석 실행
+  - 토지조회/건축물대장/실거래가 조회
+
+- [ ] `server/trpc/routers/finance.ts` 생성
+  - DART 공시 조회
+  - DART 재무제표 조회
+  - DART 회사 검색
+
+- [ ] `appRouter`에 신규 라우터 등록
+  - 모든 input은 zod 검증
+  - API 키 누락, Google Auth 누락, Redis 미연결 오류 메시지 정리
+
+### 작업 18. AI 의도 파싱 라우터
+
+- [ ] `server/trpc/routers/intent.ts` 또는 기존 LLM 라우터 확장
+  - Gemini로 자연어 의도 분류
+  - intent: trading / realestate / finance / google / chat
+  - action: 조회 / 분석 / 생성 / 수정 / 삭제 구분
+
+- [ ] 조회성 액션 먼저 연결
+  - 잔고 조회
+  - 포지션 확인
+  - BTC 기술적 분석
+  - 선물 리스크 계산
+  - PF 현황 요약
+  - 사업성 분석
+  - DART 공시 조회
+
+- [ ] 실행성 액션은 확인 단계 추가
+  - 알림 추가
+  - PF 딜 추가
+  - PF 단계 변경
+  - Calendar 이벤트 생성
+  - Sheets 저장
+
+- [ ] AI 응답 포맷 통일
+  - 성공: 요약 + 주요 수치 + 다음 액션
+  - 실패: 원인 + 필요한 설정값 + 재시도 방법
+
+### 작업 19. UI ↔ 백엔드 연결
+
+- [ ] 트레이딩 페이지 연결
+  - 대시보드: 잔고, 포지션, 김프, 기술적 분석
+  - 매매일지: Sheets 기반 거래내역/통계
+  - 알림설정: 알림 목록/추가/삭제
+
+- [ ] 부동산PF 페이지 연결
+  - 딜 파이프라인: Sheets 기반 딜 목록/단계 변경
+  - 사업성분석: 입력값 → tRPC → 결과 카드
+  - 토지조회: 공공데이터 API 결과 표시
+
+- [ ] 홈 위젯 연결
+  - 트레이딩 요약 실데이터
+  - PF 포트폴리오 요약 실데이터
+  - 빠른 AI 명령 → AI 채팅 자동 실행
+
+- [ ] AI 채팅 확장 연결
+  - 퀵 액션 버튼을 intent 라우터로 연결
+  - 마이크 입력 자동 전송 유지
+  - TTS는 AI 최종 응답만 읽도록 유지
+
+### Phase 3 체크포인트
+
+- [ ] `npm.cmd run check` 통과
+- [ ] `npm.cmd run build` 통과
+- [ ] `npm.cmd run dev` 실행 확인
+- [ ] `/`, `/chat`, `/trading`, `/real-estate-pf`, `/google` 라우트 확인
+- [ ] 기존 Google Workspace 기능 회귀 확인
+- [ ] API 키가 없는 상태의 에러 UI 확인
+- [ ] Redis가 없는 상태의 에러 메시지 확인
+- [ ] Google OAuth가 없는 상태의 에러 메시지 확인

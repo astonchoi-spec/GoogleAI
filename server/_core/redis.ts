@@ -32,6 +32,16 @@ class RedisService {
     return client.publish(channel, message);
   }
 
+  async get(key: string): Promise<string | null> {
+    const client = await this.getClient();
+    return client.get(key);
+  }
+
+  async set(key: string, value: string): Promise<string | null> {
+    const client = await this.getClient();
+    return client.set(key, value);
+  }
+
   async disconnect(): Promise<void> {
     if (!this.client?.isOpen) return;
     await this.client.quit();

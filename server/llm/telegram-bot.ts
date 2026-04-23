@@ -5,21 +5,22 @@
 
 import { Telegraf, Context } from "telegraf";
 import type { Update } from "telegraf/types";
-import { SessionManager, sessionManager } from "./session";
-import LLMCaller from "./caller";
-import type { LLMEngine } from "./models";
-import { getModel, getModelsByEngine, getAllEngines, getDefaultModel } from "./models";
-import { getOrCreateConversation, getOrCreateTelegramConversation, getConversationByTelegramChatId, saveMessage } from "../db-chat";
-import { registerTelegramBot } from "../telegram-service";
-import { googleAuthManager } from "../routers/google-workspace";
-import GmailConnector from "../google/gmail";
-import CalendarConnector from "../google/calendar";
-import DriveConnector from "../google/drive";
-import SheetsConnector from "../google/sheets";
+import { SessionManager, sessionManager } from "./session.ts";
+import LLMCaller from "./caller.ts";
+import type { LLMEngine } from "./models.ts";
+import { getModel, getModelsByEngine, getAllEngines, getDefaultModel } from "./models.ts";
+import { getOrCreateConversation, getOrCreateTelegramConversation, getConversationByTelegramChatId, saveMessage } from "../db-chat.ts";
+import { registerTelegramBot } from "../telegram-service.ts";
+import { googleAuthManager } from "../routers/google-workspace.ts";
+import GmailConnector from "../google/gmail.ts";
+import CalendarConnector from "../google/calendar.ts";
+import DriveConnector from "../google/drive.ts";
+import SheetsConnector from "../google/sheets.ts";
 
 // Single-user setup: Telegram messages link to admin's web conversation
 const ADMIN_USER_ID = 1;
 const GOOGLE_USER_ID = "1";
+const FALLBACK_GOOGLE_USER_ID = "anonymous";
 
 export interface BotContext extends Context {
   session?: {
@@ -215,7 +216,11 @@ export class TelegramBot {
    * chatId: Telegram chat ID for file sending
    */
   private async handleWorkspaceCommand(message: string, chatId: number): Promise<string | null> {
+    const now = new Date().toLocaleString("ko-KR", { timeZone: "Asia/Seoul" });
     const intentPrompt = `You are a Google Workspace command parser. Analyze the user's message and return ONLY a valid JSON object.
+
+Current date/time: ${now}
+Timezone: Asia/Seoul
 
 Supported actions:
 - send_email: user wants to send an email
@@ -229,11 +234,13 @@ Supported actions:
 Return format examples:
 {"action":"send_email","to":"email@example.com","subject":"제목","body":"내용"}
 {"action":"get_emails","query":"","maxResults":5}
-{"action":"create_event","title":"미팅","startTime":"2026-04-23T14:00:00","endTime":"2026-04-23T15:00:00","description":""}
+{"action":"create_event","title":"미팅","startTime":"2026-04-23T14:00:00+09:00","endTime":"2026-04-23T15:00:00+09:00","description":"","isAllDay":false}
 {"action":"list_drive","query":"trashed = false","maxResults":10}
 {"action":"send_drive_file","fileName":"파일명.csv"}
 {"action":"read_sheet","spreadsheetId":"<id>","range":"Sheet1!A1:Z50"}
 {"action":"none"}
+
+For date-only events with no explicit time, set isAllDay to true and set endTime to the next day at 00:00:00+09:00.
 
 Return ONLY the JSON object, no other text.`;
 
@@ -258,12 +265,12 @@ Return ONLY the JSON object, no other text.`;
 
       if (!intent || intent.action === "none") return null;
 
-      const isAuthed = await googleAuthManager.isAuthenticated(GOOGLE_USER_ID);
-      if (!isAuthed) {
+      const googleUserId = await this.getConnectedGoogleUserId();
+      if (!googleUserId) {
         return "❌ Google 계정이 연결되어 있지 않습니다. 웹 앱에서 먼저 Google 계정을 연결해주세요.";
       }
 
-      const auth = await googleAuthManager.getAuthenticatedClient(GOOGLE_USER_ID);
+      const auth = await googleAuthManager.getAuthenticatedClient(googleUserId);
 
       if (intent.action === "send_email") {
         const gmail = new GmailConnector(auth);
@@ -283,13 +290,26 @@ Return ONLY the JSON object, no other text.`;
 
       if (intent.action === "create_event") {
         const calendar = new CalendarConnector(auth);
-        await calendar.createEvent({
+        const startTime = new Date(intent.startTime);
+        const endTime = new Date(intent.endTime);
+        if (Number.isNaN(startTime.getTime()) || Number.isNaN(endTime.getTime())) {
+          return "❌ 일정 날짜를 정확히 해석하지 못했습니다. 예: 캘린더에 2026년 5월 8일 예나 유나 상해여행 일정잡아";
+        }
+
+        const event = await calendar.createEvent({
           title: intent.title,
-          startTime: new Date(intent.startTime),
-          endTime: new Date(intent.endTime),
+          startTime,
+          endTime,
           description: intent.description || "",
+          isAllDay: !!intent.isAllDay,
         });
-        return `✅ 캘린더 일정 생성 완료!\n📅 제목: ${intent.title}\n⏰ 시작: ${intent.startTime}`;
+        return [
+          "✅ 캘린더 일정 생성 완료!",
+          `📅 제목: ${intent.title}`,
+          `⏰ 시작: ${intent.startTime}`,
+          `🆔 이벤트 ID: ${event.id}`,
+          event.htmlLink ? `🔗 확인: ${event.htmlLink}` : "",
+        ].filter(Boolean).join("\n");
       }
 
       if (intent.action === "list_drive") {
@@ -337,6 +357,16 @@ Return ONLY the JSON object, no other text.`;
       console.error("[Workspace Command] Error:", error);
       return null;
     }
+  }
+
+  private async getConnectedGoogleUserId(): Promise<string | null> {
+    for (const userId of [GOOGLE_USER_ID, FALLBACK_GOOGLE_USER_ID]) {
+      if (await googleAuthManager.isAuthenticated(userId)) {
+        return userId;
+      }
+    }
+
+    return null;
   }
 
   /**

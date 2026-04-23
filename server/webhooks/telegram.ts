@@ -3,12 +3,13 @@
  * Receives and processes Telegram messages
  */
 
-import { Router, Request, Response } from "express";
-import TelegramBot from "../llm/telegram-bot";
-import { sessionManager } from "../llm/session";
-import LLMCaller from "../llm/caller";
+import express from "express";
+import type { Request, Response } from "express";
+import TelegramBot from "../llm/telegram-bot.ts";
+import { sessionManager } from "../llm/session.ts";
+import LLMCaller from "../llm/caller.ts";
 
-const router = Router();
+const router = express.Router();
 const llmCaller = new LLMCaller();
 
 let telegramBot: TelegramBot | null = null;

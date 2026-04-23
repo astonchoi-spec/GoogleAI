@@ -3,11 +3,12 @@
  * Handles OAuth 2.0 callback from Google
  */
 
-import { Router, Request, Response } from "express";
-import GoogleAuthManager from "../google/auth";
-import { SessionManager } from "../llm/session";
+import express from "express";
+import type { Request, Response } from "express";
+import GoogleAuthManager from "../google/auth.ts";
+import { SessionManager } from "../llm/session.ts";
 
-const router = Router();
+const router = express.Router();
 const sessionManager = new SessionManager();
 
 let googleAuthManager: GoogleAuthManager | null = null;

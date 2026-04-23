@@ -1,18 +1,27 @@
 import { Link, useLocation } from "wouter";
-import { Home, MessageCircle, LayoutGrid, ChevronLeft, Bot } from "lucide-react";
+import { Home, MessageCircle, LayoutGrid, ChevronLeft, Bot, TrendingUp, Building2 } from "lucide-react"; // MODIFIED: add icons for the new navigation tabs.
 
 const NAV_LINKS = [
   { href: "/",       icon: Home,          label: "홈"              },
   { href: "/chat",   icon: MessageCircle, label: "AI 채팅"         },
+  { href: "/trading", icon: TrendingUp, label: "트레이딩" }, // MODIFIED: add trading tab using the existing nav item shape.
+  { href: "/real-estate-pf", icon: Building2, label: "부동산PF" }, // MODIFIED: add real estate PF tab using the existing nav item shape.
   { href: "/google", icon: LayoutGrid,    label: "Google Workspace" },
 ];
+
+const BACK_LINKS: Record<string, string> = { // MODIFIED: preserve existing back targets while adding new routes.
+  "/chat": "/",
+  "/google": "/chat",
+  "/trading": "/chat",
+  "/real-estate-pf": "/trading",
+};
 
 export default function Navbar() {
   const [location] = useLocation();
 
   // Find previous page for back button
   const currentIdx = NAV_LINKS.findIndex(n => n.href === location);
-  const backHref = currentIdx > 0 ? NAV_LINKS[currentIdx - 1].href : "/";
+  const backHref = BACK_LINKS[location] ?? (currentIdx > 0 ? NAV_LINKS[currentIdx - 1].href : "/"); // MODIFIED: keep legacy back behavior for existing routes.
   const isHome = location === "/";
 
   return (

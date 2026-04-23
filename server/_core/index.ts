@@ -3,14 +3,14 @@ import express from "express";
 import { createServer } from "http";
 import net from "net";
 import { createExpressMiddleware } from "@trpc/server/adapters/express";
-import { registerOAuthRoutes } from "./oauth";
-import { registerStorageProxy } from "./storageProxy";
-import { appRouter } from "../routers";
-import { createContext } from "./context";
-import { serveStatic, setupVite } from "./vite";
-import telegramRouter, { initializeTelegramBot } from "../webhooks/telegram";
-import googleCallbackRouter, { initializeGoogleAuth } from "../webhooks/google-callback";
-import { googleAuthManager } from "../routers/google-workspace";
+import { registerOAuthRoutes } from "./oauth.ts";
+import { registerStorageProxy } from "./storageProxy.ts";
+import { appRouter } from "../routers.ts";
+import { createContext } from "./context.ts";
+import { serveStatic, setupVite } from "./vite.ts";
+import telegramRouter, { initializeTelegramBot } from "../webhooks/telegram.ts";
+import googleCallbackRouter, { initializeGoogleAuth } from "../webhooks/google-callback.ts";
+import { googleAuthManager } from "../routers/google-workspace.ts";
 
 function isPortAvailable(port: number): Promise<boolean> {
   return new Promise(resolve => {

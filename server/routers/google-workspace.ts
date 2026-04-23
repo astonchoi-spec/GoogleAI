@@ -4,13 +4,13 @@
  */
 
 import { z } from "zod";
-import { publicProcedure, router } from "../_core/trpc";
-import GoogleAuthManager from "../google/auth";
-import GmailConnector from "../google/gmail";
-import CalendarConnector from "../google/calendar";
-import DriveConnector from "../google/drive";
-import SheetsConnector from "../google/sheets";
-import { SessionManager } from "../llm/session";
+import { publicProcedure, router } from "../_core/trpc.ts";
+import GoogleAuthManager from "../google/auth.ts";
+import GmailConnector from "../google/gmail.ts";
+import CalendarConnector from "../google/calendar.ts";
+import DriveConnector from "../google/drive.ts";
+import SheetsConnector from "../google/sheets.ts";
+import { SessionManager } from "../llm/session.ts";
 
 const sessionManager = new SessionManager();
 
@@ -162,7 +162,7 @@ export const googleWorkspaceRouter = router({
         const userId = ctx.user?.id.toString() || "anonymous";
         const auth = await googleAuthManager.getAuthenticatedClient(userId);
         const calendar = new CalendarConnector(auth);
-        const eventId = await calendar.createEvent({
+        const event = await calendar.createEvent({
           title: input.title,
           description: input.description,
           startTime: new Date(input.startTime),
@@ -171,7 +171,7 @@ export const googleWorkspaceRouter = router({
           location: input.location,
           isAllDay: input.isAllDay,
         });
-        return { eventId };
+        return { eventId: event.id, htmlLink: event.htmlLink };
       }),
 
     /**

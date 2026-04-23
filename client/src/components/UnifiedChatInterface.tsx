@@ -6,7 +6,7 @@
 import { useState, useRef, useEffect } from "react";
 import { toast } from "sonner";
 import { motion, AnimatePresence } from "framer-motion";
-import { Send, Loader2, Settings2, MessageCircle, Sliders, Smartphone, Globe, Check, LogIn } from "lucide-react";
+import { Send, Loader2, Settings2, MessageCircle, Sliders, Smartphone, Globe, Check, LogIn, Mic, Volume2 } from "lucide-react"; // ADDED: voice input and TTS toggle icons.
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
@@ -20,6 +20,8 @@ import {
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
 import ApiSettingsModal from "./ApiSettingsModal";
+import QuickActions from "./QuickActions"; // ADDED: quick command row above the input area.
+import { useSpeechRecognition, useTextToSpeech } from "@/hooks/useSpeech"; // ADDED: browser speech recognition and TTS logic.
 
 interface UnifiedMessage {
   id: string;
@@ -69,6 +71,7 @@ export default function UnifiedChatInterface() {
   const forwardToTelegramMutation = trpc.chatSync.forwardToTelegram.useMutation();
   const switchEngineMutation = trpc.llm.switchEngineAndModel.useMutation();
   const [switchSuccess, setSwitchSuccess] = useState(false);
+  const tts = useTextToSpeech(); // ADDED: TTS state and playback helpers.
 
   const handleEngineChange = (engine: string) => {
     setSelectedEngine(engine);
@@ -141,11 +144,10 @@ export default function UnifiedChatInterface() {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, isLoading]);
 
-  const handleSendMessage = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!input.trim()) return;
+  const sendMessageText = async (text: string) => { // ADDED: shared sender for typed, voice, and quick action messages.
+    if (!text.trim() || isLoading) return;
 
-    const userMessage = input;
+    const userMessage = text.trim();
     setInput("");
     setIsLoading(true);
 
@@ -195,6 +197,7 @@ export default function UnifiedChatInterface() {
         timestamp: new Date(),
       };
       setMessages((prev) => [...prev, aiMsg]);
+      tts.speak(result.response); // ADDED: read AI responses aloud when TTS is enabled.
     } catch (error) {
       toast.error("메시지 전송에 실패했습니다.");
       console.error("Error sending message:", error);
@@ -202,6 +205,24 @@ export default function UnifiedChatInterface() {
       setIsLoading(false);
     }
   };
+
+  const handleSendMessage = async (e: React.FormEvent) => { // ADDED: keep existing form submit behavior through shared sender.
+    e.preventDefault();
+    await sendMessageText(input);
+  };
+
+  const speech = useSpeechRecognition((text) => { // ADDED: voice result feeds the existing chat send flow.
+    setInput(text);
+    void sendMessageText(text);
+  });
+
+  useEffect(() => { // ADDED: accept quick commands from home widgets via /chat?command=...
+    const params = new URLSearchParams(window.location.search);
+    const command = params.get("command");
+    if (!command) return;
+    setInput(command);
+    window.history.replaceState({}, "", "/chat");
+  }, []);
 
   const getSourceIcon = (source: "web" | "telegram") => {
     return source === "telegram" ? (
@@ -237,6 +258,16 @@ export default function UnifiedChatInterface() {
           <span className="text-xs text-muted-foreground font-normal">(웹 + Telegram)</span>
         </div>
         <div className="flex items-center gap-2">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={tts.toggle}
+            className={`text-muted-foreground hover:text-foreground ${tts.enabled ? "text-cyan-400" : ""}`}
+            title={tts.enabled ? "TTS 끄기" : "TTS 켜기"}
+          >
+            <Volume2 className={`w-4 h-4 mr-1.5 ${tts.isSpeaking ? "text-cyan-300" : ""}`} />
+            TTS
+          </Button>
           <Button
             variant="ghost"
             size="sm"
@@ -418,6 +449,7 @@ export default function UnifiedChatInterface() {
 
       {/* Input Area - Bottom (Fixed) */}
       <div className="border-t border-border bg-card p-4 flex-shrink-0">
+        <QuickActions onSelect={(text) => void sendMessageText(text)} disabled={isLoading} /> {/* ADDED: quick command buttons. */}
         <form onSubmit={handleSendMessage} className="flex gap-2">
           <Input
             value={input}
@@ -432,6 +464,18 @@ export default function UnifiedChatInterface() {
               }
             }}
           />
+          {speech.isSupported && (
+            <Button
+              type="button"
+              onClick={speech.isListening ? speech.stopListening : speech.startListening}
+              disabled={isLoading}
+              size="icon"
+              className={speech.isListening ? "animate-pulse bg-red-600 text-white hover:bg-red-700" : ""}
+              title={speech.isListening ? "음성 입력 중지" : "음성 입력"}
+            >
+              <Mic className="w-4 h-4" />
+            </Button>
+          )}
           <Button
             type="submit"
             disabled={isLoading || !input.trim()}

@@ -15,6 +15,7 @@ import SecuritySection from "@/components/SecuritySection";
 import RoadmapSection from "@/components/RoadmapSection";
 import CodeExamplesSection from "@/components/CodeExamplesSection";
 import APIReferenceSection from "@/components/APIReferenceSection";
+import WorkspaceWidgets from "@/components/home/WorkspaceWidgets"; // MODIFIED: add workstation summary widgets below existing home content.
 import FooterSection from "@/components/FooterSection";
 
 /**
@@ -105,6 +106,7 @@ export default function Home() {
           <APIReferenceSection />
           <SecuritySection />
           <RoadmapSection />
+          <WorkspaceWidgets /> {/* MODIFIED: append new dashboard widgets without removing existing sections. */}
           <FooterSection />
         </div>
       </main>

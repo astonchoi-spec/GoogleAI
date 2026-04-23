@@ -1,7 +1,7 @@
 /**
  * Built-in LLM helper — delegates to the multi-engine caller.
  */
-import { LLMCaller } from "../llm/caller";
+import { LLMCaller } from "../llm/caller.ts";
 
 const caller = new LLMCaller(
   undefined,

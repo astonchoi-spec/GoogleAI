@@ -27,6 +27,11 @@ export interface CreateEventOptions {
   isAllDay?: boolean;
 }
 
+export interface CreateEventResult {
+  id: string;
+  htmlLink: string;
+}
+
 export interface UpdateEventOptions extends Partial<CreateEventOptions> {
   eventId: string;
 }
@@ -71,7 +76,7 @@ export class CalendarConnector {
   /**
    * Create event
    */
-  async createEvent(options: CreateEventOptions): Promise<string> {
+  async createEvent(options: CreateEventOptions): Promise<CreateEventResult> {
     try {
       const event: calendar_v3.Schema$Event = {
         summary: options.title,
@@ -79,22 +84,38 @@ export class CalendarConnector {
         location: options.location,
         attendees: options.attendees?.map((email) => ({ email })),
         start: options.isAllDay
-          ? { date: options.startTime.toISOString().split("T")[0] }
-          : { dateTime: options.startTime.toISOString() },
+          ? { date: this.formatDateInSeoul(options.startTime) }
+          : { dateTime: options.startTime.toISOString(), timeZone: "Asia/Seoul" },
         end: options.isAllDay
-          ? { date: options.endTime.toISOString().split("T")[0] }
-          : { dateTime: options.endTime.toISOString() },
+          ? { date: this.formatDateInSeoul(options.endTime) }
+          : { dateTime: options.endTime.toISOString(), timeZone: "Asia/Seoul" },
       };
 
       const response = await this.calendar.events.insert({
         calendarId: "primary",
         requestBody: event,
+        fields: "id,htmlLink",
       });
 
-      return response.data.id || "";
+      return {
+        id: response.data.id || "",
+        htmlLink: response.data.htmlLink || "",
+      };
     } catch (error) {
       throw new Error(`Failed to create event: ${error instanceof Error ? error.message : String(error)}`);
     }
+  }
+
+  private formatDateInSeoul(date: Date): string {
+    const parts = new Intl.DateTimeFormat("en-CA", {
+      timeZone: "Asia/Seoul",
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+    }).formatToParts(date);
+
+    const get = (type: string) => parts.find((part) => part.type === type)?.value || "";
+    return `${get("year")}-${get("month")}-${get("day")}`;
   }
 
   /**

@@ -3,7 +3,7 @@
  * Handles unified message synchronization between web and Telegram
  */
 
-import { router, protectedProcedure, publicProcedure } from "../_core/trpc";
+import { router, protectedProcedure, publicProcedure } from "../_core/trpc.ts";
 import { z } from "zod";
 import {
   getOrCreateConversation,
@@ -13,8 +13,8 @@ import {
   getConversationByTelegramChatId,
   getConversationById,
   updateConversationTitle,
-} from "../db-chat";
-import { forwardToTelegram } from "../telegram-service";
+} from "../db-chat.ts";
+import { forwardToTelegram } from "../telegram-service.ts";
 
 export const chatSyncRouter = router({
   /**

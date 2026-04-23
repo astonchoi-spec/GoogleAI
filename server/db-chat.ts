@@ -1,5 +1,6 @@
-import { getDb } from "./db";
-import { conversations, messages, type Conversation, type Message } from "../drizzle/schema";
+import { getDb } from "./db.ts";
+import { conversations, messages } from "../drizzle/schema.ts";
+import type { Conversation, Message } from "../drizzle/schema.ts";
 import { eq, and, desc, gte } from "drizzle-orm";
 
 export async function getOrCreateConversation(userId: number): Promise<Conversation> {

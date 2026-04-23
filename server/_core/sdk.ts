@@ -1,11 +1,11 @@
-import { COOKIE_NAME, ONE_YEAR_MS } from "@shared/const";
-import { ForbiddenError } from "@shared/_core/errors";
+import { COOKIE_NAME, ONE_YEAR_MS } from "../../shared/const.ts";
+import { ForbiddenError } from "../../shared/_core/errors.ts";
 import { parse as parseCookieHeader } from "cookie";
 import type { Request } from "express";
 import { SignJWT, jwtVerify } from "jose";
 import type { User } from "../../drizzle/schema";
-import * as db from "../db";
-import { ENV } from "./env";
+import * as db from "../db.ts";
+import { ENV } from "./env.ts";
 
 // Fallback admin user when DB is unavailable (MySQL not running)
 const MOCK_ADMIN_USER: User = {

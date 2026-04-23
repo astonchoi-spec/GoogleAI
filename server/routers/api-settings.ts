@@ -4,8 +4,8 @@
  */
 
 import { z } from "zod";
-import { protectedProcedure, router } from "../_core/trpc";
-import { saveApiSetting, getApiSettings, getApiSetting, deleteApiSetting } from "../db";
+import { protectedProcedure, router } from "../_core/trpc.ts";
+import { saveApiSetting, getApiSettings, getApiSetting, deleteApiSetting } from "../db.ts";
 
 export const apiSettingsRouter = router({
   /**

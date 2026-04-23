@@ -3,9 +3,8 @@ import { encrypt, decrypt, hash } from './encryption';
 
 describe('Encryption Utility', () => {
   beforeAll(() => {
-    // Ensure ENCRYPTION_KEY is set
     if (!process.env.ENCRYPTION_KEY) {
-      throw new Error('ENCRYPTION_KEY environment variable is not set');
+      process.env.ENCRYPTION_KEY = "0123456789abcdef0123456789abcdef";
     }
   });
 

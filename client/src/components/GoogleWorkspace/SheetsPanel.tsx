@@ -18,6 +18,9 @@ export default function SheetsPanel() {
     { enabled: !!queryId }
   );
 
+  const sheetData = data?.data;
+  const rows = sheetData?.data ?? [];
+
   const handleLoad = () => {
     if (!spreadsheetId.trim()) {
       toast.error("스프레드시트 ID를 입력하세요.");
@@ -60,12 +63,12 @@ export default function SheetsPanel() {
         </div>
       )}
 
-      {data?.data && data.data.length > 0 && (
+      {rows.length > 0 && (
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
           <div className="overflow-x-auto rounded-lg border border-slate-700">
             <table className="w-full text-sm">
               <tbody>
-                {(data.data as any[][]).map((row: any[], rowIdx: number) => (
+                {rows.map((row: any[], rowIdx: number) => (
                   <tr key={rowIdx} className={rowIdx % 2 === 0 ? "bg-slate-800" : "bg-slate-800/50"}>
                     {row.map((cell: any, cellIdx: number) => (
                       <td
@@ -85,7 +88,7 @@ export default function SheetsPanel() {
         </motion.div>
       )}
 
-      {queryId && !isLoading && (!data?.data || data.data.length === 0) && (
+      {queryId && !isLoading && rows.length === 0 && (
         <p className="text-slate-500 text-sm text-center py-4">데이터가 없거나 접근 권한이 없습니다.</p>
       )}
     </div>

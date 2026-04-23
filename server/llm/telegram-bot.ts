@@ -21,6 +21,15 @@ import SheetsConnector from "../google/sheets";
 const ADMIN_USER_ID = 1;
 const GOOGLE_USER_ID = "1";
 
+type WorkspaceIntent =
+  | { action: "send_email"; to: string; subject: string; body: string }
+  | { action: "get_emails"; query?: string; maxResults?: number }
+  | { action: "create_event"; title: string; startTime: string; endTime: string; description?: string }
+  | { action: "list_drive"; query?: string; maxResults?: number }
+  | { action: "send_drive_file"; fileName: string }
+  | { action: "read_sheet"; spreadsheetId: string; range?: string }
+  | { action: "none" };
+
 export interface BotContext extends Context {
   session?: {
     userId: string;
@@ -214,6 +223,111 @@ export class TelegramBot {
    * Detect and execute Google Workspace commands using LLM intent parsing
    * chatId: Telegram chat ID for file sending
    */
+  private looksLikeCalendarRequest(message: string): boolean {
+    return /(?:캘린더|일정|미팅|회의|약속|예약|등록|추가|생성)/i.test(message);
+  }
+
+  private parseIntentJson(content: string): WorkspaceIntent | null {
+    const trimmed = content.trim();
+    const match = trimmed.match(/\{[\s\S]*\}/);
+    const jsonText = match ? match[0] : trimmed;
+
+    try {
+      const parsed = JSON.parse(jsonText) as WorkspaceIntent;
+      if (!parsed || typeof parsed !== "object" || !("action" in parsed)) {
+        return null;
+      }
+      return parsed;
+    } catch {
+      return null;
+    }
+  }
+
+  private async extractWorkspaceIntent(message: string): Promise<WorkspaceIntent | null> {
+    const currentDate = new Date().toLocaleString("ko-KR", { timeZone: "Asia/Seoul" });
+    const intentPrompt = `You are a Google Workspace command parser. Analyze the user's message and return ONLY a valid JSON object.
+
+Current date/time in Asia/Seoul: ${currentDate}
+
+Supported actions:
+- send_email: user wants to send an email
+- get_emails: user wants to read/check emails
+- create_event: user wants to create a calendar event
+- list_drive: user wants to see/search Drive files
+- send_drive_file: user wants to receive/send a specific Drive file via Telegram (extract file name)
+- read_sheet: user wants to read a Google Sheet (needs spreadsheetId)
+- none: not a Google Workspace command
+
+Return format examples:
+{"action":"send_email","to":"email@example.com","subject":"제목","body":"내용"}
+{"action":"get_emails","query":"","maxResults":5}
+{"action":"create_event","title":"미팅","startTime":"2026-04-23T14:00:00","endTime":"2026-04-23T15:00:00","description":""}
+{"action":"list_drive","query":"trashed = false","maxResults":10}
+{"action":"send_drive_file","fileName":"파일명.csv"}
+{"action":"read_sheet","spreadsheetId":"<id>","range":"Sheet1!A1:Z50"}
+{"action":"none"}
+
+Return ONLY the JSON object, no other text.`;
+
+    const response = await this.llmCaller.call(
+      "gemini",
+      "flash",
+      [{ role: "user", content: message }],
+      intentPrompt,
+      { responseMimeType: "application/json", temperature: 0, maxOutputTokens: 256 }
+    );
+
+    const intent = this.parseIntentJson(response.content);
+    if (intent) {
+      return intent;
+    }
+
+    if (!this.looksLikeCalendarRequest(message)) {
+      return null;
+    }
+
+    const fallbackPrompt = `${intentPrompt}
+
+The user message clearly asks about calendar scheduling.
+If there is enough information to create an event, return action=create_event.
+If required fields are missing, return {"action":"none"}.
+`;
+
+    const fallbackResponse = await this.llmCaller.call(
+      "gemini",
+      "flash",
+      [{ role: "user", content: message }],
+      fallbackPrompt,
+      { responseMimeType: "application/json", temperature: 0, maxOutputTokens: 256 }
+    );
+
+    return this.parseIntentJson(fallbackResponse.content);
+  }
+
+  private async executeCalendarIntent(intent: Extract<WorkspaceIntent, { action: "create_event" }>): Promise<string> {
+    const isAuthed = await googleAuthManager.isAuthenticated(GOOGLE_USER_ID);
+    if (!isAuthed) {
+      return "Google 계정이 연결되어 있지 않습니다. 웹에서 먼저 Google 계정을 연결해주세요.";
+    }
+
+    const startTime = new Date(intent.startTime);
+    const endTime = new Date(intent.endTime);
+    if (Number.isNaN(startTime.getTime()) || Number.isNaN(endTime.getTime())) {
+      return "캘린더 일정을 만들려면 날짜와 시작/종료 시간이 필요합니다. 예: 내일 오후 7시~8시";
+    }
+
+    const auth = await googleAuthManager.getAuthenticatedClient(GOOGLE_USER_ID);
+    const calendar = new CalendarConnector(auth);
+    await calendar.createEvent({
+      title: intent.title,
+      startTime,
+      endTime,
+      description: intent.description || "",
+    });
+
+    return `캘린더 일정 생성 완료!\n제목: ${intent.title}\n시작: ${intent.startTime}\n종료: ${intent.endTime}`;
+  }
+
   private async handleWorkspaceCommand(message: string, chatId: number): Promise<string | null> {
     const intentPrompt = `You are a Google Workspace command parser. Analyze the user's message and return ONLY a valid JSON object.
 
@@ -238,6 +352,11 @@ Return format examples:
 Return ONLY the JSON object, no other text.`;
 
     try {
+      const directIntent = await this.extractWorkspaceIntent(message);
+      if (directIntent?.action === "create_event") {
+        return await this.executeCalendarIntent(directIntent);
+      }
+
       const response = await this.llmCaller.call(
         "gemini",
         "flash",

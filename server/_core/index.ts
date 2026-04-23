@@ -34,9 +34,38 @@ async function findAvailablePort(startPort: number = 3000): Promise<number> {
 async function startServer() {
   const app = express();
   const server = createServer(app);
+  const startedAt = Date.now();
   // Configure body parser with larger size limit for file uploads
   app.use(express.json({ limit: "50mb" }));
   app.use(express.urlencoded({ limit: "50mb", extended: true }));
+
+  app.use((req, res, next) => {
+    const requestStartedAt = Date.now();
+    res.on("finish", () => {
+      const elapsedMs = Date.now() - requestStartedAt;
+      console.log(`${req.method} ${req.originalUrl} -> ${res.statusCode} (${elapsedMs}ms)`);
+    });
+    next();
+  });
+
+  app.get("/healthz", (_req, res) => {
+    res.json({
+      ok: true,
+      timestamp: new Date().toISOString(),
+      environment: process.env.NODE_ENV || "development",
+      uptimeSeconds: Math.floor((Date.now() - startedAt) / 1000),
+    });
+  });
+
+  app.get("/api/health", (_req, res) => {
+    res.json({
+      ok: true,
+      timestamp: new Date().toISOString(),
+      environment: process.env.NODE_ENV || "development",
+      uptimeSeconds: Math.floor((Date.now() - startedAt) / 1000),
+    });
+  });
+
   registerStorageProxy(app);
   registerOAuthRoutes(app);
   
@@ -63,9 +92,12 @@ async function startServer() {
   }
 
   const preferredPort = parseInt(process.env.PORT || "3000");
-  const port = await findAvailablePort(preferredPort);
+  const isDevelopment = process.env.NODE_ENV === "development";
+  const port = isDevelopment
+    ? await findAvailablePort(preferredPort)
+    : preferredPort;
 
-  if (port !== preferredPort) {
+  if (isDevelopment && port !== preferredPort) {
     console.log(`Port ${preferredPort} is busy, using port ${port} instead`);
   }
 
@@ -76,6 +108,15 @@ async function startServer() {
   
   // Initialize Telegram bot
   await initializeTelegramBot();
+
+  app.use((err: unknown, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
+    const message = err instanceof Error ? err.message : "Internal server error";
+    console.error("[Server Error]", err);
+    res.status(500).json({
+      ok: false,
+      error: message,
+    });
+  });
 
   // Graceful shutdown
   process.once("SIGINT", () => server.close());

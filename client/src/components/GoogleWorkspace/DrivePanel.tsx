@@ -127,12 +127,12 @@ export default function DrivePanel() {
   return (
     <div className="space-y-3">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <h3 className="text-white font-semibold flex items-center gap-2">
           <HardDrive className="w-4 h-4 text-cyan-400" />
           Google Drive
         </h3>
-        <div className="flex gap-1">
+        <div className="flex flex-wrap gap-1">
           <Button onClick={() => refetch()} variant="ghost" size="sm" className="text-slate-400 hover:text-slate-300 px-2">
             <RefreshCw className="w-3 h-3" />
           </Button>
@@ -149,7 +149,7 @@ export default function DrivePanel() {
             onClick={() => fileInputRef.current?.click()}
             disabled={uploadMutation.isPending}
             size="sm"
-            className="bg-cyan-600 hover:bg-cyan-700 text-white"
+          className="w-full sm:w-auto bg-cyan-600 hover:bg-cyan-700 text-white"
           >
             {uploadMutation.isPending
               ? <Loader2 className="w-3 h-3 animate-spin mr-1" />
@@ -160,7 +160,7 @@ export default function DrivePanel() {
       </div>
 
       {/* Search bar */}
-      <div className="flex gap-2">
+      <div className="flex flex-col sm:flex-row gap-2">
         <div className="relative flex-1">
           <Input
             placeholder="Drive 전체 검색..."
@@ -175,7 +175,7 @@ export default function DrivePanel() {
             </button>
           )}
         </div>
-        <Button onClick={handleSearch} size="sm" className="bg-cyan-600 hover:bg-cyan-700 text-white shrink-0">
+        <Button onClick={handleSearch} size="sm" className="w-full sm:w-auto bg-cyan-600 hover:bg-cyan-700 text-white shrink-0">
           <Search className="w-4 h-4" />
         </Button>
       </div>
@@ -184,7 +184,7 @@ export default function DrivePanel() {
       <AnimatePresence>
         {showFolderInput && (
           <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }}>
-            <div className="flex gap-2">
+            <div className="flex flex-col sm:flex-row gap-2">
               <Input
                 placeholder="새 폴더 이름"
                 value={newFolderName}
@@ -202,7 +202,7 @@ export default function DrivePanel() {
                   parentFolderId: currentFolder.id === "root" ? undefined : currentFolder.id,
                 })}
                 disabled={createFolderMutation.isPending || !newFolderName.trim()}
-                size="sm" className="bg-cyan-600 hover:bg-cyan-700 text-white shrink-0"
+                size="sm" className="w-full sm:w-auto bg-cyan-600 hover:bg-cyan-700 text-white shrink-0"
               >
                 {createFolderMutation.isPending ? <Loader2 className="w-3 h-3 animate-spin" /> : "생성"}
               </Button>

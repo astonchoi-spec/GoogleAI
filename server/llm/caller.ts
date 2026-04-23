@@ -22,6 +22,12 @@ export interface LLMResponse {
   tokensUsed?: number;
 }
 
+export interface LLMCallOptions {
+  responseMimeType?: string;
+  temperature?: number;
+  maxOutputTokens?: number;
+}
+
 export class LLMCaller {
   private ollamaHost: string;
   private geminiApiKey: string;
@@ -65,7 +71,8 @@ export class LLMCaller {
     engine: LLMEngine,
     modelKey: string,
     messages: LLMMessage[],
-    systemPrompt?: string
+    systemPrompt?: string,
+    options?: LLMCallOptions
   ): Promise<LLMResponse> {
     const model = getModel(engine, modelKey);
     if (!model) {
@@ -76,7 +83,7 @@ export class LLMCaller {
       case "gemma4":
         return this.callGemma4(model.modelId, messages, systemPrompt);
       case "gemini":
-        return this.callGemini(model.modelId, messages, systemPrompt);
+        return this.callGemini(model.modelId, messages, systemPrompt, options);
       case "codex":
         return this.callCodex(model.modelId, messages, systemPrompt);
       case "claude":
@@ -135,7 +142,8 @@ export class LLMCaller {
   private async callGemini(
     modelId: string,
     messages: LLMMessage[],
-    systemPrompt?: string
+    systemPrompt?: string,
+    options?: LLMCallOptions
   ): Promise<LLMResponse> {
     try {
       const apiKey = this.geminiApiKey;
@@ -145,7 +153,12 @@ export class LLMCaller {
       const genAI = new GoogleGenerativeAI(apiKey);
       const model = genAI.getGenerativeModel({
         model: modelId,
-        tools: [{ googleSearch: {} }],
+        systemInstruction: systemPrompt,
+        generationConfig: {
+          temperature: options?.temperature,
+          maxOutputTokens: options?.maxOutputTokens,
+          responseMimeType: options?.responseMimeType,
+        },
       });
 
       const history = messages.slice(0, -1).map((msg) => ({
@@ -160,7 +173,6 @@ export class LLMCaller {
 
       const result = await model.generateContent({
         contents: [
-          ...(systemPrompt ? [{ role: "user", parts: [{ text: systemPrompt }] }] : []),
           ...history,
           {
             role: lastMessage.role === "user" ? "user" : "model",

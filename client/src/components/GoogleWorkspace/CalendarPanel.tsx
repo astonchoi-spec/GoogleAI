@@ -103,12 +103,12 @@ export default function CalendarPanel() {
   return (
     <div className="space-y-3">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <h3 className="text-white font-semibold flex items-center gap-2 text-base">
           <Calendar className="w-4 h-4 text-cyan-400" />
           {year}년 {month}월
         </h3>
-        <div className="flex items-center gap-1">
+        <div className="flex flex-wrap items-center gap-1">
           <button onClick={prevMonth} className="p-1.5 rounded hover:bg-slate-700 text-slate-400 hover:text-white transition-colors">
             <ChevronLeft className="w-4 h-4" />
           </button>
@@ -121,7 +121,7 @@ export default function CalendarPanel() {
           <button onClick={() => refetch()} className="p-1.5 rounded hover:bg-slate-700 text-slate-400 hover:text-white transition-colors ml-1">
             <RefreshCw className="w-3.5 h-3.5" />
           </button>
-          <Button onClick={() => setShowCreate(v => !v)} size="sm" className="bg-cyan-600 hover:bg-cyan-700 text-white ml-1 h-7 text-xs">
+          <Button onClick={() => setShowCreate(v => !v)} size="sm" className="w-full sm:w-auto bg-cyan-600 hover:bg-cyan-700 text-white ml-0 sm:ml-1 h-7 text-xs">
             <Plus className="w-3 h-3 mr-1" />일정 추가
           </Button>
         </div>
@@ -137,7 +137,7 @@ export default function CalendarPanel() {
                 <button onClick={() => setShowCreate(false)}><X className="w-4 h-4 text-slate-400 hover:text-slate-300" /></button>
               </div>
               <Input placeholder="일정 제목" value={title} onChange={(e) => setTitle(e.target.value)} className="bg-slate-700 border-slate-600 text-white placeholder-slate-500 h-8" />
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                 <div>
                   <label className="text-xs text-slate-400 mb-1 block">시작</label>
                   <Input type="datetime-local" value={startTime} onChange={(e) => setStartTime(e.target.value)} className="bg-slate-700 border-slate-600 text-white h-8 text-xs" />

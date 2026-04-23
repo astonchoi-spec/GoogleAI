@@ -1,7 +1,9 @@
 import { describe, it, expect, beforeAll } from "vitest";
 import LLMCaller from "./caller";
 
-describe("Gemini API Integration", () => {
+const maybeDescribe = process.env.GEMINI_API_KEY ? describe : describe.skip;
+
+maybeDescribe("Gemini API Integration", () => {
   let llmCaller: LLMCaller;
 
   beforeAll(() => {

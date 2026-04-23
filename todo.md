@@ -231,23 +231,23 @@
 
 ## Remaining Features (To Do)
 
-- [ ] Message search functionality
+- [x] Message search functionality
   - Search conversations by keyword
   - Filter by date range
   - Filter by source (web/telegram)
   - Search UI component
 
-- [ ] Toast notifications system
+- [x] Toast notifications system
   - New message alerts
   - API key save/delete confirmations
   - Error notifications
   - Success feedback
 
-- [ ] Advanced chat features
-  - Message editing capability
-  - Message deletion
-  - Conversation export (PDF/JSON)
-  - Conversation pinning/favorites
+- [x] Advanced chat features
+  - [x] Message editing capability
+  - [x] Message deletion
+  - [x] Conversation export (PDF/JSON)
+  - [x] Conversation pinning/favorites
 
 - [ ] User profile and settings
   - User preference management
@@ -261,12 +261,12 @@
   - Response time metrics
   - User activity logs
 
-- [ ] Mobile responsiveness
+- [x] Mobile responsiveness
   - Optimize layout for mobile devices
   - Touch-friendly buttons and inputs
   - Mobile-specific UI adjustments
 
-- [ ] Performance optimization
+- [x] Performance optimization
   - Message pagination (load older messages on scroll)
   - Lazy loading for images/media
   - Database query optimization

@@ -35,7 +35,7 @@ export default function GoogleAuthCard() {
 
   if (isLoading) {
     return (
-      <Card className="bg-slate-800 border-slate-700 p-4 flex items-center gap-3">
+      <Card className="bg-slate-800 border-slate-700 p-4 flex flex-col sm:flex-row items-start sm:items-center gap-3">
         <Loader2 className="w-5 h-5 animate-spin text-cyan-400" />
         <span className="text-slate-400 text-sm">Google 연결 상태 확인 중...</span>
       </Card>
@@ -46,7 +46,7 @@ export default function GoogleAuthCard() {
     return (
       <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }}>
         <Card className="bg-amber-950/30 border-amber-700/50 p-4">
-          <div className="flex items-start gap-3">
+          <div className="flex flex-col sm:flex-row items-start gap-3">
             <AlertTriangle className="w-5 h-5 text-amber-400 mt-0.5 shrink-0" />
             <div>
               <p className="text-amber-300 font-medium text-sm">Google OAuth 설정 필요</p>
@@ -75,8 +75,8 @@ GOOGLE_REDIRECT_URI=http://localhost:4000/api/webhooks/google/callback`}
 
   return (
     <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }}>
-      <Card className="bg-slate-800 border-slate-700 p-4 flex items-center justify-between">
-        <div className="flex items-center gap-3">
+      <Card className="bg-slate-800 border-slate-700 p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div className="flex items-start sm:items-center gap-3">
           {isAuthenticated ? (
             <CheckCircle2 className="w-5 h-5 text-green-400" />
           ) : (
@@ -99,7 +99,7 @@ GOOGLE_REDIRECT_URI=http://localhost:4000/api/webhooks/google/callback`}
             disabled={revokeMutation.isPending}
             variant="outline"
             size="sm"
-            className="bg-red-950/30 border-red-700/50 text-red-300 hover:bg-red-900/40"
+            className="w-full sm:w-auto bg-red-950/30 border-red-700/50 text-red-300 hover:bg-red-900/40"
           >
             {revokeMutation.isPending ? (
               <Loader2 className="w-3 h-3 animate-spin" />
@@ -114,7 +114,7 @@ GOOGLE_REDIRECT_URI=http://localhost:4000/api/webhooks/google/callback`}
           <Button
             onClick={handleConnect}
             size="sm"
-            className="bg-cyan-600 hover:bg-cyan-700 text-white"
+            className="w-full sm:w-auto bg-cyan-600 hover:bg-cyan-700 text-white"
           >
             <LogIn className="w-3 h-3 mr-1" />
             Google 연결

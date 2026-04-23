@@ -20,7 +20,7 @@ export default function Google() {
   const [activeTab, setActiveTab] = useState<TabId>("gmail");
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-slate-900 via-slate-950 to-black px-4 md:px-8 py-4">
+    <div className="min-h-[100dvh] bg-gradient-to-b from-slate-900 via-slate-950 to-black px-3 sm:px-4 md:px-8 py-3 sm:py-4">
       <motion.div
         initial={{ opacity: 0, y: -10 }}
         animate={{ opacity: 1, y: 0 }}
@@ -38,7 +38,7 @@ export default function Google() {
 
         <GoogleAuthCard />
 
-        <div className="flex gap-1 bg-slate-800/50 p-1 rounded-lg border border-slate-700">
+        <div className="flex gap-1 bg-slate-800/50 p-1 rounded-lg border border-slate-700 overflow-x-auto scrollbar-thin">
           {TABS.map((tab) => {
             const Icon = tab.icon;
             const isActive = activeTab === tab.id;
@@ -46,7 +46,7 @@ export default function Google() {
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
-                className={`flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-all ${
+                className={`min-w-[88px] sm:min-w-0 flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-all whitespace-nowrap ${
                   isActive
                     ? "bg-cyan-600 text-white shadow"
                     : "text-slate-400 hover:text-slate-300 hover:bg-slate-700/50"

@@ -36,12 +36,12 @@ export default function GmailPanel() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <h3 className="text-white font-semibold flex items-center gap-2">
           <Mail className="w-4 h-4 text-cyan-400" />
           받은 편지함
         </h3>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           <Button
             onClick={() => refetch()}
             variant="ghost"
@@ -53,7 +53,7 @@ export default function GmailPanel() {
           <Button
             onClick={() => setShowCompose((v) => !v)}
             size="sm"
-            className="bg-cyan-600 hover:bg-cyan-700 text-white"
+            className="flex-1 sm:flex-none bg-cyan-600 hover:bg-cyan-700 text-white"
           >
             <PenSquare className="w-3 h-3 mr-1" />
             편지 쓰기
@@ -69,7 +69,7 @@ export default function GmailPanel() {
             exit={{ opacity: 0, height: 0 }}
           >
             <Card className="bg-slate-800 border-slate-700 p-4 space-y-3">
-              <div className="flex items-center justify-between mb-1">
+              <div className="flex items-center justify-between gap-2 mb-1">
                 <span className="text-sm font-medium text-white">새 메일 작성</span>
                 <button onClick={() => setShowCompose(false)}>
                   <X className="w-4 h-4 text-slate-400 hover:text-slate-300" />
@@ -91,7 +91,7 @@ export default function GmailPanel() {
                 placeholder="내용을 입력하세요..."
                 value={body}
                 onChange={(e) => setBody(e.target.value)}
-                rows={4}
+                rows={5}
                 className="w-full rounded-md bg-slate-700 border border-slate-600 text-white placeholder-slate-500 p-3 text-sm resize-none focus:outline-none focus:ring-1 focus:ring-cyan-500"
               />
               <Button

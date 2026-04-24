@@ -309,3 +309,8 @@ ollama pull gemma4:e4b
 
 **Update**: 2026-04-24 Phase 2 Realtime Step 2 Completion
 **Status**: TradingView webhook receiver (`7-3`) added with secret validation, Redis event persistence/pubsub, health/recent endpoints, and Telegram forwarding support.
+
+---
+
+**Update**: 2026-04-24 Phase 2 Realtime Step 3 Completion
+**Status**: Upbit websocket monitor (`8`) productionized with startup auto-connect, redis-backed cached price lookup, and tRPC controls for start/stop/status/price.

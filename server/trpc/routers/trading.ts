@@ -6,6 +6,7 @@ import { addAlert, getAlerts, removeAlert } from "../../alerts/alertEngine.ts";
 import { exchangeConnector, type SupportedExchangeId } from "../../exchanges/exchangeConnector.ts";
 import { kiwoomRestConnector } from "../../exchanges/kiwoomRest.ts";
 import { kiwoomRealtimeFeed } from "../../exchanges/kiwoomWebSocket.ts";
+import { upbitFeed } from "../../exchanges/upbitWebSocket.ts";
 import { redis } from "../../_core/redis.ts";
 import { googleAuthManager } from "../../routers/google-workspace.ts";
 import { getOrCreateConversation } from "../../db-chat.ts";
@@ -15,6 +16,7 @@ import { TradeJournal } from "../../trading/tradeJournal.ts";
 
 const exchangeSchema = z.enum(["gate", "binance", "upbit", "bybit"]);
 const kiwoomMarketSchema = z.enum(["kr-stock", "kr-futures", "us-futures"]);
+const upbitSymbolSchema = z.string().regex(/^KRW-[A-Z0-9]+$/, "UPBIT symbol must be like KRW-BTC");
 const alertTypeSchema = z.enum(["price", "rsi", "funding", "kimchi_premium"]);
 const alertOperatorSchema = z.enum(["above", "below"]);
 
@@ -246,6 +248,41 @@ export const tradingRouter = router({
     )
     .query(async ({ input }) => {
       return kiwoomRealtimeFeed.getCachedPrice(input.market, input.symbol);
+    }),
+
+  startUpbitRealtime: protectedProcedure
+    .input(
+      z.object({
+        symbols: z.array(upbitSymbolSchema).min(1),
+      })
+    )
+    .mutation(async ({ input }) => {
+      await upbitFeed.connect(input.symbols);
+      return {
+        success: true as const,
+        symbols: input.symbols,
+      };
+    }),
+
+  stopUpbitRealtime: protectedProcedure.mutation(async () => {
+    upbitFeed.disconnect();
+    return {
+      success: true as const,
+    };
+  }),
+
+  getUpbitRealtimeStatus: protectedProcedure.query(async () => {
+    return upbitFeed.getStatus();
+  }),
+
+  getUpbitRealtimePrice: protectedProcedure
+    .input(
+      z.object({
+        symbol: upbitSymbolSchema,
+      })
+    )
+    .query(async ({ input }) => {
+      return upbitFeed.getCachedPrice(input.symbol);
     }),
 });
 

@@ -488,3 +488,18 @@
 - [x] Telegram 자동 포워딩 연동 (`TV_WEBHOOK_TELEGRAM_CHAT_ID` 우선)
 - [x] Server router 등록 완료 (`server/_core/index.ts`)
 - [ ] Next focus: `8` Upbit WebSocket (kimchi premium monitor)
+
+## 2026-04-24 Phase 2 Realtime Step 3 Completion
+
+- [x] `8` Upbit WebSocket feed 운영화 (`server/exchanges/upbitWebSocket.ts`)
+  - 상태 조회(`isConnected`, `getStatus`)
+  - 캐시 조회(`getCachedPrice`)
+  - env 자동 연결(`connectFromEnv`)
+- [x] Upbit realtime tRPC procedures added:
+  - `trading.startUpbitRealtime`
+  - `trading.stopUpbitRealtime`
+  - `trading.getUpbitRealtimeStatus`
+  - `trading.getUpbitRealtimePrice`
+- [x] Server startup now attempts Upbit WS auto-connect via `UPBIT_WS_SYMBOLS`
+- [x] `.env.example` updated with `UPBIT_WS_SYMBOLS`
+- [ ] Next focus: Phase 2 병렬 작업(`9`, `12`, `10-1`, `13`, `14`, `15`, `16`)

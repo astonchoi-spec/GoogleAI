@@ -13,6 +13,7 @@ import googleCallbackRouter, { initializeGoogleAuth } from "../webhooks/google-c
 import tradingViewWebhookRouter from "../webhooks/tradingview.ts";
 import { googleAuthManager } from "../routers/google-workspace.ts";
 import { kiwoomRealtimeFeed } from "../exchanges/kiwoomWebSocket.ts";
+import { upbitFeed } from "../exchanges/upbitWebSocket.ts";
 
 function isPortAvailable(port: number): Promise<boolean> {
   return new Promise(resolve => {
@@ -117,6 +118,10 @@ async function startServer() {
       console.warn("[KiwoomWebSocket] Initial connect failed:", error instanceof Error ? error.message : String(error));
     });
   }
+
+  void upbitFeed.connectFromEnv().catch((error) => {
+    console.warn("[UpbitWebSocket] Initial connect failed:", error instanceof Error ? error.message : String(error));
+  });
 
   app.use((err: unknown, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
     const message = err instanceof Error ? err.message : "Internal server error";

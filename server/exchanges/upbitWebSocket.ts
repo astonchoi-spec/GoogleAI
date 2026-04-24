@@ -27,6 +27,36 @@ export class UpbitRealtimeFeed {
   private reconnectTimer: NodeJS.Timeout | null = null;
   private manualDisconnect = false;
 
+  isConnected(): boolean {
+    return this.socket?.readyState === WebSocket.OPEN;
+  }
+
+  getStatus(): { connected: boolean; symbols: string[] } {
+    return {
+      connected: this.isConnected(),
+      symbols: [...this.symbols],
+    };
+  }
+
+  async getCachedPrice(symbol: string): Promise<UpbitTickerPrice | null> {
+    const raw = await redis.hget("upbit:prices", symbol);
+    if (!raw) return null;
+    try {
+      return JSON.parse(raw) as UpbitTickerPrice;
+    } catch {
+      return null;
+    }
+  }
+
+  async connectFromEnv(): Promise<void> {
+    const envSymbols = (process.env.UPBIT_WS_SYMBOLS || "")
+      .split(",")
+      .map((symbol) => symbol.trim())
+      .filter(Boolean);
+    if (envSymbols.length === 0) return;
+    await this.connect(envSymbols);
+  }
+
   connect(symbols: string[]): Promise<void> {
     if (symbols.length === 0) {
       return Promise.reject(new Error("Upbit WebSocket requires at least one symbol"));

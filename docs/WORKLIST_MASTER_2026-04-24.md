@@ -1,7 +1,7 @@
 # Aston Workstation Master Worklist
 
 - last_updated: `2026-04-24`
-- current_focus: `Phase 2 parallel (analysis/risk next)`
+- current_focus: `EOD handoff completed`
 - progress: `16/27 completed`
 
 ## Real Trading Environment
@@ -102,3 +102,12 @@
 - phase2: `7` completed, `8` pending
 - phase3: `3` pending
 - total: `27` tasks, `16` completed
+
+## EOD Resume Checklist
+
+1. env validation (`.env`)
+2. `pnpm run check`
+3. `pnpm run build`
+4. `pnpm run test`
+5. `pnpm run dev`
+6. smoke test routes: `/trading`, `/real-estate-pf`, `/chat`, `/google`

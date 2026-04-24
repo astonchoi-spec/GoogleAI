@@ -17,6 +17,17 @@ import { TradeJournal } from "../../trading/tradeJournal.ts";
 const exchangeSchema = z.enum(["gate", "binance", "upbit", "bybit"]);
 const kiwoomMarketSchema = z.enum(["kr-stock", "kr-futures", "us-futures"]);
 const upbitSymbolSchema = z.string().regex(/^KRW-[A-Z0-9]+$/, "UPBIT symbol must be like KRW-BTC");
+const manualTradeSchema = z.object({
+  date: z.string().min(1),
+  market: z.string().min(1),
+  symbol: z.string().min(1),
+  side: z.enum(["buy", "sell"]),
+  quantity: z.number().positive(),
+  entryPrice: z.number().nonnegative(),
+  exitPrice: z.number().nonnegative(),
+  fee: z.number().nonnegative().optional(),
+  note: z.string().optional(),
+});
 const alertTypeSchema = z.enum(["price", "rsi", "funding", "kimchi_premium"]);
 const alertOperatorSchema = z.enum(["above", "below"]);
 
@@ -186,6 +197,39 @@ export const tradingRouter = router({
       return journal.getTradeStats(input.period);
     }),
 
+  addManualTrades: protectedProcedure
+    .input(
+      z.object({
+        trades: z.array(manualTradeSchema).min(1),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      const journal = await createTradeJournal(ctx.user.id);
+      return journal.addManualTrades(input.trades);
+    }),
+
+  getManualTrades: protectedProcedure
+    .input(z.object({ limit: z.number().min(1).max(1000).default(200) }).optional())
+    .query(async ({ ctx, input }) => {
+      const journal = await createTradeJournal(ctx.user.id);
+      return journal.getManualTrades(input?.limit ?? 200);
+    }),
+
+  importManualCsv: protectedProcedure
+    .input(
+      z.object({
+        csvText: z.string().min(1),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      const trades = parseManualCsv(input.csvText);
+      if (trades.length === 0) {
+        return { saved: 0 };
+      }
+      const journal = await createTradeJournal(ctx.user.id);
+      return journal.addManualTrades(trades);
+    }),
+
   getKiwoomBalance: protectedProcedure
     .input(z.object({ market: kiwoomMarketSchema }))
     .query(async ({ input }) => {
@@ -298,4 +342,42 @@ function parseCachedPrice(cached: string | null): number | null {
   } catch {
     return null;
   }
+}
+
+function parseManualCsv(csvText: string): Array<z.infer<typeof manualTradeSchema>> {
+  const lines = csvText
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean);
+  if (lines.length < 2) return [];
+
+  const headers = lines[0].split(",").map((header) => header.trim());
+  const rows = lines.slice(1);
+  const trades: Array<z.infer<typeof manualTradeSchema>> = [];
+
+  for (const row of rows) {
+    const columns = row.split(",").map((column) => column.trim());
+    const record: Record<string, string> = {};
+    headers.forEach((header, index) => {
+      record[header] = columns[index] ?? "";
+    });
+
+    const parsed = manualTradeSchema.safeParse({
+      date: record.date,
+      market: record.market,
+      symbol: record.symbol,
+      side: record.side?.toLowerCase(),
+      quantity: Number(record.quantity ?? 0),
+      entryPrice: Number(record.entryPrice ?? 0),
+      exitPrice: Number(record.exitPrice ?? 0),
+      fee: Number(record.fee ?? 0),
+      note: record.note,
+    });
+
+    if (parsed.success) {
+      trades.push(parsed.data);
+    }
+  }
+
+  return trades;
 }

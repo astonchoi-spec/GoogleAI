@@ -2,7 +2,7 @@ import { google, type Auth, type sheets_v4 } from "googleapis";
 import { exchangeConnector, type SupportedExchangeId } from "../exchanges/exchangeConnector.ts";
 import { redis } from "../_core/redis.ts";
 
-type TradeSide = "매수" | "매도";
+type TradeSide = "buy" | "sell";
 
 type JournalTrade = {
   timestamp: number;
@@ -26,10 +26,37 @@ export type TradeStats = {
   averagePnlRatio: number;
 };
 
+export type ManualTradeInput = {
+  date: string;
+  market: string;
+  symbol: string;
+  side: TradeSide;
+  quantity: number;
+  entryPrice: number;
+  exitPrice: number;
+  fee?: number;
+  note?: string;
+};
+
+export type ManualTradeRecord = {
+  id: string;
+  date: string;
+  market: string;
+  symbol: string;
+  side: TradeSide;
+  quantity: number;
+  entryPrice: number;
+  exitPrice: number;
+  fee: number;
+  note: string;
+  createdAt: string;
+};
+
 export class TradeJournal {
   private readonly sheets: sheets_v4.Sheets;
   private readonly spreadsheetId: string;
-  private readonly sheetName = "매매일지";
+  private readonly sheetName = "TradeJournal";
+  private readonly manualSheetName = "ManualTrades";
 
   constructor(auth: Auth.OAuth2Client, spreadsheetId: string) {
     this.sheets = google.sheets({ version: "v4", auth });
@@ -103,6 +130,43 @@ export class TradeJournal {
     };
   }
 
+  async addManualTrades(trades: ManualTradeInput[]): Promise<{ saved: number }> {
+    if (trades.length === 0) {
+      return { saved: 0 };
+    }
+
+    await this.ensureManualSheet();
+    const createdAt = new Date().toISOString();
+    const rows = trades.map((trade) => this.toManualSheetRow(trade, createdAt));
+
+    await this.sheets.spreadsheets.values.append({
+      spreadsheetId: this.spreadsheetId,
+      range: `${this.manualSheetName}!A:K`,
+      valueInputOption: "USER_ENTERED",
+      requestBody: {
+        values: rows,
+      },
+    });
+
+    return { saved: rows.length };
+  }
+
+  async getManualTrades(limit: number = 200): Promise<ManualTradeRecord[]> {
+    await this.ensureManualSheet();
+    const response = await this.sheets.spreadsheets.values.get({
+      spreadsheetId: this.spreadsheetId,
+      range: `${this.manualSheetName}!A:K`,
+    });
+
+    const rows = response.data.values ?? [];
+    const dataRows = this.stripManualHeader(rows);
+    return dataRows
+      .map((row) => this.fromManualSheetRow(row))
+      .filter((row): row is ManualTradeRecord => row !== null)
+      .sort((a, b) => Number(new Date(b.createdAt)) - Number(new Date(a.createdAt)))
+      .slice(0, Math.max(1, Math.min(1000, limit)));
+  }
+
   private async ensureSheet(): Promise<void> {
     const metadata = await this.sheets.spreadsheets.get({
       spreadsheetId: this.spreadsheetId,
@@ -127,7 +191,49 @@ export class TradeJournal {
         range: `${this.sheetName}!A1:H1`,
         valueInputOption: "USER_ENTERED",
         requestBody: {
-          values: [["시간", "거래소", "심볼", "매수/매도", "가격", "수량", "금액", "수수료"]],
+          values: [["timestamp", "exchange", "symbol", "side", "price", "amount", "cost", "fee"]],
+        },
+      });
+    }
+  }
+
+  private async ensureManualSheet(): Promise<void> {
+    const metadata = await this.sheets.spreadsheets.get({
+      spreadsheetId: this.spreadsheetId,
+    });
+    const exists = metadata.data.sheets?.some((sheet) => sheet.properties?.title === this.manualSheetName);
+    if (!exists) {
+      await this.sheets.spreadsheets.batchUpdate({
+        spreadsheetId: this.spreadsheetId,
+        requestBody: {
+          requests: [{ addSheet: { properties: { title: this.manualSheetName } } }],
+        },
+      });
+    }
+
+    const header = await this.sheets.spreadsheets.values.get({
+      spreadsheetId: this.spreadsheetId,
+      range: `${this.manualSheetName}!A1:K1`,
+    });
+    if ((header.data.values ?? []).length === 0) {
+      await this.sheets.spreadsheets.values.update({
+        spreadsheetId: this.spreadsheetId,
+        range: `${this.manualSheetName}!A1:K1`,
+        valueInputOption: "USER_ENTERED",
+        requestBody: {
+          values: [[
+            "id",
+            "date",
+            "market",
+            "symbol",
+            "side",
+            "quantity",
+            "entryPrice",
+            "exitPrice",
+            "fee",
+            "note",
+            "createdAt",
+          ]],
         },
       });
     }
@@ -143,7 +249,7 @@ export class TradeJournal {
 
   private normalizeTrade(exchangeId: SupportedExchangeId, symbol: string, trade: any): JournalTrade {
     const timestamp = Number(trade.timestamp ?? new Date(trade.datetime ?? Date.now()).getTime());
-    const side: TradeSide = trade.side === "sell" ? "매도" : "매수";
+    const side: TradeSide = trade.side === "sell" ? "sell" : "buy";
     const price = Number(trade.price ?? 0);
     const amount = Number(trade.amount ?? 0);
     const cost = Number(trade.cost ?? price * amount);
@@ -177,7 +283,64 @@ export class TradeJournal {
   private stripHeader(rows: unknown[][]): unknown[][] {
     if (rows.length === 0) return [];
     const firstCell = String(rows[0]?.[0] ?? "");
-    return firstCell === "시간" ? rows.slice(1) : rows;
+    return firstCell === "timestamp" ? rows.slice(1) : rows;
+  }
+
+  private stripManualHeader(rows: unknown[][]): unknown[][] {
+    if (rows.length === 0) return [];
+    const firstCell = String(rows[0]?.[0] ?? "");
+    return firstCell === "id" ? rows.slice(1) : rows;
+  }
+
+  private toManualSheetRow(trade: ManualTradeInput, createdAt: string): unknown[] {
+    const id = `manual-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    return [
+      id,
+      trade.date,
+      trade.market,
+      trade.symbol,
+      trade.side,
+      trade.quantity,
+      trade.entryPrice,
+      trade.exitPrice,
+      trade.fee ?? 0,
+      trade.note ?? "",
+      createdAt,
+    ];
+  }
+
+  private fromManualSheetRow(row: unknown[]): ManualTradeRecord | null {
+    const id = String(row[0] ?? "").trim();
+    const date = String(row[1] ?? "").trim();
+    const market = String(row[2] ?? "").trim();
+    const symbol = String(row[3] ?? "").trim();
+    const sideRaw = String(row[4] ?? "").trim().toLowerCase();
+    const side = sideRaw === "sell" ? "sell" : sideRaw === "buy" ? "buy" : null;
+    const quantity = Number(row[5] ?? 0);
+    const entryPrice = Number(row[6] ?? 0);
+    const exitPrice = Number(row[7] ?? 0);
+    const fee = Number(row[8] ?? 0);
+    const note = String(row[9] ?? "");
+    const createdAt = String(row[10] ?? "");
+
+    if (!id || !date || !market || !symbol || !side) return null;
+    if (!Number.isFinite(quantity) || !Number.isFinite(entryPrice) || !Number.isFinite(exitPrice) || !Number.isFinite(fee)) {
+      return null;
+    }
+
+    return {
+      id,
+      date,
+      market,
+      symbol,
+      side,
+      quantity,
+      entryPrice,
+      exitPrice,
+      fee,
+      note,
+      createdAt: createdAt || new Date().toISOString(),
+    };
   }
 
   private getPeriodCutoff(period: TradeStatsPeriod): number {
@@ -193,14 +356,14 @@ export class TradeJournal {
 
     for (const row of rows) {
       const symbol = String(row[2] ?? "");
-      const side = String(row[3] ?? "");
+      const side = String(row[3] ?? "").toLowerCase();
       const amount = Number(row[5] ?? 0);
       const cost = Number(row[6] ?? 0);
       const fee = Number(row[7] ?? 0);
       if (!symbol || amount <= 0 || cost <= 0) continue;
 
       const current = inventory.get(symbol) ?? { amount: 0, cost: 0 };
-      if (side === "매수") {
+      if (side === "buy") {
         inventory.set(symbol, {
           amount: current.amount + amount,
           cost: current.cost + cost + fee,
@@ -208,7 +371,7 @@ export class TradeJournal {
         continue;
       }
 
-      if (side === "매도" && current.amount > 0) {
+      if (side === "sell" && current.amount > 0) {
         const averageCost = current.cost / current.amount;
         const closedCost = averageCost * amount;
         const pnl = cost - fee - closedCost;

@@ -503,3 +503,14 @@
 - [x] Server startup now attempts Upbit WS auto-connect via `UPBIT_WS_SYMBOLS`
 - [x] `.env.example` updated with `UPBIT_WS_SYMBOLS`
 - [ ] Next focus: Phase 2 병렬 작업(`9`, `12`, `10-1`, `13`, `14`, `15`, `16`)
+
+## 2026-04-24 Phase 2 Parallel Step 1 Completion
+
+- [x] `10-1` Manual/CSV journal backend completed
+  - `TradeJournal` manual sheet storage (`ManualTrades`) added
+  - tRPC procedures added:
+    - `trading.addManualTrades`
+    - `trading.getManualTrades`
+    - `trading.importManualCsv`
+- [x] CSV parsing + zod validation added on server side
+- [ ] Next focus: `9` Technical indicators engine production hardening

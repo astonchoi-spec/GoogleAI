@@ -314,3 +314,8 @@ ollama pull gemma4:e4b
 
 **Update**: 2026-04-24 Phase 2 Realtime Step 3 Completion
 **Status**: Upbit websocket monitor (`8`) productionized with startup auto-connect, redis-backed cached price lookup, and tRPC controls for start/stop/status/price.
+
+---
+
+**Update**: 2026-04-24 Phase 2 Parallel Step 1 Completion
+**Status**: Manual/CSV trade journal backend (`10-1`) implemented with Google Sheets persistence (`ManualTrades`) and tRPC APIs for add/list/csv-import.

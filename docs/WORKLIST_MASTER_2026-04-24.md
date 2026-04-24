@@ -1,8 +1,8 @@
 # Aston Workstation Master Worklist
 
 - last_updated: `2026-04-24`
-- current_focus: `Phase 2 analysis parallel prep`
-- progress: `14/27 completed`
+- current_focus: `Phase 2 parallel (analysis/risk/journal)`
+- progress: `15/27 completed`
 
 ## Real Trading Environment
 
@@ -60,7 +60,7 @@
 ### Record and Management
 
 - [ ] `10` Journal automation (Gate + Kiwoom fills to Sheets)
-- [ ] `10-1` Journal manual and csv backend (Toss)
+- [x] `10-1` Journal manual and csv backend (Toss)
 - [ ] `11` Alert engine (BullMQ: price/rsi/kimchi/funding/tv webhook -> Telegram)
 
 ### Real Estate PF
@@ -80,7 +80,7 @@
 
 1. Phase 2 foundation: `7`, `7-1` (completed)
 2. Phase 2 realtime: `7-2`, `7-3`, `8` (completed)
-3. Phase 2 parallel: `9`, `12`, `10-1`, `13`, `14`, `15`, `16`
+3. Phase 2 parallel: `10-1` (completed), next `9`, `12`, `13`, `14`, `15`, `16`
 4. Phase 2 dependent final: `10`, `11`
 5. Phase 3: `17` -> `18` -> `19`
 
@@ -99,6 +99,6 @@
 
 - phase1: `7` completed
 - phase1_5: `2` completed
-- phase2: `5` completed, `10` pending
+- phase2: `6` completed, `9` pending
 - phase3: `3` pending
-- total: `27` tasks, `14` completed
+- total: `27` tasks, `15` completed

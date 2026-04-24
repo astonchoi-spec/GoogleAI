@@ -1,7 +1,14 @@
 import { MessageCircle } from "lucide-react";
 import { Link } from "wouter";
 
-const commands = ["잔고 조회", "오늘 매매 복기", "PF 현황", "BTC 분석", "DART 공시 조회", "회사 검색"];
+const commands = [
+  "Binance 잔고 조회",
+  "오늘 매매 복기",
+  "PF 현황",
+  "BTC 분석",
+  "DART 공시 조회",
+  "회사명으로 DART 검색",
+];
 
 export default function QuickCommandWidget() {
   return (
@@ -17,7 +24,11 @@ export default function QuickCommandWidget() {
       </div>
       <div className="flex flex-wrap gap-2">
         {commands.map((command) => (
-          <Link key={command} href={`/chat?command=${encodeURIComponent(command)}`} className="rounded-full border border-border bg-secondary/40 px-3 py-1.5 text-xs font-medium text-secondary-foreground transition-colors hover:border-cyan-600/50 hover:text-cyan-400">
+          <Link
+            key={command}
+            href={`/chat?command=${encodeURIComponent(command)}`}
+            className="rounded-full border border-border bg-secondary/40 px-3 py-1.5 text-xs font-medium text-secondary-foreground transition-colors hover:border-cyan-600/50 hover:text-cyan-400"
+          >
             {command}
           </Link>
         ))}

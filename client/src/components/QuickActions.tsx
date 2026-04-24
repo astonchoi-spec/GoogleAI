@@ -2,8 +2,9 @@ const actions = [
   "Binance 잔고 조회",
   "현재 포지션 확인",
   "BTC/USDT 1시간봉 기술분석",
-  "PF 포트폴리오 요약",
-  "사업성 분석을 도와줘",
+  "PF 딜 파이프라인 요약",
+  "DART 공시 조회",
+  "회사명으로 DART 검색",
 ];
 
 type QuickActionsProps = {

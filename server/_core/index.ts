@@ -10,6 +10,7 @@ import { createContext } from "./context.ts";
 import { serveStatic, setupVite } from "./vite.ts";
 import telegramRouter, { initializeTelegramBot } from "../webhooks/telegram.ts";
 import googleCallbackRouter, { initializeGoogleAuth } from "../webhooks/google-callback.ts";
+import tradingViewWebhookRouter from "../webhooks/tradingview.ts";
 import { googleAuthManager } from "../routers/google-workspace.ts";
 import { kiwoomRealtimeFeed } from "../exchanges/kiwoomWebSocket.ts";
 
@@ -76,6 +77,7 @@ async function startServer() {
   // Google OAuth callback route
   initializeGoogleAuth(googleAuthManager);
   app.use("/api/webhooks", googleCallbackRouter);
+  app.use("/api/webhooks", tradingViewWebhookRouter);
   
   // tRPC API
   app.use(

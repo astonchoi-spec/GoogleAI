@@ -304,3 +304,8 @@ ollama pull gemma4:e4b
 
 **Update**: 2026-04-24 Phase 2 Realtime Step 1 Completion
 **Status**: Kiwoom WebSocket realtime feed (`7-2`) implemented with reconnect logic, Redis caching, server startup auto-connect (env-based), and tRPC controls for start/stop/status/price lookup.
+
+---
+
+**Update**: 2026-04-24 Phase 2 Realtime Step 2 Completion
+**Status**: TradingView webhook receiver (`7-3`) added with secret validation, Redis event persistence/pubsub, health/recent endpoints, and Telegram forwarding support.

@@ -475,3 +475,16 @@
 - [x] Server startup now attempts Kiwoom WS auto-connect when env is configured
 - [x] `.env.example` extended with Kiwoom WS env variables
 - [ ] Next focus: `7-3` TradingView webhook receiver
+
+## 2026-04-24 Phase 2 Realtime Step 2 Completion
+
+- [x] `7-3` TradingView webhook receiver added (`server/webhooks/tradingview.ts`)
+- [x] Webhook endpoints added:
+  - `POST /api/webhooks/tradingview`
+  - `GET /api/webhooks/tradingview/health`
+  - `GET /api/webhooks/tradingview/recent`
+- [x] `TV_WEBHOOK_SECRET` 검증 로직 추가 (header/body 지원)
+- [x] Webhook payload Redis 저장 + pub/sub 발행 (`tradingview:webhook`)
+- [x] Telegram 자동 포워딩 연동 (`TV_WEBHOOK_TELEGRAM_CHAT_ID` 우선)
+- [x] Server router 등록 완료 (`server/_core/index.ts`)
+- [ ] Next focus: `8` Upbit WebSocket (kimchi premium monitor)

@@ -7,8 +7,8 @@ import { Anthropic } from "@anthropic-ai/sdk";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import OpenAI from "openai";
 import axios from "axios";
-import type { LLMEngine } from "./models";
-import { getModel } from "./models";
+import type { LLMEngine } from "./models.ts";
+import { getModel } from "./models.ts";
 
 export interface LLMMessage {
   role: "user" | "assistant" | "system";

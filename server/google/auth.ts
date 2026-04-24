@@ -5,7 +5,7 @@
 
 import { google, Auth } from "googleapis";
 type OAuth2Client = Auth.OAuth2Client;
-import { SessionManager } from "../llm/session";
+import { SessionManager } from "../llm/session.ts";
 
 export interface GoogleAuthConfig {
   clientId: string;

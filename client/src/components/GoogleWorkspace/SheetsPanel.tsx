@@ -18,63 +18,76 @@ export default function SheetsPanel() {
     { enabled: !!queryId }
   );
 
-  const sheetData = data?.data;
-  const rows = sheetData?.data ?? [];
+  const sheetRows = data?.data?.data ?? [];
+  const sheetHeaders = data?.data?.headers ?? [];
 
   const handleLoad = () => {
     if (!spreadsheetId.trim()) {
-      toast.error("스프레드시트 ID를 입력하세요.");
+      toast.error("Please enter a spreadsheet ID.");
       return;
     }
+
     setQueryId(spreadsheetId.trim());
     setQueryRange(range.trim() || "Sheet1!A1:Z100");
   };
 
   return (
     <div className="space-y-4">
-      <h3 className="text-white font-semibold flex items-center gap-2">
-        <Table2 className="w-4 h-4 text-cyan-400" />
+      <h3 className="flex items-center gap-2 font-semibold text-white">
+        <Table2 className="h-4 w-4 text-cyan-400" />
         Google Sheets
       </h3>
 
-      <Card className="bg-slate-800 border-slate-700 p-4 space-y-3">
+      <Card className="space-y-3 border-slate-700 bg-slate-800 p-4">
         <Input
-          placeholder="스프레드시트 ID (URL에서 복사)"
+          placeholder="Spreadsheet ID"
           value={spreadsheetId}
           onChange={(e) => setSpreadsheetId(e.target.value)}
-          className="bg-slate-700 border-slate-600 text-white placeholder-slate-500"
+          className="border-slate-600 bg-slate-700 text-white placeholder-slate-500"
         />
         <div className="flex gap-2">
           <Input
-            placeholder="범위 (예: Sheet1!A1:Z100)"
+            placeholder="Range, e.g. Sheet1!A1:Z100"
             value={range}
             onChange={(e) => setRange(e.target.value)}
-            className="bg-slate-700 border-slate-600 text-white placeholder-slate-500"
+            className="border-slate-600 bg-slate-700 text-white placeholder-slate-500"
           />
-          <Button onClick={handleLoad} size="sm" className="bg-cyan-600 hover:bg-cyan-700 text-white shrink-0">
-            <Search className="w-4 h-4" />
+          <Button onClick={handleLoad} size="sm" className="shrink-0 bg-cyan-600 text-white hover:bg-cyan-700">
+            <Search className="h-4 w-4" />
           </Button>
         </div>
       </Card>
 
       {isLoading && (
         <div className="flex justify-center py-8">
-          <Loader2 className="w-6 h-6 animate-spin text-cyan-400" />
+          <Loader2 className="h-6 w-6 animate-spin text-cyan-400" />
         </div>
       )}
 
-      {rows.length > 0 && (
+      {sheetRows.length > 0 && (
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
           <div className="overflow-x-auto rounded-lg border border-slate-700">
             <table className="w-full text-sm">
               <tbody>
-                {rows.map((row: any[], rowIdx: number) => (
+                {sheetHeaders.length > 0 && (
+                  <tr className="bg-slate-900">
+                    {sheetHeaders.map((header: any, headerIdx: number) => (
+                      <th
+                        key={headerIdx}
+                        className="max-w-[200px] truncate border-r border-slate-700 px-3 py-2 text-left font-medium text-cyan-300 last:border-r-0"
+                      >
+                        {String(header ?? "")}
+                      </th>
+                    ))}
+                  </tr>
+                )}
+                {sheetRows.map((row: any[], rowIdx: number) => (
                   <tr key={rowIdx} className={rowIdx % 2 === 0 ? "bg-slate-800" : "bg-slate-800/50"}>
                     {row.map((cell: any, cellIdx: number) => (
                       <td
                         key={cellIdx}
-                        className={`px-3 py-2 border-r border-slate-700 last:border-r-0 truncate max-w-[200px] ${
-                          rowIdx === 0 ? "text-cyan-300 font-medium" : "text-slate-300"
+                        className={`max-w-[200px] truncate border-r border-slate-700 px-3 py-2 last:border-r-0 ${
+                          rowIdx === 0 && sheetHeaders.length === 0 ? "font-medium text-cyan-300" : "text-slate-300"
                         }`}
                       >
                         {String(cell ?? "")}
@@ -88,8 +101,8 @@ export default function SheetsPanel() {
         </motion.div>
       )}
 
-      {queryId && !isLoading && rows.length === 0 && (
-        <p className="text-slate-500 text-sm text-center py-4">데이터가 없거나 접근 권한이 없습니다.</p>
+      {queryId && !isLoading && sheetRows.length === 0 && (
+        <p className="py-4 text-center text-sm text-slate-500">No rows were returned for this range.</p>
       )}
     </div>
   );

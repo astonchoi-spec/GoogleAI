@@ -1,5 +1,5 @@
-import { getDb } from "./db";
-import { conversations, messages, type Conversation, type Message } from "../drizzle/schema";
+import { getDb } from "./db.ts";
+import { conversations, messages, type Conversation, type Message } from "../drizzle/schema.ts";
 import { eq, and, desc, gte, lt, lte, sql } from "drizzle-orm";
 
 export type MessageSourceFilter = "all" | "web" | "telegram";

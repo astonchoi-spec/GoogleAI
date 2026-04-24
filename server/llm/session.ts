@@ -4,8 +4,10 @@
  * Uses in-memory storage for development (no Redis required)
  */
 
-import type { LLMEngine } from "./models";
-import { DEFAULT_ENGINE, DEFAULT_MODEL_KEY } from "./models";
+import type { LLMEngine } from "./models.ts";
+import { DEFAULT_ENGINE, DEFAULT_MODEL_KEY } from "./models.ts";
+import { mkdir, readFile, rm, writeFile } from "fs/promises";
+import path from "path";
 
 export interface UserSession {
   userId: string;
@@ -28,6 +30,7 @@ export class SessionManager {
   private sessions: Map<string, UserSession> = new Map();
   private sessionTTL = 24 * 60 * 60 * 1000; // 24 hours in milliseconds
   private cleanupInterval: NodeJS.Timeout | null = null;
+  private googleTokenStorePath = path.resolve(process.cwd(), "data", "google-tokens.json");
 
   constructor() {
     // Start cleanup interval to remove expired sessions
@@ -142,6 +145,7 @@ export class SessionManager {
       expiresAt: Date.now() + expiresIn * 1000,
     };
     await this.saveSession(session);
+    await this.saveGoogleTokensToDisk(userId, session.googleTokens);
   }
 
   /**
@@ -151,7 +155,17 @@ export class SessionManager {
     userId: string
   ): Promise<UserSession["googleTokens"] | undefined> {
     const session = await this.getSession(userId);
-    return session.googleTokens;
+    if (session.googleTokens) {
+      return session.googleTokens;
+    }
+
+    const persistedTokens = await this.loadGoogleTokensFromDisk(userId);
+    if (persistedTokens) {
+      session.googleTokens = persistedTokens;
+      await this.saveSession(session);
+    }
+
+    return persistedTokens;
   }
 
   /**
@@ -159,6 +173,7 @@ export class SessionManager {
    */
   async deleteSession(userId: string): Promise<void> {
     this.sessions.delete(userId);
+    await this.deleteGoogleTokensFromDisk(userId);
   }
 
   /**
@@ -189,6 +204,46 @@ export class SessionManager {
         this.sessions.delete(userId);
       }
     }
+  }
+
+  private async readGoogleTokenStore(): Promise<Record<string, NonNullable<UserSession["googleTokens"]>>> {
+    try {
+      const raw = await readFile(this.googleTokenStorePath, "utf8");
+      return JSON.parse(raw);
+    } catch {
+      return {};
+    }
+  }
+
+  private async saveGoogleTokensToDisk(
+    userId: string,
+    tokens: NonNullable<UserSession["googleTokens"]>
+  ): Promise<void> {
+    const store = await this.readGoogleTokenStore();
+    store[userId] = tokens;
+    await mkdir(path.dirname(this.googleTokenStorePath), { recursive: true });
+    await writeFile(this.googleTokenStorePath, JSON.stringify(store, null, 2), "utf8");
+  }
+
+  private async loadGoogleTokensFromDisk(
+    userId: string
+  ): Promise<UserSession["googleTokens"] | undefined> {
+    const store = await this.readGoogleTokenStore();
+    return store[userId];
+  }
+
+  private async deleteGoogleTokensFromDisk(userId: string): Promise<void> {
+    const store = await this.readGoogleTokenStore();
+    if (!(userId in store)) return;
+
+    delete store[userId];
+    const userIds = Object.keys(store);
+    if (userIds.length === 0) {
+      await rm(this.googleTokenStorePath, { force: true });
+      return;
+    }
+
+    await writeFile(this.googleTokenStorePath, JSON.stringify(store, null, 2), "utf8");
   }
 
   /**

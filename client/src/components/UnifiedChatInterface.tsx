@@ -6,7 +6,27 @@
 import { useState, useRef, useEffect } from "react";
 import { toast } from "sonner";
 import { motion, AnimatePresence } from "framer-motion";
-import { Send, Loader2, Settings2, MessageCircle, Sliders, Smartphone, Globe, Check, LogIn, Search, Clock3, MessageSquareText, Filter, Download, Pencil, Trash2, Star } from "lucide-react";
+import {
+  Send,
+  Loader2,
+  Settings2,
+  MessageCircle,
+  Sliders,
+  Smartphone,
+  Globe,
+  Check,
+  LogIn,
+  Search,
+  Clock3,
+  MessageSquareText,
+  Filter,
+  Download,
+  Pencil,
+  Trash2,
+  Star,
+  Mic,
+  Volume2,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
@@ -27,6 +47,8 @@ import {
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
 import ApiSettingsModal from "./ApiSettingsModal";
+import QuickActions from "./QuickActions";
+import { useSpeechRecognition, useTextToSpeech } from "@/hooks/useSpeech";
 
 interface UnifiedMessage {
   id: string;
@@ -69,8 +91,6 @@ export default function UnifiedChatInterface() {
   const [searchSource, setSearchSource] = useState<"all" | "web" | "telegram">("all");
   const [searchFrom, setSearchFrom] = useState("");
   const [searchTo, setSearchTo] = useState("");
-  const [editingMessage, setEditingMessage] = useState<UnifiedMessage | null>(null);
-  const [editContent, setEditContent] = useState("");
   const [submittedSearch, setSubmittedSearch] = useState<{
     keyword: string;
     source: "all" | "web" | "telegram";
@@ -79,15 +99,11 @@ export default function UnifiedChatInterface() {
   } | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  // tRPC queries and mutations
   const { data: engines } = trpc.llm.getEngines.useQuery();
   const { data: models } = trpc.llm.getModels.useQuery(
     { engine: selectedEngine },
     { enabled: !!selectedEngine }
   );
-  const { data: status } = trpc.llm.getStatus.useQuery();
-
-  // Chat sync queries — 로그인 상태일 때만 실행
   const conversationQuery = trpc.chatSync.getConversation.useQuery(undefined, {
     enabled: isAuthenticated,
   });
@@ -104,7 +120,6 @@ export default function UnifiedChatInterface() {
     { enabled: isAuthenticated && !!conversationId, refetchInterval: 2000 }
   );
 
-  // Mutations
   const chatMutation = trpc.llm.chat.useMutation();
   const saveWebMessageMutation = trpc.chatSync.saveWebMessage.useMutation();
   const forwardToTelegramMutation = trpc.chatSync.forwardToTelegram.useMutation();
@@ -126,15 +141,15 @@ export default function UnifiedChatInterface() {
           source: "all",
           limit: 25,
         },
-    {
-      enabled: !!submittedSearch && showSearch,
-    }
+    { enabled: !!submittedSearch && showSearch }
   );
   const [switchSuccess, setSwitchSuccess] = useState(false);
+  const tts = useTextToSpeech();
 
   const normalizeMessages = (items: any[]): UnifiedMessage[] =>
     items.map((msg: any) => ({
       id: `${msg.id}`,
+      dbId: Number(msg.id),
       role: msg.role as "user" | "assistant",
       content: msg.content,
       source: msg.source as "web" | "telegram",
@@ -143,7 +158,6 @@ export default function UnifiedChatInterface() {
 
   const handleEngineChange = (engine: string) => {
     setSelectedEngine(engine);
-    // 엔진 변경 시 해당 엔진의 첫 번째 모델로 초기화
     const engineData = engines?.find((e: any) => e.name === engine);
     if (engineData?.models?.length > 0) {
       setSelectedModel(engineData.models[0].key);
@@ -156,12 +170,11 @@ export default function UnifiedChatInterface() {
       setSwitchSuccess(true);
       toast.success("엔진이 변경되었습니다.");
       setTimeout(() => setSwitchSuccess(false), 2000);
-    } catch (error) {
+    } catch {
       toast.error("엔진 변경에 실패했습니다.");
     }
   };
 
-  // Initialize conversation
   useEffect(() => {
     if (conversationQuery.data) {
       setConversationId(conversationQuery.data.id);
@@ -169,55 +182,37 @@ export default function UnifiedChatInterface() {
     }
   }, [conversationQuery.data]);
 
-  // Load initial messages
   useEffect(() => {
     if (initialMessagesQuery.data) {
       const page = initialMessagesQuery.data;
-      const loadedMessages = normalizeMessages(page.messages).reverse();
-      setMessages(loadedMessages);
+      setMessages(normalizeMessages(page.messages).reverse());
       setHasMoreMessages(page.hasMore);
       setOlderCursor(null);
       setLoadingOlderMessages(false);
     }
   }, [initialMessagesQuery.data]);
 
-  // Load older messages
   useEffect(() => {
     if (!olderMessagesQuery.data || !olderCursor) return;
 
     const page = olderMessagesQuery.data;
     const olderMessages = normalizeMessages(page.messages).reverse();
-
     setMessages((prev) => {
       const existingIds = new Set(prev.map((m) => m.id));
-      const uniqueOlderMessages = olderMessages.filter((m) => !existingIds.has(m.id));
-      return [...uniqueOlderMessages, ...prev];
+      return [...olderMessages.filter((m) => !existingIds.has(m.id)), ...prev];
     });
     setHasMoreMessages(page.hasMore);
     setOlderCursor(null);
     setLoadingOlderMessages(false);
   }, [olderMessagesQuery.data, olderCursor]);
 
-  // Sync recent messages
   useEffect(() => {
     if (recentMessagesQuery.data && recentMessagesQuery.data.length > 0) {
-      const newMessages: UnifiedMessage[] = recentMessagesQuery.data
-        .map((msg: any) => ({
-          id: `${msg.id}`,
-          dbId: Number(msg.id),
-          role: msg.role as "user" | "assistant",
-          content: msg.content,
-          source: msg.source as "web" | "telegram",
-          timestamp: new Date(msg.createdAt),
-        }))
-        .reverse();
-
+      const newMessages = normalizeMessages(recentMessagesQuery.data).reverse();
       setMessages((prev) => {
         const existingIds = new Set(prev.map((m) => m.id));
-        const uniqueNewMessages = newMessages.filter((m) => !existingIds.has(m.id));
-        return [...prev, ...uniqueNewMessages];
+        return [...prev, ...newMessages.filter((m) => !existingIds.has(m.id))];
       });
-
       setLastSyncTime(new Date());
     }
   }, [recentMessagesQuery.data]);
@@ -227,31 +222,36 @@ export default function UnifiedChatInterface() {
     toast.info(`검색 결과 ${searchMessagesQuery.data?.length ?? 0}개`);
   }, [searchMessagesQuery.data, searchMessagesQuery.isFetching, submittedSearch]);
 
-  // Auto-scroll to bottom
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, isLoading]);
 
-  const handleSendMessage = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!input.trim()) return;
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const command = params.get("command");
+    if (!command) return;
+    setInput(command);
+    window.history.replaceState({}, "", "/chat");
+  }, []);
 
-    const userMessage = input;
+  const sendMessageText = async (text: string) => {
+    if (!text.trim() || isLoading) return;
+
+    const userMessage = text.trim();
     setInput("");
     setIsLoading(true);
-
-    // Optimistically add user message to UI
-    const userMsg: UnifiedMessage = {
-      id: Date.now().toString(),
-      role: "user",
-      content: userMessage,
-      source: "web",
-      timestamp: new Date(),
-    };
-    setMessages((prev) => [...prev, userMsg]);
+    setMessages((prev) => [
+      ...prev,
+      {
+        id: Date.now().toString(),
+        role: "user",
+        content: userMessage,
+        source: "web",
+        timestamp: new Date(),
+      },
+    ]);
 
     try {
-      // Save user message to DB only if logged in (conversationId exists)
       if (conversationId) {
         await saveWebMessageMutation.mutateAsync({
           conversationId,
@@ -260,17 +260,14 @@ export default function UnifiedChatInterface() {
         });
       }
 
-      // Get AI response
       const result = await chatMutation.mutateAsync({ message: userMessage });
 
-      // Save AI response to DB only if logged in
       if (conversationId) {
         await saveWebMessageMutation.mutateAsync({
           conversationId,
           role: "assistant",
           content: result.response,
         });
-        // Forward both messages to Telegram (양방향 sync)
         forwardToTelegramMutation.mutate({
           conversationId,
           userMessage,
@@ -278,15 +275,18 @@ export default function UnifiedChatInterface() {
         });
       }
 
-      const aiMsg: UnifiedMessage = {
-        id: (Date.now() + 1).toString(),
-        role: "assistant",
-        content: result.response,
-        source: "web",
-        timestamp: new Date(),
-      };
-      setMessages((prev) => [...prev, aiMsg]);
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: (Date.now() + 1).toString(),
+          role: "assistant",
+          content: result.response,
+          source: "web",
+          timestamp: new Date(),
+        },
+      ]);
       toast.success("메시지가 전송되었습니다.");
+      tts.speak(result.response);
     } catch (error) {
       toast.error("메시지 전송에 실패했습니다.");
       console.error("Error sending message:", error);
@@ -294,6 +294,16 @@ export default function UnifiedChatInterface() {
       setIsLoading(false);
     }
   };
+
+  const handleSendMessage = async (e: React.FormEvent) => {
+    e.preventDefault();
+    await sendMessageText(input);
+  };
+
+  const speech = useSpeechRecognition((text) => {
+    setInput(text);
+    void sendMessageText(text);
+  });
 
   const parseSearchDate = (value: string, endOfDay = false) => {
     if (!value) return undefined;
@@ -304,13 +314,11 @@ export default function UnifiedChatInterface() {
 
   const handleSearchMessages = async (e: React.FormEvent) => {
     e.preventDefault();
-
     const keyword = searchKeyword.trim();
     if (!keyword) {
       toast.error("검색어를 입력하세요.");
       return;
     }
-
     setSubmittedSearch({
       keyword,
       source: searchSource,
@@ -321,11 +329,8 @@ export default function UnifiedChatInterface() {
 
   const handleLoadOlderMessages = () => {
     if (loadingOlderMessages || !hasMoreMessages || messages.length === 0) return;
-    const oldestMessage = messages[0];
-    if (!oldestMessage) return;
-
     setLoadingOlderMessages(true);
-    setOlderCursor(new Date(oldestMessage.timestamp.getTime() - 1));
+    setOlderCursor(new Date(messages[0].timestamp.getTime() - 1));
   };
 
   const handleExportConversation = () => {
@@ -368,12 +373,11 @@ export default function UnifiedChatInterface() {
         messageId: message.dbId,
         content,
       });
-
       setMessages((prev) =>
         prev.map((item) => (item.dbId === message.dbId ? { ...item, content: updated.content } : item))
       );
       toast.success("메시지를 수정했습니다.");
-    } catch (error) {
+    } catch {
       toast.error("메시지 수정에 실패했습니다.");
     }
   };
@@ -387,10 +391,9 @@ export default function UnifiedChatInterface() {
         conversationId,
         messageId: message.dbId,
       });
-
       setMessages((prev) => prev.filter((item) => item.dbId !== message.dbId));
       toast.success("메시지를 삭제했습니다.");
-    } catch (error) {
+    } catch {
       toast.error("메시지 삭제에 실패했습니다.");
     }
   };
@@ -405,27 +408,19 @@ export default function UnifiedChatInterface() {
       });
       setIsPinned(Boolean(updated.pinned));
       toast.success(updated.pinned ? "대화를 즐겨찾기에 추가했습니다." : "대화를 즐겨찾기에서 해제했습니다.");
-    } catch (error) {
+    } catch {
       toast.error("대화 즐겨찾기 처리에 실패했습니다.");
     }
   };
 
-  const getSourceIcon = (source: "web" | "telegram") => {
-    return source === "telegram" ? (
-      <Smartphone className="w-3 h-3" />
-    ) : (
-      <Globe className="w-3 h-3" />
-    );
-  };
+  const getSourceIcon = (source: "web" | "telegram") =>
+    source === "telegram" ? <Smartphone className="w-3 h-3" /> : <Globe className="w-3 h-3" />;
 
   return (
     <div className="flex flex-col h-full bg-background">
-      {/* Login notice banner - shown when not authenticated */}
       {!isAuthenticated && (
         <div className="flex items-center justify-between gap-2 px-4 py-2 bg-amber-500/10 border-b border-amber-500/20 flex-shrink-0">
-          <p className="text-xs text-amber-400">
-            텔레그램 동기화는 로그인 후 사용 가능합니다
-          </p>
+          <p className="text-xs text-amber-400">텔레그램 동기화는 로그인 후 사용 가능합니다</p>
           <a
             href="/login?from=/chat"
             className="flex items-center gap-1 text-xs text-amber-300 hover:text-amber-200 font-medium underline underline-offset-2"
@@ -436,7 +431,6 @@ export default function UnifiedChatInterface() {
         </div>
       )}
 
-      {/* Header - Top (Fixed) */}
       <div className="border-b border-border bg-card px-4 py-3 flex-shrink-0 flex items-center justify-between">
         <div className="flex items-center gap-2 text-sm font-semibold">
           <MessageCircle className="w-4 h-4 text-primary" />
@@ -444,6 +438,16 @@ export default function UnifiedChatInterface() {
           <span className="text-xs text-muted-foreground font-normal">(웹 + Telegram)</span>
         </div>
         <div className="flex items-center gap-2">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={tts.toggle}
+            className={`text-muted-foreground hover:text-foreground ${tts.enabled ? "text-cyan-400" : ""}`}
+            title={tts.enabled ? "TTS 끄기" : "TTS 켜기"}
+          >
+            <Volume2 className={`w-4 h-4 mr-1.5 ${tts.isSpeaking ? "text-cyan-300" : ""}`} />
+            TTS
+          </Button>
           <Button
             variant="ghost"
             size="sm"
@@ -493,7 +497,6 @@ export default function UnifiedChatInterface() {
         </div>
       </div>
 
-      {/* Settings Panel (collapsible) */}
       <AnimatePresence>
         {showSettings && (
           <motion.div
@@ -542,9 +545,15 @@ export default function UnifiedChatInterface() {
                 className="w-full bg-cyan-600 hover:bg-cyan-700 text-white"
               >
                 {switchEngineMutation.isPending ? (
-                  <><Loader2 className="w-3 h-3 mr-1.5 animate-spin" />전환 중...</>
+                  <>
+                    <Loader2 className="w-3 h-3 mr-1.5 animate-spin" />
+                    전환 중...
+                  </>
                 ) : switchSuccess ? (
-                  <><Check className="w-3 h-3 mr-1.5" />적용 완료</>
+                  <>
+                    <Check className="w-3 h-3 mr-1.5" />
+                    적용 완료
+                  </>
                 ) : (
                   "적용"
                 )}
@@ -554,7 +563,6 @@ export default function UnifiedChatInterface() {
         )}
       </AnimatePresence>
 
-      {/* Messages Area - Middle (Scrollable) */}
       <div className="flex-1 overflow-y-auto p-4 space-y-3">
         <div className="flex justify-center">
           {hasMoreMessages ? (
@@ -591,34 +599,32 @@ export default function UnifiedChatInterface() {
                 <MessageCircle className="w-12 h-12 mx-auto mb-3 opacity-20" />
                 <p className="text-sm">메시지를 입력하여 시작하세요</p>
               </div>
-
-              {/* Info cards - empty state only */}
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 w-full max-w-xl">
                 <div className="bg-slate-800/50 border border-slate-700 rounded-lg p-3">
                   <h3 className="font-semibold text-cyan-400 text-xs mb-2">지원 엔진</h3>
                   <ul className="text-xs text-slate-400 space-y-1">
-                    <li>• Gemma4 (로컬)</li>
-                    <li>• Gemini (구글)</li>
-                    <li>• Claude (Anthropic)</li>
-                    <li>• GPT (OpenAI)</li>
+                    <li>Gemma4 (로컬)</li>
+                    <li>Gemini (구글)</li>
+                    <li>Claude (Anthropic)</li>
+                    <li>GPT (OpenAI)</li>
                   </ul>
                 </div>
                 <div className="bg-slate-800/50 border border-slate-700 rounded-lg p-3">
                   <h3 className="font-semibold text-cyan-400 text-xs mb-2">Google 서비스</h3>
                   <ul className="text-xs text-slate-400 space-y-1">
-                    <li>• Gmail</li>
-                    <li>• Calendar</li>
-                    <li>• Drive</li>
-                    <li>• Sheets</li>
+                    <li>Gmail</li>
+                    <li>Calendar</li>
+                    <li>Drive</li>
+                    <li>Sheets</li>
                   </ul>
                 </div>
                 <div className="bg-slate-800/50 border border-slate-700 rounded-lg p-3">
                   <h3 className="font-semibold text-cyan-400 text-xs mb-2">명령어</h3>
                   <ul className="text-xs text-slate-400 space-y-1">
-                    <li>• /engine - 엔진 전환</li>
-                    <li>• /model - 모델 전환</li>
-                    <li>• /status - 상태 확인</li>
-                    <li>• /clear - 기록 초기화</li>
+                    <li>/engine - 엔진 전환</li>
+                    <li>/model - 모델 전환</li>
+                    <li>/status - 상태 확인</li>
+                    <li>/clear - 기록 초기화</li>
                   </ul>
                 </div>
               </div>
@@ -634,20 +640,13 @@ export default function UnifiedChatInterface() {
               >
                 <Card
                   className={`max-w-[75%] px-4 py-2 ${
-                    msg.role === "user"
-                      ? "bg-primary text-primary-foreground"
-                      : "bg-muted text-white"
+                    msg.role === "user" ? "bg-primary text-primary-foreground" : "bg-muted text-white"
                   }`}
                 >
                   <div className="space-y-1">
                     <p className="text-sm whitespace-pre-wrap">{msg.content}</p>
                     <div className="flex items-center justify-between gap-2 text-xs opacity-70">
-                      <span>
-                        {msg.timestamp.toLocaleTimeString([], {
-                          hour: "2-digit",
-                          minute: "2-digit",
-                        })}
-                      </span>
+                      <span>{msg.timestamp.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</span>
                       <div className="flex items-center gap-2">
                         <span>{getSourceIcon(msg.source)}</span>
                         {conversationId && msg.dbId && (
@@ -682,11 +681,7 @@ export default function UnifiedChatInterface() {
         </AnimatePresence>
 
         {isLoading && (
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="flex justify-start"
-          >
+          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="flex justify-start">
             <Card className="bg-muted px-4 py-2">
               <div className="flex items-center gap-2">
                 <Loader2 className="w-4 h-4 animate-spin" />
@@ -699,8 +694,8 @@ export default function UnifiedChatInterface() {
         <div ref={messagesEndRef} />
       </div>
 
-      {/* Input Area - Bottom (Fixed) */}
       <div className="border-t border-border bg-card p-4 flex-shrink-0">
+        <QuickActions onSelect={(text) => void sendMessageText(text)} disabled={isLoading} />
         <form onSubmit={handleSendMessage} className="flex gap-2">
           <Input
             value={input}
@@ -715,21 +710,24 @@ export default function UnifiedChatInterface() {
               }
             }}
           />
-          <Button
-            type="submit"
-            disabled={isLoading || !input.trim()}
-            size="icon"
-          >
-            {isLoading ? (
-              <Loader2 className="w-4 h-4 animate-spin" />
-            ) : (
-              <Send className="w-4 h-4" />
-            )}
+          {speech.isSupported && (
+            <Button
+              type="button"
+              onClick={speech.isListening ? speech.stopListening : speech.startListening}
+              disabled={isLoading}
+              size="icon"
+              className={speech.isListening ? "animate-pulse bg-red-600 text-white hover:bg-red-700" : ""}
+              title={speech.isListening ? "음성 입력 중지" : "음성 입력"}
+            >
+              <Mic className="w-4 h-4" />
+            </Button>
+          )}
+          <Button type="submit" disabled={isLoading || !input.trim()} size="icon">
+            {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
           </Button>
         </form>
       </div>
 
-      {/* Search Dialog */}
       <Dialog open={showSearch} onOpenChange={setShowSearch}>
         <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden bg-slate-950 border-slate-800 text-white">
           <DialogHeader>
@@ -797,13 +795,15 @@ export default function UnifiedChatInterface() {
           </form>
 
           <div className="flex items-center justify-between text-xs text-slate-400">
-            <span>{searchMessagesQuery.isFetching ? "검색 중..." : submittedSearch ? `검색 결과: ${searchMessagesQuery.data?.length ?? 0}개` : "검색어를 입력하고 검색하세요."}</span>
+            <span>
+              {searchMessagesQuery.isFetching
+                ? "검색 중..."
+                : submittedSearch
+                  ? `검색 결과: ${searchMessagesQuery.data?.length ?? 0}개`
+                  : "검색어를 입력하고 검색하세요."}
+            </span>
             {submittedSearch && (
-              <button
-                type="button"
-                onClick={() => setSubmittedSearch(null)}
-                className="text-cyan-400 hover:text-cyan-300"
-              >
+              <button type="button" onClick={() => setSubmittedSearch(null)} className="text-cyan-400 hover:text-cyan-300">
                 검색 초기화
               </button>
             )}
@@ -823,13 +823,9 @@ export default function UnifiedChatInterface() {
                     <span>{new Date(item.createdAt).toLocaleString("ko-KR")}</span>
                     <span>{item.role === "user" ? "사용자" : "AI"}</span>
                   </div>
-                  <p className="text-sm text-slate-200 whitespace-pre-wrap leading-relaxed">
-                    {item.content}
-                  </p>
+                  <p className="text-sm text-slate-200 whitespace-pre-wrap leading-relaxed">{item.content}</p>
                   <div className="flex items-center justify-between gap-2">
-                    <p className="text-xs text-slate-500">
-                      메시지 ID #{item.messageId}
-                    </p>
+                    <p className="text-xs text-slate-500">메시지 ID #{item.messageId}</p>
                     {conversationId === item.conversationId && (
                       <Button
                         type="button"
@@ -852,7 +848,6 @@ export default function UnifiedChatInterface() {
         </DialogContent>
       </Dialog>
 
-      {/* API Settings Modal */}
       <ApiSettingsModal isOpen={showApiSettings} onClose={() => setShowApiSettings(false)} />
     </div>
   );

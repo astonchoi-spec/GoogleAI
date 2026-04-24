@@ -3,7 +3,7 @@
  * Handles unified message synchronization between web and Telegram
  */
 
-import { router, protectedProcedure, publicProcedure } from "../_core/trpc";
+import { router, protectedProcedure, publicProcedure } from "../_core/trpc.ts";
 import { z } from "zod";
 import {
   getOrCreateConversation,
@@ -19,8 +19,8 @@ import {
   getConversationById,
   updateConversationTitle,
   updateConversationPinned,
-} from "../db-chat";
-import { forwardToTelegram } from "../telegram-service";
+} from "../db-chat.ts";
+import { forwardToTelegram } from "../telegram-service.ts";
 
 async function assertConversationOwnership(conversationId: number, userId: number) {
   const conversation = await getConversationById(conversationId);

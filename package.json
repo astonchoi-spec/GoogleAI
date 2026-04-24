@@ -3,8 +3,12 @@
   "version": "1.0.0",
   "type": "module",
   "license": "MIT",
+  "engines": {
+    "node": ">=24.14.1 <25",
+    "npm": ">=11 <12"
+  },
   "scripts": {
-    "dev": "cross-env NODE_ENV=development tsx watch server/_core/index.ts",
+    "dev": "cross-env NODE_ENV=development node --experimental-strip-types server/_core/index.ts",
     "build": "vite build && cross-env esbuild server/_core/index.ts --platform=node --packages=external --bundle --format=esm --outdir=dist",
     "start": "cross-env NODE_ENV=production node dist/index.js",
     "check": "tsc --noEmit",
@@ -50,6 +54,8 @@
     "@trpc/react-query": "^11.6.0",
     "@trpc/server": "^11.6.0",
     "axios": "^1.12.0",
+    "bullmq": "^5.76.1",
+    "ccxt": "^4.5.50",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "cmdk": "^1.1.1",
@@ -80,9 +86,11 @@
     "superjson": "^1.13.3",
     "tailwind-merge": "^3.3.1",
     "tailwindcss-animate": "^1.0.7",
+    "technicalindicators": "^3.1.0",
     "telegraf": "^4.16.3",
     "vaul": "^1.1.2",
     "wouter": "^3.3.5",
+    "ws": "^8.20.0",
     "zod": "^4.1.12"
   },
   "devDependencies": {
@@ -94,6 +102,7 @@
     "@types/node": "^24.7.0",
     "@types/react": "^19.2.1",
     "@types/react-dom": "^19.2.1",
+    "@types/ws": "^8.18.1",
     "@vitejs/plugin-react": "^5.0.4",
     "add": "^2.0.6",
     "autoprefixer": "^10.4.20",

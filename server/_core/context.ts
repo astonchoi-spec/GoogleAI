@@ -1,6 +1,6 @@
 import type { CreateExpressContextOptions } from "@trpc/server/adapters/express";
 import type { User } from "../../drizzle/schema";
-import { sdk } from "./sdk";
+import { sdk } from "./sdk.ts";
 
 export type TrpcContext = {
   req: CreateExpressContextOptions["req"];

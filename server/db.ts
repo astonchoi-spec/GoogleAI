@@ -2,8 +2,9 @@ import { eq, and } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/libsql";
 import { createClient } from "@libsql/client";
 import path from "path";
-import { InsertUser, users, apiSettings, InsertApiSetting } from "../drizzle/schema";
-import { encrypt, decrypt } from './_core/encryption';
+import { users, apiSettings } from "../drizzle/schema.ts";
+import type { InsertUser, InsertApiSetting } from "../drizzle/schema.ts";
+import { encrypt, decrypt } from "./_core/encryption.ts";
 
 const DB_PATH = `file:${path.resolve("./data/chat.db")}`;
 

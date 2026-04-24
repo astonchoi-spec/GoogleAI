@@ -1,14 +1,14 @@
-import { COOKIE_NAME, ONE_YEAR_MS } from "@shared/const";
+import { COOKIE_NAME, ONE_YEAR_MS } from "../shared/const.ts";
 import { z } from "zod";
-import { getSessionCookieOptions } from "./_core/cookies";
-import { systemRouter } from "./_core/systemRouter";
-import { publicProcedure, router } from "./_core/trpc";
-import { sdk } from "./_core/sdk";
-import * as db from "./db";
-import { llmRouter } from "./routers/llm";
-import { googleWorkspaceRouter } from "./routers/google-workspace";
-import { apiSettingsRouter } from "./routers/api-settings";
-import { chatSyncRouter } from "./routers/chat-sync";
+import { getSessionCookieOptions } from "./_core/cookies.ts";
+import { systemRouter } from "./_core/systemRouter.ts";
+import { publicProcedure, router } from "./_core/trpc.ts";
+import { sdk } from "./_core/sdk.ts";
+import * as db from "./db.ts";
+import { llmRouter } from "./routers/llm.ts";
+import { googleWorkspaceRouter } from "./routers/google-workspace.ts";
+import { apiSettingsRouter } from "./routers/api-settings.ts";
+import { chatSyncRouter } from "./routers/chat-sync.ts";
 
 const ADMIN_USERNAME = "admin";
 const ADMIN_PASSWORD = "admin123";

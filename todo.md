@@ -410,6 +410,12 @@
 
 ### Phase 3 체크포인트
 
+## 2026-04-24 Update
+
+- [x] Finance DART tRPC router added
+- [x] Finance page added and routed at `/finance`
+- [x] Home sidebar and top navigation include Finance entry
+
 - [ ] `npm.cmd run check` 통과
 - [ ] `npm.cmd run build` 통과
 - [ ] `npm.cmd run dev` 실행 확인

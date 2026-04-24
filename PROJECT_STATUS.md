@@ -274,3 +274,8 @@ ollama pull gemma4:e4b
 
 **마지막 업데이트**: 2026-04-21
 **상태**: 기능 구현 완료, 구동 환경 설정 진행 중
+
+---
+
+**Update**: 2026-04-24
+**Status**: Finance DART router and UI page added; navigation updated.

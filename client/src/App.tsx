@@ -10,6 +10,7 @@ import Login from "./pages/Login";
 import Google from "./pages/Google";
 import TradingPage from "./pages/TradingPage"; // MODIFIED: add route target for the new trading tab.
 import RealEstatePage from "./pages/RealEstatePage"; // MODIFIED: add route target for the new real estate PF tab.
+import FinancePage from "./pages/FinancePage";
 import Navbar from "./components/Navbar";
 
 function Router() {
@@ -24,6 +25,7 @@ function Router() {
         <Route path={"/chat"} component={Chat} />
         <Route path={"/trading"} component={TradingPage} /> {/* MODIFIED: route for the new trading tab. */}
         <Route path={"/real-estate-pf"} component={RealEstatePage} /> {/* MODIFIED: route for the new real estate PF tab. */}
+        <Route path={"/finance"} component={FinancePage} />
         <Route path={"/google"} component={Google} />
         <Route path={"/login"} component={Login} />
         <Route path={"/404"} component={NotFound} />

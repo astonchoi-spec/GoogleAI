@@ -10,7 +10,7 @@ export default function GoogleAuthCard() {
   const { data: authUrlData } = trpc.googleWorkspace.getAuthUrl.useQuery();
   const revokeMutation = trpc.googleWorkspace.revokeAuth.useMutation({
     onSuccess: () => {
-      toast.success("Google 연결이 해제되었습니다.");
+      toast.success("Google 연결을 해제했습니다.");
       refetch();
     },
     onError: (err) => toast.error(`연결 해제 실패: ${err.message}`),
@@ -21,14 +21,42 @@ export default function GoogleAuthCard() {
 
   const handleConnect = () => {
     if (!authUrlData?.authUrl) return;
+
     const popup = window.open(authUrlData.authUrl, "_blank", "width=500,height=600");
-    const timer = setInterval(() => {
-      if (popup?.closed) {
-        clearInterval(timer);
+    if (!popup) {
+      toast.error("팝업이 차단되었습니다. 브라우저에서 팝업을 허용해주세요.");
+      return;
+    }
+
+    const handleOAuthMessage = (event: MessageEvent) => {
+      if (event.origin !== window.location.origin) return;
+
+      if (event.data?.type === "google-oauth:success") {
+        cleanup();
+        if (!popup.closed) popup.close();
         refetch();
         toast.success("Google 연결이 완료되었습니다.");
       }
+
+      if (event.data?.type === "google-oauth:error") {
+        cleanup();
+        toast.error(event.data?.message || "Google 연결에 실패했습니다.");
+      }
+    };
+
+    const timer = window.setInterval(() => {
+      if (popup.closed) {
+        cleanup();
+        refetch();
+      }
     }, 1000);
+
+    const cleanup = () => {
+      window.clearInterval(timer);
+      window.removeEventListener("message", handleOAuthMessage);
+    };
+
+    window.addEventListener("message", handleOAuthMessage);
   };
 
   const handleDisconnect = () => revokeMutation.mutate();
@@ -51,7 +79,7 @@ export default function GoogleAuthCard() {
             <div>
               <p className="text-amber-300 font-medium text-sm">Google OAuth 설정 필요</p>
               <p className="text-amber-400/70 text-xs mt-1">
-                .env 파일에 다음 항목을 추가하세요:
+                .env 파일에 다음 항목을 추가해주세요.
               </p>
               <pre className="mt-2 text-xs bg-slate-900/60 rounded p-2 text-amber-300 font-mono">
 {`GOOGLE_CLIENT_ID=your_client_id
@@ -64,7 +92,7 @@ GOOGLE_REDIRECT_URI=http://localhost:4000/api/webhooks/google/callback`}
                 rel="noopener noreferrer"
                 className="text-xs text-cyan-400 hover:text-cyan-300 underline mt-2 inline-block"
               >
-                Google Cloud Console에서 OAuth 앱 만들기 →
+                Google Cloud Console에서 OAuth 만들기
               </a>
             </div>
           </div>

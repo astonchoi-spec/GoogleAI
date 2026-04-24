@@ -1,4 +1,4 @@
-# Project TODO
+﻿# Project TODO
 
 ## Bug Fixes - Session 2
 
@@ -79,7 +79,7 @@
   - Encryption tests passing
 - [x] Ready to publish to production
 
-## Telegram ↔ Web Chat Synchronization (Session 4)
+## Telegram ??Web Chat Synchronization (Session 4)
 
 - [x] Database schema for unified conversations
   - conversations table created and migrated
@@ -92,9 +92,9 @@
   - Real-time message polling (2-second interval)
 
 - [x] Telegram bot integration
-  - Forward user messages to database ✓
-  - Forward AI responses back to Telegram ✓
-  - Messages linked to conversations table ✓
+  - Forward user messages to database ??
+  - Forward AI responses back to Telegram ??
+  - Messages linked to conversations table ??
 
 - [x] Frontend real-time updates
   - Polling for live messages (2-second interval)
@@ -102,10 +102,10 @@
   - Unified chat interface component created
 
 - [x] Testing
-  - All 57 tests passing ✓
-  - Telegram bot integration verified ✓
-  - Database sync verified ✓
-  - Message persistence confirmed ✓
+  - All 57 tests passing ??
+  - Telegram bot integration verified ??
+  - Database sync verified ??
+  - Message persistence confirmed ??
 
 ## UI/UX Improvements - Session 5
 
@@ -123,18 +123,18 @@
 
 ## Bug Fixes - Session 6
 
-- [x] Fix session isolation bug (web ↔ Telegram shared state)
+- [x] Fix session isolation bug (web ??Telegram shared state)
   - llm.ts was creating its own `new SessionManager()` instance
   - Changed to import the singleton `sessionManager` from session.ts
   - Web engine/model changes now apply to Telegram bot too (same in-memory store)
 
 - [x] Fix model switch not applying (UI)
-  - Added "적용" button to settings panel in UnifiedChatInterface
+  - Added "?곸슜" button to settings panel in UnifiedChatInterface
   - Engine change auto-resets model to first available
   - Success feedback shown after apply
 
 - [x] Fix system prompt hardcoded model identity
-  - Was always saying "저는 Google Gemini 2.5 Flash 모델입니다"
+  - Was always saying "???Google Gemini 2.5 Flash 紐⑤뜽?낅땲??
   - Now uses `currentModel?.name` from actual session state
 
 - [x] Fix API settings modal not opening
@@ -152,8 +152,8 @@
 
 ## Bug Fixes & UX - Session 7
 
-- [x] Fix Telegram ↔ Web conversation sync (conversation ID mismatch)
-  - Telegram bot was using Telegram user ID as DB userId → separate conversations
+- [x] Fix Telegram ??Web conversation sync (conversation ID mismatch)
+  - Telegram bot was using Telegram user ID as DB userId ??separate conversations
   - Fixed: bot now finds conversation by telegramChatId, or links to admin(userId=1) conversation
   - Web and Telegram now share the same conversation row
 
@@ -204,30 +204,30 @@
 
 ## Critical Bug Fix - Session 8 (2026-04-22)
 
-- [x] Diagnose Telegram ↔ Web 양방향 동기화 불가 원인
-  - MySQL이 설치/실행되지 않아 DB 자체가 ECONNREFUSED 상태
-  - 텔레그램 봇은 in-memory 세션으로 작동 중이었으나 메시지가 DB에 저장 안 됨
-  - Web 폴링(getRecentMessages)이 conversationId를 얻지 못해 비활성화 상태
+- [x] Diagnose Telegram ??Web ?묐갑???숆린??遺덇? ?먯씤
+  - MySQL???ㅼ튂/?ㅽ뻾?섏? ?딆븘 DB ?먯껜媛 ECONNREFUSED ?곹깭
+  - ?붾젅洹몃옩 遊뉗? in-memory ?몄뀡?쇰줈 ?묐룞 以묒씠?덉쑝??硫붿떆吏媛 DB?????????
+  - Web ?대쭅(getRecentMessages)??conversationId瑜??살? 紐삵빐 鍮꾪솢?깊솕 ?곹깭
 
-- [x] MySQL → SQLite(libsql) 전환
-  - @libsql/client 패키지 설치
-  - drizzle/schema.ts: mysql-core → sqlite-core 전환 (mysqlTable, mysqlEnum 등 모두 교체)
-  - server/db.ts: mysql2 드라이버 → libsql 드라이버, onDuplicateKeyUpdate → onConflictDoUpdate
-  - server/db-chat.ts: insertId → .returning() 방식으로 전환 (SQLite 호환)
-  - drizzle.config.ts: dialect mysql → sqlite
-  - .env: DATABASE_URL을 file:./data/chat.db 로 변경
-  - data/chat.db: SQLite 파일 DB 자동 생성 (서버 실행 시 별도 설치 불필요)
+- [x] MySQL ??SQLite(libsql) ?꾪솚
+  - @libsql/client ?⑦궎吏 ?ㅼ튂
+  - drizzle/schema.ts: mysql-core ??sqlite-core ?꾪솚 (mysqlTable, mysqlEnum ??紐⑤몢 援먯껜)
+  - server/db.ts: mysql2 ?쒕씪?대쾭 ??libsql ?쒕씪?대쾭, onDuplicateKeyUpdate ??onConflictDoUpdate
+  - server/db-chat.ts: insertId ??.returning() 諛⑹떇?쇰줈 ?꾪솚 (SQLite ?명솚)
+  - drizzle.config.ts: dialect mysql ??sqlite
+  - .env: DATABASE_URL??file:./data/chat.db 濡?蹂寃?
+  - data/chat.db: SQLite ?뚯씪 DB ?먮룞 ?앹꽦 (?쒕쾭 ?ㅽ뻾 ??蹂꾨룄 ?ㅼ튂 遺덊븘??
 
-- [x] Web → Telegram 포워딩 구현 (기존 미구현 방향)
-  - server/telegram-service.ts: 봇 인스턴스 싱글턴 서비스 신규 생성
-  - server/llm/telegram-bot.ts: 생성자에서 registerTelegramBot() 호출
-  - server/routers/chat-sync.ts: forwardToTelegram tRPC mutation 추가
-    (conversationId로 telegramChatId 조회 → 유저 메시지 + AI 응답 Telegram 전송)
-  - client/UnifiedChatInterface.tsx: AI 응답 수신 후 forwardToTelegramMutation 호출
+- [x] Web ??Telegram ?ъ썙??援ы쁽 (湲곗〈 誘멸뎄??諛⑺뼢)
+  - server/telegram-service.ts: 遊??몄뒪?댁뒪 ?깃????쒕퉬???좉퇋 ?앹꽦
+  - server/llm/telegram-bot.ts: ?앹꽦?먯뿉??registerTelegramBot() ?몄텧
+  - server/routers/chat-sync.ts: forwardToTelegram tRPC mutation 異붽?
+    (conversationId濡?telegramChatId 議고쉶 ???좎? 硫붿떆吏 + AI ?묐떟 Telegram ?꾩넚)
+  - client/UnifiedChatInterface.tsx: AI ?묐떟 ?섏떊 ??forwardToTelegramMutation ?몄텧
 
-- [x] 최종 양방향 동작 확인
-  - Telegram → Web: 텔레그램 메시지 → DB 저장 → 웹 2초 폴링 표시 ✅
-  - Web → Telegram: 웹 메시지 → AI 응답 → 텔레그램 양쪽 동시 표시 ✅
+- [x] 理쒖쥌 ?묐갑???숈옉 ?뺤씤
+  - Telegram ??Web: ?붾젅洹몃옩 硫붿떆吏 ??DB ???????2珥??대쭅 ?쒖떆 ??
+  - Web ??Telegram: ??硫붿떆吏 ??AI ?묐떟 ???붾젅洹몃옩 ?묒そ ?숈떆 ?쒖떆 ??
 
 ## Remaining Features (To Do)
 
@@ -282,139 +282,253 @@
 
 ## Work Log - 2026-04-24
 
-- [x] 작업 11. 알림 엔진
-  - `server/alerts/alertEngine.ts` 추가
-  - BullMQ `alerts` 큐와 10초 반복 Worker 구성
-  - Redis `active:alerts` 기반 알림 저장/조회/삭제
-  - 가격, RSI, 펀딩비, 김프 알림 조건 체크
-  - Telegram 발송 연동 및 1회 발동 후 비활성화 처리
-  - 커밋: `1be11d8 feat: add alert engine`
+- [x] ?묒뾽 11. ?뚮┝ ?붿쭊
+  - `server/alerts/alertEngine.ts` 異붽?
+  - BullMQ `alerts` ?먯? 10珥?諛섎났 Worker 援ъ꽦
+  - Redis `active:alerts` 湲곕컲 ?뚮┝ ???議고쉶/??젣
+  - 媛寃? RSI, ??⑸퉬, 源???뚮┝ 議곌굔 泥댄겕
+  - Telegram 諛쒖넚 ?곕룞 諛?1??諛쒕룞 ??鍮꾪솢?깊솕 泥섎━
+  - 而ㅻ컠: `1be11d8 feat: add alert engine`
 
-- [x] 작업 12. 선물 리스크 계산기
-  - `server/trading/riskCalculator.ts` 추가
-  - 롱/숏 청산가, 손절가, 1R/2R/3R 목표가, 최대손실 계산
-  - AI 채팅 출력용 한국어 리스크 리포트 포맷 추가
-  - 커밋: `5e776c5 feat: add futures risk calculator`
+- [x] ?묒뾽 12. ?좊Ъ 由ъ뒪??怨꾩궛湲?  - `server/trading/riskCalculator.ts` 異붽?
+  - 濡???泥?궛媛, ?먯젅媛, 1R/2R/3R 紐⑺몴媛, 理쒕??먯떎 怨꾩궛
+  - AI 梨꾪똿 異쒕젰???쒓뎅??由ъ뒪??由ы룷???щ㎎ 異붽?
+  - 而ㅻ컠: `5e776c5 feat: add futures risk calculator`
 
-- [x] 작업 13. 사업성 분석 엔진
-  - `server/realestate/feasibilityEngine.ts` 추가
-  - PF 개발사업 수입, 비용, 사업이익, IRR, DSCR, 손익분기 분양률 계산
-  - 사업성 판정: 사업성 양호 / 보통 / 미흡
-  - AI 채팅 출력용 한국어 사업성 보고서 포맷 추가
-  - 커밋: `a33699f feat: add real estate feasibility engine`
+- [x] ?묒뾽 13. ?ъ뾽??遺꾩꽍 ?붿쭊
+  - `server/realestate/feasibilityEngine.ts` 異붽?
+  - PF 媛쒕컻?ъ뾽 ?섏엯, 鍮꾩슜, ?ъ뾽?댁씡, IRR, DSCR, ?먯씡遺꾧린 遺꾩뼇瑜?怨꾩궛
+  - ?ъ뾽???먯젙: ?ъ뾽???묓샇 / 蹂댄넻 / 誘명씉
+  - AI 梨꾪똿 異쒕젰???쒓뎅???ъ뾽??蹂닿퀬???щ㎎ 異붽?
+  - 而ㅻ컠: `a33699f feat: add real estate feasibility engine`
 
-- [x] 작업 14. 공공데이터 API 연동
-  - `server/realestate/publicDataAPI.ts` 추가
-  - 토지이용규제, 건축물대장, 실거래가 조회 함수 추가
-  - `DATA_GO_KR_API_KEY` 환경변수 추가
-  - JSON/XML 응답 및 API 오류 처리
-  - 커밋: `55b0fe4 feat: add public data api client`
+- [x] ?묒뾽 14. 怨듦났?곗씠??API ?곕룞
+  - `server/realestate/publicDataAPI.ts` 異붽?
+  - ?좎??댁슜洹쒖젣, 嫄댁텞臾쇰??? ?ㅺ굅?섍? 議고쉶 ?⑥닔 異붽?
+  - `DATA_GO_KR_API_KEY` ?섍꼍蹂??異붽?
+  - JSON/XML ?묐떟 諛?API ?ㅻ쪟 泥섎━
+  - 而ㅻ컠: `55b0fe4 feat: add public data api client`
 
-- [x] 작업 15. PF 딜 파이프라인
-  - `server/realestate/dealPipeline.ts` 추가
-  - Google Sheets `PF딜관리` 시트 기반 딜 CRUD 일부 구현
-  - 단계 변경, 포트폴리오 요약, Calendar 마일스톤 이벤트 생성
-  - 커밋: `f29715a feat: add pf deal pipeline`
+- [x] ?묒뾽 15. PF ???뚯씠?꾨씪??  - `server/realestate/dealPipeline.ts` 異붽?
+  - Google Sheets `PF?쒓?由? ?쒗듃 湲곕컲 ??CRUD ?쇰? 援ы쁽
+  - ?④퀎 蹂寃? ?ы듃?대━???붿빟, Calendar 留덉씪?ㅽ넠 ?대깽???앹꽦
+  - 而ㅻ컠: `f29715a feat: add pf deal pipeline`
 
-- [x] 작업 16. DART 공시 API 연동
-  - `server/finance/dartAPI.ts` 추가
-  - 공시 목록, 재무제표, 회사 기본정보 조회 함수 추가
-  - `DART_API_KEY` 환경변수 추가
-  - DART `status/message` 오류 처리
-  - 커밋: `76d8505 feat: add dart api client`
+- [x] ?묒뾽 16. DART 怨듭떆 API ?곕룞
+  - `server/finance/dartAPI.ts` 異붽?
+  - 怨듭떆 紐⑸줉, ?щТ?쒗몴, ?뚯궗 湲곕낯?뺣낫 議고쉶 ?⑥닔 異붽?
+  - `DART_API_KEY` ?섍꼍蹂??異붽?
+  - DART `status/message` ?ㅻ쪟 泥섎━
+  - 而ㅻ컠: `76d8505 feat: add dart api client`
 
-- [x] 검증
-  - 각 작업 후 `npm.cmd run check` 통과
-  - 각 작업 후 `npm.cmd run build` 통과
-  - 신규 모듈 import 및 API 키 누락 경로 확인
+- [x] 寃利?  - 媛??묒뾽 ??`npm.cmd run check` ?듦낵
+  - 媛??묒뾽 ??`npm.cmd run build` ?듦낵
+  - ?좉퇋 紐⑤뱢 import 諛?API ???꾨씫 寃쎈줈 ?뺤씤
 
-## Phase 3 Workflow - 통합 연결
+## Phase 3 Workflow - ?듯빀 ?곌껐
 
-### 목표
+### 紐⑺몴
 
-- Phase 2에서 만든 독립 백엔드 모듈을 기존 tRPC, AI 채팅, UI에 연결한다.
-- 기존 홈 / AI 채팅 / Google Workspace 동작은 유지한다.
-- 조회성 기능과 실행성 기능을 분리해서 실사용 중 오동작 위험을 줄인다.
+- Phase 2?먯꽌 留뚮뱺 ?낅┰ 諛깆뿏??紐⑤뱢??湲곗〈 tRPC, AI 梨꾪똿, UI???곌껐?쒕떎.
+- 湲곗〈 ??/ AI 梨꾪똿 / Google Workspace ?숈옉? ?좎??쒕떎.
+- 議고쉶??湲곕뒫怨??ㅽ뻾??湲곕뒫??遺꾨━?댁꽌 ?ㅼ궗??以??ㅻ룞???꾪뿕??以꾩씤??
 
-### 작업 17. tRPC 라우터 등록
+### ?묒뾽 17. tRPC ?쇱슦???깅줉
 
-- [ ] `server/trpc/routers/trading.ts` 생성
-  - 거래소 잔고 조회
-  - 포지션 조회
-  - 기술적 분석 조회
-  - 선물 리스크 계산
-  - 알림 목록/추가/삭제
+- [ ] `server/trpc/routers/trading.ts` ?앹꽦
+  - 嫄곕옒???붽퀬 議고쉶
+  - ?ъ???議고쉶
+  - 湲곗닠??遺꾩꽍 議고쉶
+  - ?좊Ъ 由ъ뒪??怨꾩궛
+  - ?뚮┝ 紐⑸줉/異붽?/??젣
 
-- [ ] `server/trpc/routers/realestate.ts` 생성
-  - PF 딜 목록/추가/단계 변경/요약
-  - 사업성 분석 실행
-  - 토지조회/건축물대장/실거래가 조회
+- [ ] `server/trpc/routers/realestate.ts` ?앹꽦
+  - PF ??紐⑸줉/異붽?/?④퀎 蹂寃??붿빟
+  - ?ъ뾽??遺꾩꽍 ?ㅽ뻾
+  - ?좎?議고쉶/嫄댁텞臾쇰????ㅺ굅?섍? 議고쉶
 
-- [ ] `server/trpc/routers/finance.ts` 생성
-  - DART 공시 조회
-  - DART 재무제표 조회
-  - DART 회사 검색
+- [ ] `server/trpc/routers/finance.ts` ?앹꽦
+  - DART 怨듭떆 議고쉶
+  - DART ?щТ?쒗몴 議고쉶
+  - DART ?뚯궗 寃??
+- [ ] `appRouter`???좉퇋 ?쇱슦???깅줉
+  - 紐⑤뱺 input? zod 寃利?  - API ???꾨씫, Google Auth ?꾨씫, Redis 誘몄뿰寃??ㅻ쪟 硫붿떆吏 ?뺣━
 
-- [ ] `appRouter`에 신규 라우터 등록
-  - 모든 input은 zod 검증
-  - API 키 누락, Google Auth 누락, Redis 미연결 오류 메시지 정리
-
-### 작업 18. AI 의도 파싱 라우터
-
-- [ ] `server/trpc/routers/intent.ts` 또는 기존 LLM 라우터 확장
-  - Gemini로 자연어 의도 분류
+### ?묒뾽 18. AI ?섎룄 ?뚯떛 ?쇱슦??
+- [ ] `server/trpc/routers/intent.ts` ?먮뒗 湲곗〈 LLM ?쇱슦???뺤옣
+  - Gemini濡??먯뿰???섎룄 遺꾨쪟
   - intent: trading / realestate / finance / google / chat
-  - action: 조회 / 분석 / 생성 / 수정 / 삭제 구분
+  - action: 議고쉶 / 遺꾩꽍 / ?앹꽦 / ?섏젙 / ??젣 援щ텇
 
-- [ ] 조회성 액션 먼저 연결
-  - 잔고 조회
-  - 포지션 확인
-  - BTC 기술적 분석
-  - 선물 리스크 계산
-  - PF 현황 요약
-  - 사업성 분석
-  - DART 공시 조회
+- [x] 議고쉶???≪뀡 癒쇱? ?곌껐
+  - ?붽퀬 議고쉶
+  - ?ъ????뺤씤
+  - BTC 湲곗닠??遺꾩꽍
+  - ?좊Ъ 由ъ뒪??怨꾩궛
+  - PF ?꾪솴 ?붿빟
+  - ?ъ뾽??遺꾩꽍
+  - DART 怨듭떆 議고쉶
 
-- [ ] 실행성 액션은 확인 단계 추가
-  - 알림 추가
-  - PF 딜 추가
-  - PF 단계 변경
-  - Calendar 이벤트 생성
-  - Sheets 저장
+- [x] ?ㅽ뻾???≪뀡? ?뺤씤 ?④퀎 異붽?
+  - ?뚮┝ 異붽?
+  - PF ??異붽?
+  - PF ?④퀎 蹂寃?  - Calendar ?대깽???앹꽦
+  - Sheets ???
+- [x] AI ?묐떟 ?щ㎎ ?듭씪
+  - ?깃났: ?붿빟 + 二쇱슂 ?섏튂 + ?ㅼ쓬 ?≪뀡
+  - ?ㅽ뙣: ?먯씤 + ?꾩슂???ㅼ젙媛?+ ?ъ떆??諛⑸쾿
 
-- [ ] AI 응답 포맷 통일
-  - 성공: 요약 + 주요 수치 + 다음 액션
-  - 실패: 원인 + 필요한 설정값 + 재시도 방법
+### ?묒뾽 19. UI ??諛깆뿏???곌껐
 
-### 작업 19. UI ↔ 백엔드 연결
+- [x] ?몃젅?대뵫 ?섏씠吏 ?곌껐
+  - ??쒕낫?? ?붽퀬, ?ъ??? 源?? 湲곗닠??遺꾩꽍
+  - 留ㅻℓ?쇱?: Sheets 湲곕컲 嫄곕옒?댁뿭/?듦퀎
+  - ?뚮┝?ㅼ젙: ?뚮┝ 紐⑸줉/異붽?/??젣
 
-- [ ] 트레이딩 페이지 연결
-  - 대시보드: 잔고, 포지션, 김프, 기술적 분석
-  - 매매일지: Sheets 기반 거래내역/통계
-  - 알림설정: 알림 목록/추가/삭제
+- [x] 遺?숈궛PF ?섏씠吏 ?곌껐
+  - ???뚯씠?꾨씪?? Sheets 湲곕컲 ??紐⑸줉/?④퀎 蹂寃?  - ?ъ뾽?깅텇?? ?낅젰媛???tRPC ??寃곌낵 移대뱶
+  - ?좎?議고쉶: 怨듦났?곗씠??API 寃곌낵 ?쒖떆
 
-- [ ] 부동산PF 페이지 연결
-  - 딜 파이프라인: Sheets 기반 딜 목록/단계 변경
-  - 사업성분석: 입력값 → tRPC → 결과 카드
-  - 토지조회: 공공데이터 API 결과 표시
+- [x] ???꾩젽 ?곌껐
+  - ?몃젅?대뵫 ?붿빟 ?ㅻ뜲?댄꽣
+  - PF ?ы듃?대━???붿빟 ?ㅻ뜲?댄꽣
+  - 鍮좊Ⅸ AI 紐낅졊 ??AI 梨꾪똿 ?먮룞 ?ㅽ뻾
 
-- [ ] 홈 위젯 연결
-  - 트레이딩 요약 실데이터
-  - PF 포트폴리오 요약 실데이터
-  - 빠른 AI 명령 → AI 채팅 자동 실행
+- [x] AI 梨꾪똿 ?뺤옣 ?곌껐
+  - ???≪뀡 踰꾪듉??intent ?쇱슦?곕줈 ?곌껐
+  - 留덉씠???낅젰 ?먮룞 ?꾩넚 ?좎?
+  - TTS??AI 理쒖쥌 ?묐떟留??쎈룄濡??좎?
 
-- [ ] AI 채팅 확장 연결
-  - 퀵 액션 버튼을 intent 라우터로 연결
-  - 마이크 입력 자동 전송 유지
-  - TTS는 AI 최종 응답만 읽도록 유지
+### Phase 3 泥댄겕?ъ씤??
+- [x] `npm.cmd run check` ?듦낵
+- [x] `npm.cmd run build` ?듦낵
+- [x] `npm.cmd run dev` ?ㅽ뻾 ?뺤씤
+- [x] `/`, `/chat`, `/trading`, `/real-estate-pf`, `/google` ?쇱슦???뺤씤
+- [x] 湲곗〈 Google Workspace 湲곕뒫 ?뚭? ?뺤씤
+- [x] API ?ㅺ? ?녿뒗 ?곹깭???먮윭 UI ?뺤씤
+- [x] Redis媛 ?녿뒗 ?곹깭???먮윭 硫붿떆吏 ?뺤씤
+- [x] Google OAuth媛 ?녿뒗 ?곹깭???먮윭 硫붿떆吏 ?뺤씤
 
-### Phase 3 체크포인트
+<!-- MODIFIED: 2026-04-24 progress update for Phase 3 routing + UI integration -->
+## Work Log - 2026-04-24 (Evening)
 
-- [ ] `npm.cmd run check` 통과
-- [ ] `npm.cmd run build` 통과
-- [ ] `npm.cmd run dev` 실행 확인
-- [ ] `/`, `/chat`, `/trading`, `/real-estate-pf`, `/google` 라우트 확인
-- [ ] 기존 Google Workspace 기능 회귀 확인
-- [ ] API 키가 없는 상태의 에러 UI 확인
-- [ ] Redis가 없는 상태의 에러 메시지 확인
-- [ ] Google OAuth가 없는 상태의 에러 메시지 확인
+- [x] Added `trading`, `realestate`, `finance` routers and registered in `appRouter`
+- [x] Added `intent` router (`classify`, `route`) with query-action execution path
+- [x] Connected web chat to `intent.route` first, with fallback to `llm.chat`
+- [x] Applied same intent routing in Telegram bot flow (before generic LLM fallback)
+- [x] Connected Trading UI to live tRPC data
+  - `BalanceCards`: `trading.getBalance`
+  - `PositionTable`: `trading.getPositions`
+- [x] Connected Real Estate UI to live tRPC data
+  - `DealPipeline`: `realestate.getDeals`, `realestate.getPortfolioSummary`
+  - `FeasibilityForm`: `realestate.runFeasibility`
+  - `FeasibilityResult`: renders live analysis output
+- [x] Validation passed
+  - `pnpm run check`
+  - `pnpm run build`
+
+## Architecture Decision - 2026-04-24
+
+- [x] Keep the real-time app core on the current controlled path:
+  - Web/Telegram -> tRPC -> intent/domain routers -> LLM adapter
+- [x] Do not put OpenClaw in front of the app core during Phase 3.
+- [x] Reserve OpenClaw for a later automation layer after Phase 3:
+  - scheduled position summaries
+  - weekly PF reports
+  - market briefing jobs
+  - multi-channel delivery
+- [x] Add `LLMAdapter` first so Gemini/OpenAI/Claude/local models can be switched without rewiring the app.
+
+## Next TODO - LLM Adapter Track
+
+- [x] Add `server/_core/llmAdapter.ts`
+- [x] Move intent classification away from hardcoded `gemini/flash`
+- [x] Move Telegram Workspace command parsing away from hardcoded `gemini/flash`
+- [x] Add LLM adapter environment variables to `.env.example`
+- [ ] Add future adapter implementations only when needed:
+  - `OpenRouterAdapter`
+  - `HermesAdapter`
+  - OpenClaw automation client/skill bridge
+
+<!-- MODIFIED: 2026-04-24 late-night stabilization pass -->
+## Work Log - 2026-04-24 (Late Night)
+
+- [x] Stabilized dev boot without local Redis by deferring BullMQ creation in alert scheduler
+  - Updated `server/alerts/alertEngine.ts`
+  - Queue/worker now initialize only on `startAlertScheduler()` call
+  - Result: app bootstrap no longer fails just because Redis is unavailable at startup
+- [x] Added normalized Redis connection error message
+  - Updated `server/_core/redis.ts`
+  - Connection failures now surface actionable message instead of raw low-level errors
+- [x] Runtime verification
+  - `pnpm run check` passed
+  - `pnpm run build` passed
+  - `pnpm run dev` served successfully on `http://localhost:4000`
+  - Route checks passed: `/`, `/chat`, `/trading`, `/real-estate-pf`, `/google`
+- [x] Unified user-facing error messages in tRPC core
+  - Updated `server/_core/trpc.ts`
+  - Added centralized normalization for:
+    - missing Google OAuth connection
+    - missing API key configuration
+    - missing `WORKSPACE_SPREADSHEET_ID`
+    - Redis connection failure
+  - Result: frontend now receives actionable messages instead of provider/raw low-level text
+- [x] Google Workspace regression smoke check (no-auth baseline)
+  - `googleWorkspace.getAuthUrl` responded `200`
+  - `googleWorkspace.isAuthenticated` responded `200` with `authenticated:false`
+  - `googleWorkspace.gmail.getEmails` (unauthenticated state) returns normalized actionable OAuth message
+- [x] Unified intent response format across channels
+  - Added shared formatter `formatIntentRouteMessage` in `server/intent/intentService.ts`
+  - `server/routers/intent.ts` now returns `formattedMessage` for web clients
+  - Web chat (`UnifiedChatInterface`) now renders server-provided formatted intent output
+  - Telegram bot now uses the same shared formatter (same structure as web)
+
+- [x] Query-intent fallback mapping stabilized
+  - Updated `server/intent/intentService.ts`
+  - Repaired fallback keyword matching for 7 query actions:
+    - balance, positions, technical analysis, risk calc, PF summary, feasibility, DART disclosures
+  - Replaced broken fallback literals with valid Korean/English keyword checks
+- [x] Execute confirmation payload enhanced (foundation)
+  - `IntentRouteResponse` now includes optional `confirmation` payload
+  - execute-intent without approval now returns structured `action/domain/params`
+  - formatter now includes compact parameter preview and next-step hint
+
+- [x] Execute-intent confirmation + execution wiring
+  - Updated `server/intent/intentService.ts`
+  - Added execute actions:
+    - `trading_add_alert`
+    - `realestate_add_deal`
+    - `realestate_update_deal_stage`
+    - `google_create_event`
+    - `google_write_sheet`
+  - `allowExecute=false`: returns structured `confirmation` payload for approval step
+  - `allowExecute=true`: runs real execution path for each action
+- [x] Phase 3 UI-backend wiring finalized (Task 19)
+  - Updated `client/src/pages/TradingPage.tsx`
+    - connected dashboard quick-action buttons to `/chat?command=...`
+    - normalized tab labels/text to readable Korean UI
+  - Updated `client/src/components/home/PFSummaryWidget.tsx`
+    - cleaned widget text and preserved live tRPC-based counters
+  - Updated `client/src/components/home/QuickCommandWidget.tsx`
+    - aligned quick commands with current intent-router actions
+  - Marked Task 19 checklist items complete in TODO
+
+## Final Wrap-up - 2026-04-25
+
+- [x] Phase 3 backend integration completed
+  - domain routers: trading / realestate / finance
+  - intent router + shared intent service connected to web and Telegram flows
+  - LLM adapter scaffold (`direct`) introduced and hardcoded Gemini intent parsing removed
+- [x] Runtime stabilization completed
+  - Redis dependency no longer crashes dev bootstrap (lazy BullMQ queue init)
+  - Redis/user-facing error messages normalized
+  - OAuth/API key/env error messages normalized in tRPC core
+- [x] UI-backend wiring completed
+  - trading dashboard widgets, PF widgets, quick commands connected to live tRPC and intent flow
+  - dashboard quick-action buttons now route to AI chat commands
+- [x] Execute-intent confirmation flow added
+  - `allowExecute=false`: confirmation payload and preview
+  - `allowExecute=true`: real execution wiring for alert/PF/calendar/sheets paths
+- [x] Validation history
+  - repeated `pnpm run check` pass
+  - repeated `pnpm run build` pass

@@ -1,4 +1,10 @@
-const actions = ["잔고 조회", "포지션 확인", "BTC 분석", "PF 딜 현황", "사업성 분석"];
+const actions = [
+  "잔고 조회",
+  "포지션 확인",
+  "BTC 기술적 분석",
+  "PF 포트폴리오 요약",
+  "사업성 분석",
+];
 
 type QuickActionsProps = {
   onSelect: (text: string) => void;
@@ -21,3 +27,4 @@ export default function QuickActions({ onSelect, disabled = false }: QuickAction
     </div>
   );
 }
+

@@ -67,6 +67,7 @@ export default function UnifiedChatInterface() {
 
   // Mutations
   const chatMutation = trpc.llm.chat.useMutation();
+  const intentRouteMutation = trpc.intent.route.useMutation(); // MODIFIED: run intent-based domain routing before generic chat fallback.
   const saveWebMessageMutation = trpc.chatSync.saveWebMessage.useMutation();
   const forwardToTelegramMutation = trpc.chatSync.forwardToTelegram.useMutation();
   const switchEngineMutation = trpc.llm.switchEngineAndModel.useMutation();
@@ -171,33 +172,50 @@ export default function UnifiedChatInterface() {
         });
       }
 
-      // Get AI response
-      const result = await chatMutation.mutateAsync({ message: userMessage });
+      // Get AI response (intent route first, fallback to generic LLM chat)
+      let aiResponseText = ""; // MODIFIED: unify downstream persistence/rendering regardless of response source.
+      if (isAuthenticated) { // MODIFIED: intent.route is protected, so call only for authenticated users.
+        try { // MODIFIED: do not fail entire send flow if intent routing endpoint errors.
+          const routed = await intentRouteMutation.mutateAsync({ message: userMessage }); // MODIFIED: attempt domain action routing first.
+          if (typeof (routed as any).formattedMessage === "string" && (routed as any).formattedMessage.trim()) {
+            aiResponseText = (routed as any).formattedMessage; // MODIFIED: consume shared server formatter for consistent intent response structure.
+          } else if (routed.requiresConfirmation || routed.handled) {
+            aiResponseText = routed.response; // MODIFIED: fallback for compatibility if formatter field is absent.
+          }
+        } catch (intentError) {
+          console.warn("Intent route failed, fallback to llm.chat:", intentError); // MODIFIED: explicit fallback diagnostics for intent path failures.
+        }
+      }
+
+      if (!aiResponseText) { // MODIFIED: preserve original chat behavior for unmatched intents or anonymous mode.
+        const result = await chatMutation.mutateAsync({ message: userMessage });
+        aiResponseText = result.response;
+      }
 
       // Save AI response to DB only if logged in
       if (conversationId) {
         await saveWebMessageMutation.mutateAsync({
           conversationId,
           role: "assistant",
-          content: result.response,
+          content: aiResponseText, // MODIFIED: persist routed or fallback response uniformly.
         });
         // Forward both messages to Telegram (양방향 sync)
         forwardToTelegramMutation.mutate({
           conversationId,
           userMessage,
-          aiResponse: result.response,
+          aiResponse: aiResponseText, // MODIFIED: forward unified response payload.
         });
       }
 
       const aiMsg: UnifiedMessage = {
         id: (Date.now() + 1).toString(),
         role: "assistant",
-        content: result.response,
+        content: aiResponseText, // MODIFIED: render final response text independent of execution path.
         source: "web",
         timestamp: new Date(),
       };
       setMessages((prev) => [...prev, aiMsg]);
-      tts.speak(result.response); // ADDED: read AI responses aloud when TTS is enabled.
+      tts.speak(aiResponseText); // MODIFIED: speak intent-routed response or LLM fallback response.
     } catch (error) {
       toast.error("메시지 전송에 실패했습니다.");
       console.error("Error sending message:", error);

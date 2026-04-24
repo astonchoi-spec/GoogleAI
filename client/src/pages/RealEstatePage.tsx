@@ -4,21 +4,21 @@ import FeasibilityForm from "@/components/realestate/FeasibilityForm";
 import FeasibilityResult from "@/components/realestate/FeasibilityResult";
 import LandSearch from "@/components/realestate/LandSearch";
 
-const tabs = ["딜 파이프라인", "사업성분석", "토지조회"] as const;
+const tabs = ["파이프라인", "사업성분석", "토지조회"] as const;
 type RealEstateTab = (typeof tabs)[number];
 
 export default function RealEstatePage() {
-  const [activeTab, setActiveTab] = useState<RealEstateTab>("딜 파이프라인");
-  const [showResult, setShowResult] = useState(true);
+  const [activeTab, setActiveTab] = useState<RealEstateTab>("파이프라인");
+  const [feasibilityData, setFeasibilityData] = useState<{ result: any; report: string } | null>(null);
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-slate-900 via-slate-950 to-black px-4 md:px-8 py-4">
       <div className="mx-auto max-w-6xl space-y-6">
         <div>
           <h1 className="bg-gradient-to-r from-cyan-400 to-blue-500 bg-clip-text text-2xl font-bold leading-tight text-transparent md:text-3xl">
-            부동산PF
+            부동산 PF
           </h1>
-          <p className="mt-1 text-sm text-slate-400">PF 딜 파이프라인, 사업성, 토지 정보를 통합 관리합니다.</p>
+          <p className="mt-1 text-sm text-slate-400">PF deal pipeline, feasibility analysis, and land data lookup.</p>
         </div>
 
         <div className="flex gap-1 rounded-lg border border-slate-700 bg-slate-800/50 p-1">
@@ -37,11 +37,11 @@ export default function RealEstatePage() {
           ))}
         </div>
 
-        {activeTab === "딜 파이프라인" && <DealPipeline />}
+        {activeTab === "파이프라인" && <DealPipeline />}
         {activeTab === "사업성분석" && (
           <div className="space-y-4">
-            <FeasibilityForm onRun={() => setShowResult(true)} />
-            {showResult && <FeasibilityResult />}
+            <FeasibilityForm onRun={(payload) => setFeasibilityData(payload)} /> {/* MODIFIED: render feasibility result from real mutation output. */}
+            <FeasibilityResult data={feasibilityData} /> {/* MODIFIED: replace static result card with backend-driven analysis data. */}
           </div>
         )}
         {activeTab === "토지조회" && <LandSearch />}
@@ -49,3 +49,4 @@ export default function RealEstatePage() {
     </div>
   );
 }
+

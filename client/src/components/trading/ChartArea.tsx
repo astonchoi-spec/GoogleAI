@@ -1,19 +1,40 @@
 import { LineChart } from "lucide-react";
+import { trpc } from "@/lib/trpc";
 
 export default function ChartArea() {
-  // TODO: 여기에 tRPC 연결
+  const analysis = trpc.trading.getTechnicalAnalysis.useQuery({
+    exchange: "binance",
+    symbol: "BTC/USDT",
+    timeframe: "1h",
+    limit: 200,
+  }); // MODIFIED: render live technical-analysis briefing in place of static chart placeholder.
+
   return (
     <div className="rounded-xl border border-slate-700 bg-slate-900/50 p-4">
       <div className="mb-3 flex items-center justify-between">
-        <h2 className="text-sm font-semibold text-white">차트 영역</h2>
-        <span className="text-xs text-slate-500">lightweight-charts 예정</span>
+        <h2 className="text-sm font-semibold text-white">Technical Snapshot</h2>
+        <span className="text-xs text-slate-500">BTC/USDT · 1h</span>
       </div>
-      <div className="flex h-72 items-center justify-center rounded-lg border border-dashed border-slate-700 bg-slate-950/70">
-        <div className="text-center">
-          <LineChart className="mx-auto mb-3 h-9 w-9 text-slate-600" />
-          <p className="text-sm text-slate-400">실시간 차트 연결 대기</p>
-        </div>
+      <div className="rounded-lg border border-dashed border-slate-700 bg-slate-950/70 p-4">
+        {analysis.isLoading && (
+          <div className="flex h-56 items-center justify-center text-slate-400">Loading analysis...</div>
+        )}
+        {analysis.error && (
+          <div className="flex h-56 items-center justify-center text-red-300">{analysis.error.message}</div>
+        )}
+        {analysis.data && (
+          <div className="space-y-3">
+            <div className="flex items-center gap-2 text-cyan-300">
+              <LineChart className="h-4 w-4" />
+              <span className="text-xs">Indicator briefing</span>
+            </div>
+            <pre className="max-h-56 overflow-auto whitespace-pre-wrap text-xs text-slate-300">
+              {analysis.data.briefing}
+            </pre>
+          </div>
+        )}
       </div>
     </div>
   );
 }
+

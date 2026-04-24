@@ -12,6 +12,8 @@ import { getModel, getModelsByEngine, getAllEngines, getDefaultModel } from "./m
 import { getOrCreateConversation, getOrCreateTelegramConversation, getConversationByTelegramChatId, saveMessage } from "../db-chat.ts";
 import { registerTelegramBot } from "../telegram-service.ts";
 import { googleAuthManager } from "../routers/google-workspace.ts";
+import { formatIntentRouteMessage, routeIntentMessage } from "../intent/intentService.ts"; // MODIFIED: reuse shared formatter to keep Telegram output aligned with web intent responses.
+import { llmAdapter } from "../_core/llmAdapter.ts"; // MODIFIED: use central LLM adapter for command parsing instead of hardcoded Gemini Flash.
 import GmailConnector from "../google/gmail.ts";
 import CalendarConnector from "../google/calendar.ts";
 import DriveConnector from "../google/drive.ts";
@@ -245,22 +247,7 @@ For date-only events with no explicit time, set isAllDay to true and set endTime
 Return ONLY the JSON object, no other text.`;
 
     try {
-      const response = await this.llmCaller.call(
-        "gemini",
-        "flash",
-        [{ role: "user", content: message }],
-        intentPrompt
-      );
-
-      // Extract JSON from response (handle markdown code blocks)
-      let jsonStr = response.content.trim();
-      const jsonMatch = jsonStr.match(/\{[\s\S]*\}/);
-      if (!jsonMatch) {
-        console.log("[Workspace] No JSON found in:", jsonStr.slice(0, 100));
-        return null;
-      }
-      jsonStr = jsonMatch[0];
-      const intent = JSON.parse(jsonStr);
+      const intent = await llmAdapter.parseJson<any>(message, intentPrompt); // MODIFIED: adapter extracts JSON and honors LLM_PROVIDER/LLM_MODEL_KEY config.
       console.log("[Workspace] Detected intent:", intent.action);
 
       if (!intent || intent.action === "none") return null;
@@ -412,6 +399,25 @@ Return ONLY the JSON object, no other text.`;
           if (conversationId !== null) {
             try {
               await saveMessage(conversationId, "assistant", workspaceResult, "telegram", sentMessage.message_id);
+            } catch {}
+          }
+          return;
+        }
+
+        const routingUserId = (await this.getConnectedGoogleUserId()) ?? ctx.session.userId; // MODIFIED: align intent routing auth context with available Google auth linkage.
+        const routed = await routeIntentMessage({ // MODIFIED: apply same intent-query routing path used by web chat before generic LLM fallback.
+          userId: routingUserId,
+          message: userMessage,
+          allowExecute: false,
+        });
+        const routedText = formatIntentRouteMessage(routed); // MODIFIED: render the same server formatter output used by web clients.
+        if (routedText) {
+          const sentMessage = await ctx.reply(routedText, {
+            reply_parameters: { message_id: ctx.message.message_id },
+          });
+          if (conversationId !== null) {
+            try {
+              await saveMessage(conversationId, "assistant", routedText, "telegram", sentMessage.message_id); // MODIFIED: persist routed assistant output in unified conversation history.
             } catch {}
           }
           return;

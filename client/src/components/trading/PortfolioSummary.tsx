@@ -1,37 +1,65 @@
 import { Activity, Bell, Wallet } from "lucide-react";
+import { trpc } from "@/lib/trpc";
 
-const metrics = [
-  { label: "총자산", value: "8,214 USDT", tone: "text-white" },
-  { label: "총손익", value: "+324.80 USDT", tone: "text-[#00c853]" },
-  { label: "활성 포지션", value: "4개", tone: "text-cyan-300" },
-];
+function sumTotalAssets(total: Record<string, number>): number {
+  return Object.values(total).reduce((sum, value) => sum + (Number.isFinite(value) ? value : 0), 0);
+}
+
+function formatNumber(value: number, max = 2): string {
+  return value.toLocaleString("en-US", { maximumFractionDigits: max });
+}
 
 export default function PortfolioSummary() {
-  // TODO: 여기에 tRPC 연결
+  const binanceBalance = trpc.trading.getBalance.useQuery({ exchange: "binance" }); // MODIFIED: replace static summary metrics with live balance data from trading router.
+  const positions = trpc.trading.getPositions.useQuery({ exchange: "binance" }); // MODIFIED: compute active position count and PnL from backend positions query.
+  const alerts = trpc.trading.listAlerts.useQuery(undefined, { retry: false }); // MODIFIED: show active alert count from alert engine instead of hardcoded number.
+
+  const totalAsset =
+    (binanceBalance.data ? sumTotalAssets(binanceBalance.data.total) : 0);
+  const totalPnl = (positions.data ?? []).reduce((sum, p) => sum + (p.unrealizedPnl ?? 0), 0);
+  const activePositions = (positions.data ?? []).length;
+  const activeAlerts = (alerts.data ?? []).filter((a) => a.active).length;
+
+  const loading = binanceBalance.isLoading || positions.isLoading;
+  const hasError = !!binanceBalance.error || !!positions.error;
+
   return (
     <div className="rounded-xl border border-slate-700 bg-slate-900/50 p-4">
       <div className="mb-4 flex items-center gap-2">
         <Wallet className="h-4 w-4 text-cyan-400" />
-        <h2 className="text-sm font-semibold text-white">포트폴리오 요약</h2>
+        <h2 className="text-sm font-semibold text-white">Portfolio Summary</h2>
       </div>
       <div className="grid gap-3 sm:grid-cols-3">
-        {metrics.map((metric) => (
-          <div key={metric.label} className="rounded-lg border border-slate-700 bg-slate-800/70 p-3">
-            <p className="text-xs text-slate-500">{metric.label}</p>
-            <p className={`mt-1 text-lg font-semibold ${metric.tone}`}>{metric.value}</p>
-          </div>
-        ))}
+        <div className="rounded-lg border border-slate-700 bg-slate-800/70 p-3">
+          <p className="text-xs text-slate-500">Total Asset (Binance)</p>
+          <p className="mt-1 text-lg font-semibold text-white">
+            {loading ? "Loading..." : hasError ? "Unavailable" : `${formatNumber(totalAsset)} USDT`}
+          </p>
+        </div>
+        <div className="rounded-lg border border-slate-700 bg-slate-800/70 p-3">
+          <p className="text-xs text-slate-500">Unrealized PnL</p>
+          <p className={`mt-1 text-lg font-semibold ${totalPnl >= 0 ? "text-[#00c853]" : "text-[#ff1744]"}`}>
+            {loading ? "Loading..." : hasError ? "Unavailable" : `${totalPnl >= 0 ? "+" : ""}${formatNumber(totalPnl)} USDT`}
+          </p>
+        </div>
+        <div className="rounded-lg border border-slate-700 bg-slate-800/70 p-3">
+          <p className="text-xs text-slate-500">Open Positions</p>
+          <p className="mt-1 text-lg font-semibold text-cyan-300">
+            {loading ? "Loading..." : hasError ? "Unavailable" : `${activePositions}`}
+          </p>
+        </div>
       </div>
       <div className="mt-4 grid gap-2 sm:grid-cols-2">
         <div className="flex items-center gap-2 rounded-lg bg-cyan-950/30 px-3 py-2 text-xs text-cyan-300">
           <Activity className="h-3.5 w-3.5" />
-          실시간 포지션 감시 준비됨
+          Live position snapshot enabled
         </div>
         <div className="flex items-center gap-2 rounded-lg bg-blue-950/30 px-3 py-2 text-xs text-blue-300">
           <Bell className="h-3.5 w-3.5" />
-          가격/RSI 알림 3개 활성
+          Active alerts: {alerts.isLoading ? "..." : activeAlerts}
         </div>
       </div>
     </div>
   );
 }
+

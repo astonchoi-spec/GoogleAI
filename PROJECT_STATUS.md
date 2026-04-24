@@ -274,3 +274,64 @@ ollama pull gemma4:e4b
 
 **마지막 업데이트**: 2026-04-21
 **상태**: 기능 구현 완료, 구동 환경 설정 진행 중
+
+<!-- MODIFIED: 2026-04-24 status refresh after Phase 3 integration work -->
+## Status Update - April 24, 2026
+
+- Phase 3 integration is now in active implementation.
+- Completed today:
+  - Domain routers: `trading`, `realestate`, `finance`
+  - Intent router and shared intent service (`classify`, `route`)
+  - Web chat intent-first routing with safe fallback to generic LLM
+  - Telegram intent-first routing with safe fallback to generic LLM
+  - Trading page live data wiring (`getBalance`, `getPositions`)
+  - Real estate page live data wiring (`getDeals`, `getPortfolioSummary`, `runFeasibility`)
+- Validation:
+  - `pnpm run check` passed
+  - `pnpm run build` passed
+
+## Architecture Decision - April 24, 2026
+
+- Real-time app core remains in the existing app server:
+  - Web/Telegram -> tRPC -> intent/domain routers -> LLM adapter
+- OpenClaw is not part of the Phase 3 real-time request path.
+- OpenClaw is reserved for a later automation layer after Phase 3, focused on cron/skill routines such as daily position summaries, weekly PF reports, and scheduled market briefings.
+- `LLMAdapter` is the immediate abstraction point for model/provider switching.
+- Current implementation keeps the `direct` adapter over existing `LLMCaller`, preserving current behavior while removing hardcoded Gemini Flash calls from intent and Telegram Workspace parsing.
+
+<!-- MODIFIED: 2026-04-24 late-night runtime stabilization -->
+## Status Update - April 24, 2026 (Late Night)
+
+- Dev runtime bootstrap is stabilized when Redis is not running locally.
+- `server/alerts/alertEngine.ts` now creates BullMQ queue/worker lazily only when alert scheduling is requested.
+- `server/_core/redis.ts` now normalizes connection failures into actionable error messages.
+- Verification completed:
+  - `pnpm run check` passed
+  - `pnpm run build` passed
+  - `pnpm run dev` booted successfully
+  - Route probes returned `200`: `/`, `/chat`, `/trading`, `/real-estate-pf`, `/google`
+- Added centralized tRPC error normalization for OAuth/API-key/env/Redis failures in `server/_core/trpc.ts`.
+- This ensures user-facing errors are actionable and consistent across trading/real-estate/finance/google routes.
+- Standardized intent-route response formatting for both web chat and Telegram.
+- Added server-side formatter and exposed `formattedMessage` in intent route responses for consistent rendering.
+- Intent query fallback mapping was stabilized and string-literal corruption in fallback keyword detection was repaired.
+- Execute-intent confirmation response now carries structured payload (`confirmation.action/domain/params`) and formatted preview for approval UX.
+- Execute-intent routing now supports real operations with confirmation gate:
+  - trading alert creation
+  - PF deal create/stage update
+  - Google Calendar event creation
+  - Google Sheets write
+- Confirmation-first flow remains default (`allowExecute=false`), with explicit run on approval (`allowExecute=true`).
+- Phase 3 Task 19 UI wiring closed:
+  - Trading dashboard quick actions now open AI chat with command prefill.
+  - Home PF/quick-command widgets are fully aligned with live backend+intent flows.
+  - Task 19 checklist was completed in TODO.
+
+## Final Wrap-up - April 25, 2026
+
+- Phase 3 integration and routing pipeline completed across web + Telegram.
+- Query-intent and execute-intent flows are now separated with confirmation-first execution control.
+- LLM adapter abstraction introduced for provider/model swap readiness.
+- Dev runtime stability improved (Redis dependency behavior and actionable error normalization).
+- Home/Trading/Real-estate UI wiring now reflects live backend results and command routing.
+- Final validations in this session: `pnpm run check` passed, `pnpm run build` passed.

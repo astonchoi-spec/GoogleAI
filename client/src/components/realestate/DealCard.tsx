@@ -6,7 +6,7 @@ type DealCardProps = {
 };
 
 export default function DealCard({ deal, onClick }: DealCardProps) {
-  // TODO: 여기에 tRPC 연결
+  // MODIFIED: legacy presentational card kept for compatibility; active PF flow uses tRPC-backed table in DealPipeline.
   return (
     <button
       onClick={() => onClick(deal)}
@@ -15,7 +15,7 @@ export default function DealCard({ deal, onClick }: DealCardProps) {
       <p className="font-semibold text-white">{deal.name}</p>
       <p className="mt-1 text-xs text-slate-500">{deal.location}</p>
       <div className="mt-3 flex items-center justify-between text-xs">
-        <span className="text-slate-400">총사업비</span>
+        <span className="text-slate-400">Total Project Cost</span>
         <span className="font-medium text-slate-200">{deal.amount}</span>
       </div>
       <div className="mt-1 flex items-center justify-between text-xs">
@@ -25,3 +25,4 @@ export default function DealCard({ deal, onClick }: DealCardProps) {
     </button>
   );
 }
+

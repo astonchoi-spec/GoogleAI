@@ -9,6 +9,10 @@ import { llmRouter } from "./routers/llm.ts";
 import { googleWorkspaceRouter } from "./routers/google-workspace.ts";
 import { apiSettingsRouter } from "./routers/api-settings.ts";
 import { chatSyncRouter } from "./routers/chat-sync.ts";
+import { tradingRouter } from "./routers/trading.ts"; // MODIFIED: Phase 3 trading domain router registration
+import { realestateRouter } from "./routers/realestate.ts"; // MODIFIED: Phase 3 real estate PF router registration
+import { financeRouter } from "./routers/finance.ts"; // MODIFIED: Phase 3 finance router registration
+import { intentRouter } from "./routers/intent.ts"; // MODIFIED: Phase 3 intent routing entrypoint registration
 
 const ADMIN_USERNAME = "admin";
 const ADMIN_PASSWORD = "admin123";
@@ -57,6 +61,10 @@ export const appRouter = router({
   googleWorkspace: googleWorkspaceRouter,
   apiSettings: apiSettingsRouter,
   chatSync: chatSyncRouter,
+  trading: tradingRouter, // MODIFIED: expose trading procedures via appRouter
+  realestate: realestateRouter, // MODIFIED: expose real estate PF procedures via appRouter
+  finance: financeRouter, // MODIFIED: expose finance(DART) procedures via appRouter
+  intent: intentRouter, // MODIFIED: expose intent classify/route procedures for AI action routing
 });
 
 export type AppRouter = typeof appRouter;

@@ -17,6 +17,8 @@ class RedisService {
     try {
       this.client = await this.connecting;
       return this.client;
+    } catch (error) {
+      throw this.wrapConnectionError(error); // MODIFIED: normalize Redis connection failures into actionable app-level errors.
     } finally {
       this.connecting = null;
     }
@@ -66,14 +68,48 @@ class RedisService {
   private async createAndConnectClient(): Promise<RedisClientType> {
     const client = createClient({
       url: process.env.REDIS_URL || "redis://localhost:6379",
+      socket: {
+        connectTimeout: 2000, // MODIFIED: fail fast in local/dev when Redis is unavailable.
+        reconnectStrategy: () => false, // MODIFIED: disable endless reconnect loops that block startup and diagnostics.
+      },
     });
 
     client.on("error", (error) => {
-      console.warn("[Redis] Client error:", error instanceof Error ? error.message : String(error));
+      const baseMessage = error instanceof Error ? error.message : String(error); // MODIFIED: preserve direct message first.
+      const detail = this.extractAggregateDetails(error); // MODIFIED: AggregateError often carries connection details in nested `errors`.
+      const message = (baseMessage || detail || "unknown redis client error").trim();
+      console.warn("[Redis] Client error:", message);
     });
 
     await client.connect();
     return client as RedisClientType;
+  }
+
+  private wrapConnectionError(error: unknown): Error {
+    const aggregateDetails = this.extractAggregateDetails(error); // MODIFIED: recover nested ECONNREFUSED details from AggregateError.
+    const rawMessage = error instanceof Error ? error.message : String(error); // MODIFIED: preserve original details for debugging.
+    const combined = `${rawMessage} ${aggregateDetails}`.trim();
+    const normalized = combined.toLowerCase();
+    if (
+      normalized.includes("econnrefused")
+      || normalized.includes("connect")
+      || normalized.includes("redis")
+    ) {
+      return new Error(
+        "Redis connection failed. Start Redis on localhost:6379 or set REDIS_URL to a reachable instance."
+      );
+    }
+    return new Error(`Redis operation failed: ${combined || "unknown error"}`);
+  }
+
+  private extractAggregateDetails(error: unknown): string {
+    const maybeAggregate = error as { errors?: unknown[] } | null; // MODIFIED: safely inspect AggregateError-like shape without hard dependency.
+    if (!maybeAggregate?.errors || !Array.isArray(maybeAggregate.errors)) return "";
+    const joined = maybeAggregate.errors
+      .map((entry) => (entry instanceof Error ? entry.message : String(entry)))
+      .filter((message) => message && message.trim().length > 0)
+      .join(" | ");
+    return joined;
   }
 }
 

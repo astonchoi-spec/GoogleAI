@@ -424,3 +424,14 @@
 - [ ] API 키가 없는 상태의 에러 UI 확인
 - [ ] Redis가 없는 상태의 에러 메시지 확인
 - [ ] Google OAuth가 없는 상태의 에러 메시지 확인
+
+## 2026-04-24 Smoke Test Update
+
+- [x] `pnpm run check`
+- [x] `pnpm run build`
+- [x] `pnpm run test`
+- [x] `/`, `/chat`, `/trading`, `/real-estate-pf`, `/google`, `/finance` routes smoke-tested
+- [ ] Google Workspace feature completeness
+- [ ] API missing-state UI review
+- [ ] Redis missing-state UI review
+- [ ] Google OAuth missing-state UI review

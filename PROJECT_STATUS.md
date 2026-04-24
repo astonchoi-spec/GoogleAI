@@ -279,3 +279,8 @@ ollama pull gemma4:e4b
 
 **Update**: 2026-04-24
 **Status**: Finance DART router and UI page added; navigation updated.
+
+---
+
+**Update**: 2026-04-24 Smoke Test
+**Status**: Core routes verified in browser; remaining work is Google Workspace feature completeness and missing-state review.

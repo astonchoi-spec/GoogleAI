@@ -435,3 +435,11 @@
 - [ ] API missing-state UI review
 - [ ] Redis missing-state UI review
 - [ ] Google OAuth missing-state UI review
+
+## 2026-04-24 Master Plan Sync
+
+- reference: `docs/WORKLIST_MASTER_2026-04-24.md`
+- current focus: `Phase 1.5`
+- next tasks:
+  - [ ] `6-1` Trading market tabs + TradingView advanced chart widget
+  - [ ] `6-2` Journal manual form + csv import UI

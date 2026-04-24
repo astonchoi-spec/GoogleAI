@@ -11,6 +11,7 @@ import { apiSettingsRouter } from "./routers/api-settings.ts";
 import { chatSyncRouter } from "./routers/chat-sync.ts";
 import { tradingRouter } from "./trpc/routers/trading.ts";
 import { realestateRouter } from "./trpc/routers/realestate.ts";
+import { financeRouter } from "./trpc/routers/finance.ts";
 
 const ADMIN_USERNAME = "admin";
 const ADMIN_PASSWORD = "admin123";
@@ -61,6 +62,7 @@ export const appRouter = router({
   chatSync: chatSyncRouter,
   trading: tradingRouter,
   realestate: realestateRouter,
+  finance: financeRouter,
 });
 
 export type AppRouter = typeof appRouter;

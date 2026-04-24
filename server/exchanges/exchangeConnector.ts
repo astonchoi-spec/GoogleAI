@@ -1,6 +1,6 @@
 import ccxt from "ccxt";
 
-export type SupportedExchangeId = "binance" | "upbit" | "bybit";
+export type SupportedExchangeId = "gate" | "binance" | "upbit" | "bybit";
 
 export type ExchangeConfig = {
   id: SupportedExchangeId;
@@ -26,9 +26,14 @@ export type NormalizedPosition = {
   liquidationPrice: number | null;
 };
 
-type ExchangeInstance = InstanceType<typeof ccxt.binance> | InstanceType<typeof ccxt.upbit> | InstanceType<typeof ccxt.bybit>;
+type ExchangeInstance =
+  | InstanceType<typeof ccxt.gate>
+  | InstanceType<typeof ccxt.binance>
+  | InstanceType<typeof ccxt.upbit>
+  | InstanceType<typeof ccxt.bybit>;
 
 const exchangeConstructors = {
+  gate: ccxt.gate,
   binance: ccxt.binance,
   upbit: ccxt.upbit,
   bybit: ccxt.bybit,
@@ -38,6 +43,7 @@ export class ExchangeConnector {
   private readonly exchanges = new Map<SupportedExchangeId, ExchangeInstance>();
 
   constructor() {
+    this.addExchangeFromEnv("gate", "GATE_API_KEY", "GATE_SECRET");
     this.addExchangeFromEnv("binance", "BINANCE_API_KEY", "BINANCE_SECRET");
     this.addExchangeFromEnv("upbit", "UPBIT_API_KEY", "UPBIT_SECRET");
     this.addExchangeFromEnv("bybit", "BYBIT_API_KEY", "BYBIT_SECRET");
@@ -55,7 +61,7 @@ export class ExchangeConnector {
         secret: config.secret,
         password: config.password,
         enableRateLimit: true,
-        options: config.id === "binance" ? { defaultType: "future" } : undefined,
+        options: ["binance", "gate"].includes(config.id) ? { defaultType: "future" } : undefined,
       };
 
       const exchange = new ExchangeClass(exchangeConfig);

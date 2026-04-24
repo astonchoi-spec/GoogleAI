@@ -137,7 +137,7 @@ export default function TradeJournal({ market }: { market: TradingMarket }) {
           <button
             onClick={() =>
               syncMutation.mutate({
-                exchange: "binance",
+                exchange: "gate",
                 symbols: symbols
                   .split(",")
                   .map((item) => item.trim())

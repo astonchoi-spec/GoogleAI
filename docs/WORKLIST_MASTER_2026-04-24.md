@@ -1,8 +1,8 @@
 # Aston Workstation Master Worklist
 
 - last_updated: `2026-04-24`
-- current_focus: `Phase 2 foundation ready`
-- progress: `9/27 completed`
+- current_focus: `Phase 2 realtime prep`
+- progress: `11/27 completed`
 
 ## Real Trading Environment
 
@@ -46,8 +46,8 @@
 
 ### Exchange Integration
 
-- [ ] `7` Gate.io connector (ccxt spot + futures)
-- [ ] `7-1` Kiwoom REST connector (KR stocks + KR futures + US futures)
+- [x] `7` Gate.io connector (ccxt spot + futures)
+- [x] `7-1` Kiwoom REST connector (KR stocks + KR futures + US futures)
 - [ ] `7-2` Kiwoom websocket realtime feed
 - [ ] `7-3` TradingView webhook receiver (alert to telegram / auto-order)
 - [ ] `8` Upbit websocket (kimchi premium monitor)
@@ -78,7 +78,7 @@
 
 ## Recommended Execution Order
 
-1. Phase 2 foundation: `7`, `7-1`
+1. Phase 2 foundation: `7`, `7-1` (completed)
 2. Phase 2 realtime: `7-2`, `7-3`, `8`
 3. Phase 2 parallel: `9`, `12`, `10-1`, `13`, `14`, `15`, `16`
 4. Phase 2 dependent final: `10`, `11`
@@ -99,6 +99,6 @@
 
 - phase1: `7` completed
 - phase1_5: `2` completed
-- phase2: `15` pending
+- phase2: `2` completed, `13` pending
 - phase3: `3` pending
-- total: `27` tasks, `9` completed
+- total: `27` tasks, `11` completed

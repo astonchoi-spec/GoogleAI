@@ -4,6 +4,7 @@ import { randomUUID } from "crypto";
 import { protectedProcedure, router } from "../../_core/trpc.ts";
 import { addAlert, getAlerts, removeAlert } from "../../alerts/alertEngine.ts";
 import { exchangeConnector, type SupportedExchangeId } from "../../exchanges/exchangeConnector.ts";
+import { kiwoomRestConnector } from "../../exchanges/kiwoomRest.ts";
 import { redis } from "../../_core/redis.ts";
 import { googleAuthManager } from "../../routers/google-workspace.ts";
 import { getOrCreateConversation } from "../../db-chat.ts";
@@ -11,7 +12,8 @@ import { calculateFuturesRisk, formatRiskReport } from "../../trading/riskCalcul
 import { taEngine, type OhlcvArray } from "../../trading/technicalAnalysis.ts";
 import { TradeJournal } from "../../trading/tradeJournal.ts";
 
-const exchangeSchema = z.enum(["binance", "upbit", "bybit"]);
+const exchangeSchema = z.enum(["gate", "binance", "upbit", "bybit"]);
+const kiwoomMarketSchema = z.enum(["kr-stock", "kr-futures", "us-futures"]);
 const alertTypeSchema = z.enum(["price", "rsi", "funding", "kimchi_premium"]);
 const alertOperatorSchema = z.enum(["above", "below"]);
 
@@ -179,6 +181,29 @@ export const tradingRouter = router({
     .query(async ({ ctx, input }) => {
       const journal = await createTradeJournal(ctx.user.id);
       return journal.getTradeStats(input.period);
+    }),
+
+  getKiwoomBalance: protectedProcedure
+    .input(z.object({ market: kiwoomMarketSchema }))
+    .query(async ({ input }) => {
+      return kiwoomRestConnector.getBalance(input.market);
+    }),
+
+  getKiwoomPositions: protectedProcedure
+    .input(z.object({ market: kiwoomMarketSchema }))
+    .query(async ({ input }) => {
+      return kiwoomRestConnector.getPositions(input.market);
+    }),
+
+  getKiwoomQuote: protectedProcedure
+    .input(
+      z.object({
+        market: kiwoomMarketSchema,
+        symbol: z.string().min(1),
+      })
+    )
+    .query(async ({ input }) => {
+      return kiwoomRestConnector.getQuote(input.market, input.symbol);
     }),
 });
 

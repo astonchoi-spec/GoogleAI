@@ -3,8 +3,8 @@ import { Link } from "wouter";
 import { trpc } from "@/lib/trpc";
 
 export default function TradingSummaryWidget() {
-  const balanceQuery = trpc.trading.getBalance.useQuery({ exchange: "binance" }, { retry: false });
-  const positionsQuery = trpc.trading.getPositions.useQuery({ exchange: "binance" }, { retry: false });
+  const balanceQuery = trpc.trading.getBalance.useQuery({ exchange: "gate" }, { retry: false });
+  const positionsQuery = trpc.trading.getPositions.useQuery({ exchange: "gate" }, { retry: false });
   const alertsQuery = trpc.trading.getAlerts.useQuery(undefined, { retry: false });
 
   return (

@@ -7,7 +7,7 @@ function formatNumber(value: number | null, suffix = "") {
 }
 
 export default function PositionTable() {
-  const positionsQuery = trpc.trading.getPositions.useQuery({ exchange: "binance" }, { retry: false, refetchInterval: 15_000 });
+  const positionsQuery = trpc.trading.getPositions.useQuery({ exchange: "gate" }, { retry: false, refetchInterval: 15_000 });
 
   return (
     <div className="rounded-xl border border-slate-700 bg-slate-900/50 p-4">

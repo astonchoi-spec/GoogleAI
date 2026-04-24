@@ -6,8 +6,8 @@ function formatMoney(value: number, suffix = "USDT") {
 }
 
 export default function PortfolioSummary() {
-  const balanceQuery = trpc.trading.getBalance.useQuery({ exchange: "binance" }, { retry: false });
-  const positionsQuery = trpc.trading.getPositions.useQuery({ exchange: "binance" }, { retry: false });
+  const balanceQuery = trpc.trading.getBalance.useQuery({ exchange: "gate" }, { retry: false });
+  const positionsQuery = trpc.trading.getPositions.useQuery({ exchange: "gate" }, { retry: false });
   const alertsQuery = trpc.trading.getAlerts.useQuery(undefined, { retry: false });
 
   const totalUsdt = balanceQuery.data?.total?.USDT ?? 0;

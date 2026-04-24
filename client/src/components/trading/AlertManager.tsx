@@ -5,7 +5,7 @@ import { trpc } from "@/lib/trpc";
 export default function AlertManager() {
   const [form, setForm] = useState({
     type: "price" as "price" | "rsi" | "funding" | "kimchi_premium",
-    exchange: "binance" as "binance" | "upbit" | "bybit",
+    exchange: "gate" as "gate" | "binance" | "upbit" | "bybit",
     symbol: "BTC/USDT",
     operator: "above" as "above" | "below",
     value: "66000",
@@ -42,6 +42,7 @@ export default function AlertManager() {
           <option value="kimchi_premium">김프</option>
         </select>
         <select value={form.exchange} onChange={(e) => setForm((prev) => ({ ...prev, exchange: e.target.value as typeof form.exchange }))} className="rounded-md border border-slate-600 bg-slate-800 px-3 py-2 text-sm text-white">
+          <option value="gate">Gate.io</option>
           <option value="binance">Binance</option>
           <option value="upbit">Upbit</option>
           <option value="bybit">Bybit</option>

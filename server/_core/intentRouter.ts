@@ -346,9 +346,9 @@ function optionalNumber(value: unknown): number | undefined {
 }
 
 function requiredExchange(value: unknown): SupportedExchangeId {
-  const exchange = requiredString(value, "거래소를 알려주세요. 예: binance, upbit, bybit");
-  if (["binance", "upbit", "bybit"].includes(exchange)) return exchange as SupportedExchangeId;
-  throw new Error("지원 거래소는 binance, upbit, bybit입니다.");
+  const exchange = requiredString(value, "거래소를 알려주세요. 예: gate, binance, upbit, bybit");
+  if (["gate", "binance", "upbit", "bybit"].includes(exchange)) return exchange as SupportedExchangeId;
+  throw new Error("지원 거래소는 gate, binance, upbit, bybit입니다.");
 }
 
 function requiredSide(value: unknown): FuturesRiskInput["side"] {

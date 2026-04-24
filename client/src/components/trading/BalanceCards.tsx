@@ -1,7 +1,7 @@
 import { Loader2 } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 
-function BalanceCard({ exchange, label, color, primaryAsset }: { exchange: "binance" | "upbit"; label: string; color: string; primaryAsset: string }) {
+function BalanceCard({ exchange, label, color, primaryAsset }: { exchange: "gate" | "upbit"; label: string; color: string; primaryAsset: string }) {
   const query = trpc.trading.getBalance.useQuery({ exchange }, { retry: false, refetchInterval: 30_000 });
   const value = query.data?.total?.[primaryAsset];
 
@@ -22,7 +22,7 @@ function BalanceCard({ exchange, label, color, primaryAsset }: { exchange: "bina
           {value.toLocaleString("en-US", { maximumFractionDigits: 4 })} {primaryAsset}
         </p>
       )}
-      <p className="mt-1 text-xs text-slate-500">{exchange === "binance" ? "Futures wallet" : "Spot account"}</p>
+      <p className="mt-1 text-xs text-slate-500">{exchange === "gate" ? "Futures wallet" : "Spot account"}</p>
     </div>
   );
 }
@@ -30,7 +30,7 @@ function BalanceCard({ exchange, label, color, primaryAsset }: { exchange: "bina
 export default function BalanceCards() {
   return (
     <>
-      <BalanceCard exchange="binance" label="Binance" color="text-yellow-300" primaryAsset="USDT" />
+      <BalanceCard exchange="gate" label="Gate.io" color="text-yellow-300" primaryAsset="USDT" />
       <BalanceCard exchange="upbit" label="Upbit" color="text-blue-300" primaryAsset="KRW" />
     </>
   );

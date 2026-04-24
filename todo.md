@@ -450,3 +450,16 @@
 - [x] TradingView advanced chart widget applied
 - [x] `6-2` Journal manual entry form UI added
 - [x] Journal CSV import UI added
+
+## 2026-04-24 Phase 2 Foundation Completion
+
+- [x] `7` Gate.io connector integrated into `exchangeConnector` (`gate` added to supported exchanges)
+- [x] Trading router/input schema updated to allow `gate`
+- [x] Trading UI default exchange switched from `binance` to `gate` for core widgets
+- [x] `7-1` Kiwoom REST connector added (`server/exchanges/kiwoomRest.ts`)
+- [x] Kiwoom tRPC procedures added:
+  - `trading.getKiwoomBalance`
+  - `trading.getKiwoomPositions`
+  - `trading.getKiwoomQuote`
+- [x] `.env.example` extended with Gate and Kiwoom variables
+- [ ] Next focus: `7-2` Kiwoom WebSocket realtime feed

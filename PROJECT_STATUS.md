@@ -294,3 +294,8 @@ ollama pull gemma4:e4b
 
 **Update**: 2026-04-24 Phase 1.5 Completion
 **Status**: Trading market tabs and TradingView advanced widget applied, journal manual entry and CSV UI completed. Next stage is Phase 2 foundation (`7`, `7-1`).
+
+---
+
+**Update**: 2026-04-24 Phase 2 Foundation Completion
+**Status**: Gate.io ccxt connector (`7`) and Kiwoom REST connector (`7-1`) implemented. Trading router now supports `gate`, Kiwoom balance/positions/quote procedures were added, and env template was updated for Gate/Kiwoom keys.

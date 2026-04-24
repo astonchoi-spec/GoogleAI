@@ -13,9 +13,15 @@ export default function GmailPanel() {
   const [subject, setSubject] = useState("");
   const [body, setBody] = useState("");
 
-  const { data, isLoading, refetch } = trpc.googleWorkspace.gmail.getEmails.useQuery({
-    maxResults: 15,
-  });
+  const authQuery = trpc.googleWorkspace.isAuthenticated.useQuery();
+  const isAuthenticated = authQuery.data?.authenticated === true;
+  const { data, isLoading, error, refetch } = trpc.googleWorkspace.gmail.getEmails.useQuery(
+    { maxResults: 15 },
+    {
+      enabled: isAuthenticated,
+      retry: false,
+    }
+  );
 
   const sendMutation = trpc.googleWorkspace.gmail.sendEmail.useMutation({
     onSuccess: () => {
@@ -111,10 +117,22 @@ export default function GmailPanel() {
         )}
       </AnimatePresence>
 
-      {isLoading ? (
+      {authQuery.isLoading || isLoading ? (
         <div className="flex justify-center py-8">
           <Loader2 className="w-6 h-6 animate-spin text-cyan-400" />
         </div>
+      ) : !isAuthenticated ? (
+        <Card className="bg-slate-800/70 border-slate-700 p-4">
+          <p className="text-slate-300 text-sm font-medium">Google 계정 연결이 필요합니다.</p>
+          <p className="text-slate-500 text-xs mt-1">
+            위의 Google 연결 버튼으로 다시 인증하면 Gmail을 불러올 수 있습니다.
+          </p>
+        </Card>
+      ) : error ? (
+        <Card className="bg-red-950/30 border-red-700/50 p-4">
+          <p className="text-red-300 text-sm font-medium">Gmail을 불러오지 못했습니다.</p>
+          <p className="text-red-400/80 text-xs mt-1">{error.message}</p>
+        </Card>
       ) : !data?.emails?.length ? (
         <p className="text-slate-500 text-sm text-center py-8">
           이메일이 없거나 Google 계정이 연결되지 않았습니다.

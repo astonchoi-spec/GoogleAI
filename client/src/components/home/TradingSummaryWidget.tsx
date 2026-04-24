@@ -8,8 +8,10 @@ export default function TradingSummaryWidget() {
   const alertsQuery = trpc.trading.getAlerts.useQuery(undefined, { retry: false });
 
   return (
-    <Link href="/trading">
-      <a className="block rounded-xl border border-border bg-card p-5 transition-colors hover:border-cyan-600/50 hover:bg-card/80">
+    <Link
+      href="/trading"
+      className="block rounded-xl border border-border bg-card p-5 transition-colors hover:border-cyan-600/50 hover:bg-card/80"
+    >
         <div className="mb-4 flex items-center gap-3">
           <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-cyan-500/15">
             <TrendingUp className="h-5 w-5 text-cyan-400" />
@@ -42,7 +44,6 @@ export default function TradingSummaryWidget() {
             </div>
           </div>
         )}
-      </a>
     </Link>
   );
 }

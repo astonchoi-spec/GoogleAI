@@ -190,6 +190,18 @@ export const tradingRouter = router({
       return journal.syncTrades(input.exchange, input.symbols);
     }),
 
+  syncKiwoomJournal: protectedProcedure
+    .input(
+      z.object({
+        market: kiwoomMarketSchema,
+        symbols: z.array(z.string().min(1)).min(1),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      const journal = await createTradeJournal(ctx.user.id);
+      return journal.syncKiwoomTrades(input.market, input.symbols);
+    }),
+
   getTradeStats: protectedProcedure
     .input(z.object({ period: z.enum(["week", "month"]) }))
     .query(async ({ ctx, input }) => {

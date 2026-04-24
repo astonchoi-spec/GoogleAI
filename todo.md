@@ -514,3 +514,12 @@
     - `trading.importManualCsv`
 - [x] CSV parsing + zod validation added on server side
 - [ ] Next focus: `9` Technical indicators engine production hardening
+
+## 2026-04-24 Phase 2 Parallel Step 2 Completion
+
+- [x] `10` Journal automation extended to Kiwoom fills
+  - `kiwoomRestConnector.getMyTrades` added (market별 체결 조회)
+  - `TradeJournal.syncKiwoomTrades` added (Sheets 자동 적재)
+  - `trading.syncKiwoomJournal` tRPC mutation added
+- [x] Kiwoom trade endpoint path/TR-ID env keys added to `.env.example`
+- [ ] Next focus: `9` / `12` 검증 및 마무리(analysis/risk hardening)

@@ -319,3 +319,8 @@ ollama pull gemma4:e4b
 
 **Update**: 2026-04-24 Phase 2 Parallel Step 1 Completion
 **Status**: Manual/CSV trade journal backend (`10-1`) implemented with Google Sheets persistence (`ManualTrades`) and tRPC APIs for add/list/csv-import.
+
+---
+
+**Update**: 2026-04-24 Phase 2 Parallel Step 2 Completion
+**Status**: Journal automation (`10`) expanded to include Kiwoom fills via `getMyTrades` + `syncKiwoomJournal`, alongside existing ccxt-based sync.

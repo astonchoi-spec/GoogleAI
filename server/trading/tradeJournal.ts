@@ -1,5 +1,6 @@
 import { google, type Auth, type sheets_v4 } from "googleapis";
 import { exchangeConnector, type SupportedExchangeId } from "../exchanges/exchangeConnector.ts";
+import { kiwoomRestConnector, type KiwoomMarket } from "../exchanges/kiwoomRest.ts";
 import { redis } from "../_core/redis.ts";
 
 type TradeSide = "buy" | "sell";
@@ -80,6 +81,51 @@ export class TradeJournal {
         const journalTrade = this.normalizeTrade(exchangeId, symbol, trade);
         rows.push(this.toSheetRow(journalTrade));
         newestTimestamp = Math.max(newestTimestamp, journalTrade.timestamp);
+      }
+    }
+
+    if (rows.length > 0) {
+      await this.ensureSheet();
+      await this.sheets.spreadsheets.values.append({
+        spreadsheetId: this.spreadsheetId,
+        range: `${this.sheetName}!A:H`,
+        valueInputOption: "USER_ENTERED",
+        requestBody: {
+          values: rows,
+        },
+      });
+      await redis.set(lastSyncKey, String(newestTimestamp));
+    }
+
+    return { synced: rows.length };
+  }
+
+  async syncKiwoomTrades(market: KiwoomMarket, symbols: string[]): Promise<{ synced: number }> {
+    if (symbols.length === 0) {
+      return { synced: 0 };
+    }
+
+    const lastSyncKey = `journal:kiwoom:${market}:lastSync`;
+    const lastSyncRaw = await redis.get(lastSyncKey);
+    const since = this.parseSince(lastSyncRaw);
+    const rows: unknown[][] = [];
+    let newestTimestamp = since;
+
+    for (const symbol of symbols) {
+      const trades = await kiwoomRestConnector.getMyTrades(market, symbol, since, 200);
+      for (const trade of trades) {
+        const journalTrade: JournalTrade = {
+          timestamp: trade.timestamp,
+          exchange: `kiwoom-${market}`,
+          symbol: trade.symbol,
+          side: trade.side,
+          price: trade.price,
+          amount: trade.amount,
+          cost: trade.cost,
+          fee: trade.fee,
+        };
+        rows.push(this.toSheetRow(journalTrade));
+        newestTimestamp = Math.max(newestTimestamp, trade.timestamp);
       }
     }
 

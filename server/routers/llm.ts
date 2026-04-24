@@ -9,6 +9,7 @@ import { LLMCaller } from "../llm/caller.ts";
 import { sessionManager } from "../llm/session.ts";
 import { getModel, getModelsByEngine, getAllEngines, getDefaultModel } from "../llm/models.ts";
 import type { LLMEngine } from "../llm/models.ts";
+import { executeIntent, parseIntent } from "../_core/intentRouter.ts";
 
 const llmCaller = new LLMCaller();
 
@@ -148,6 +149,41 @@ export const llmRouter = router({
 
       // Add user message to history
       await sessionManager.addMessage(userId, "user", input.message);
+
+      try {
+        const parsedIntent = await parseIntent(input.message);
+        if (parsedIntent.intent !== "general.chat" || parsedIntent.clarification) {
+          const intentResponse = await executeIntent(parsedIntent, ctx);
+          await sessionManager.addMessage(userId, "assistant", intentResponse);
+
+          return {
+            response: intentResponse,
+            model: "intent-router",
+            engine: "gemini",
+          };
+        }
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        const shouldReturnIntentError =
+          message.includes("로그인") ||
+          message.includes("API_KEY") ||
+          message.includes("SPREADSHEET_ID") ||
+          message.includes("거래소") ||
+          message.includes("Redis") ||
+          message.includes("Google");
+
+        if (shouldReturnIntentError) {
+          const intentErrorResponse = `요청한 기능을 실행하지 못했습니다.\n\n${message}`;
+          await sessionManager.addMessage(userId, "assistant", intentErrorResponse);
+          return {
+            response: intentErrorResponse,
+            model: "intent-router",
+            engine: "gemini",
+          };
+        }
+
+        console.warn("[IntentRouter] Falling back to general chat:", message);
+      }
 
       // Get conversation history
       const history = await sessionManager.getHistory(userId, 10);

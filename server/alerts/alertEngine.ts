@@ -40,10 +40,7 @@ const KIMCHI_FX_RATE = 1380;
 
 const bullConnection = createBullConnection();
 
-export const alertQueue = new Queue(ALERT_QUEUE_NAME, {
-  connection: bullConnection,
-});
-
+let alertQueue: Queue | null = null;
 let alertWorker: Worker | null = null;
 
 export class AlertEngine {
@@ -249,6 +246,12 @@ function createBullConnection() {
 }
 
 export async function startAlertScheduler(): Promise<void> {
+  if (!alertQueue) {
+    alertQueue = new Queue(ALERT_QUEUE_NAME, {
+      connection: bullConnection,
+    });
+  }
+
   if (!alertWorker) {
     alertWorker = new Worker(
       ALERT_QUEUE_NAME,

@@ -1,39 +1,52 @@
-const trades = [
-  { date: "2026-04-23", exchange: "Binance", symbol: "BTC/USDT", side: "롱", result: "+82.40", note: "돌파 진입" },
-  { date: "2026-04-23", exchange: "Upbit", symbol: "ETH/KRW", side: "현물", result: "+31.20", note: "김프 축소" },
-  { date: "2026-04-22", exchange: "Bybit", symbol: "SOL/USDT", side: "롱", result: "-18.00", note: "손절" },
-  { date: "2026-04-22", exchange: "Binance", symbol: "ETH/USDT", side: "숏", result: "+57.20", note: "저항 매도" },
-  { date: "2026-04-21", exchange: "Upbit", symbol: "XRP/KRW", side: "현물", result: "+12.10", note: "분할 익절" },
-  { date: "2026-04-21", exchange: "Binance", symbol: "BTC/USDT", side: "롱", result: "-26.50", note: "가짜 돌파" },
-  { date: "2026-04-20", exchange: "Bybit", symbol: "ARB/USDT", side: "숏", result: "+44.00", note: "추세 추종" },
-  { date: "2026-04-20", exchange: "Binance", symbol: "BNB/USDT", side: "롱", result: "+19.70", note: "단기 스캘프" },
-  { date: "2026-04-19", exchange: "Upbit", symbol: "BTC/KRW", side: "현물", result: "+66.30", note: "프리미엄 반등" },
-  { date: "2026-04-19", exchange: "Bybit", symbol: "DOGE/USDT", side: "숏", result: "-9.80", note: "조기 청산" },
-];
+import { useState } from "react";
+import { Loader2, RefreshCw } from "lucide-react";
+import { trpc } from "@/lib/trpc";
 
 export default function TradeJournal() {
-  // TODO: 여기에 tRPC 연결
+  const [period, setPeriod] = useState<"week" | "month">("month");
+  const [symbols, setSymbols] = useState("BTC/USDT,ETH/USDT");
+  const statsQuery = trpc.trading.getTradeStats.useQuery({ period }, { retry: false });
+  const syncMutation = trpc.trading.syncJournal.useMutation({
+    onSuccess: () => statsQuery.refetch(),
+  });
+
+  const stats = statsQuery.data;
+
   return (
     <div className="space-y-4">
       <div className="rounded-xl border border-slate-700 bg-slate-900/50 p-4">
-        <div className="grid gap-3 md:grid-cols-[1fr_1fr_2fr]">
-          <select className="rounded-md border border-slate-600 bg-slate-800 px-3 py-2 text-sm text-white">
-            <option>최근 30일</option>
-            <option>이번 주</option>
-            <option>이번 달</option>
+        <div className="grid gap-3 md:grid-cols-[1fr_2fr_auto]">
+          <select value={period} onChange={(e) => setPeriod(e.target.value as "week" | "month")} className="rounded-md border border-slate-600 bg-slate-800 px-3 py-2 text-sm text-white">
+            <option value="week">이번 주</option>
+            <option value="month">최근 30일</option>
           </select>
-          <select className="rounded-md border border-slate-600 bg-slate-800 px-3 py-2 text-sm text-white">
-            <option>전체 거래소</option>
-            <option>Binance</option>
-            <option>Upbit</option>
-            <option>Bybit</option>
-          </select>
-          <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+          <input value={symbols} onChange={(e) => setSymbols(e.target.value)} className="rounded-md border border-slate-600 bg-slate-800 px-3 py-2 text-sm text-white placeholder-slate-500" placeholder="BTC/USDT,ETH/USDT" />
+          <button
+            onClick={() => syncMutation.mutate({ exchange: "binance", symbols: symbols.split(",").map((item) => item.trim()).filter(Boolean) })}
+            disabled={syncMutation.isPending}
+            className="inline-flex items-center justify-center rounded-md bg-cyan-600 px-4 py-2 text-sm font-medium text-white hover:bg-cyan-700 disabled:opacity-50"
+          >
+            {syncMutation.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4" />}
+            동기화
+          </button>
+        </div>
+
+        {statsQuery.isLoading ? (
+          <div className="mt-4 flex items-center text-sm text-slate-400">
+            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            통계 조회 중
+          </div>
+        ) : statsQuery.error ? (
+          <div className="mt-4 rounded-lg border border-red-900/60 bg-red-950/30 p-3 text-sm text-red-300">
+            {statsQuery.error.message || "Google Sheets 거래일지를 연결해주세요."}
+          </div>
+        ) : (
+          <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-4">
             {[
-              ["승률", "70%"],
-              ["총손익", "+258.60"],
-              ["평균손익비", "1.84"],
-              ["최대낙폭", "-4.2%"],
+              ["총 거래", `${stats?.totalTrades ?? 0}건`],
+              ["승률", `${(((stats?.winRate ?? 0) * 100)).toFixed(1)}%`],
+              ["총 손익", `${(stats?.totalPnl ?? 0).toLocaleString("en-US", { maximumFractionDigits: 2 })}`],
+              ["손익비", `${(stats?.averagePnlRatio ?? 0).toFixed(2)}`],
             ].map(([label, value]) => (
               <div key={label} className="rounded-lg bg-slate-800/70 p-3">
                 <p className="text-xs text-slate-500">{label}</p>
@@ -41,39 +54,7 @@ export default function TradeJournal() {
               </div>
             ))}
           </div>
-        </div>
-      </div>
-
-      <div className="rounded-xl border border-slate-700 bg-slate-900/50 p-4">
-        <h2 className="mb-3 text-sm font-semibold text-white">거래 내역</h2>
-        <div className="overflow-x-auto">
-          <table className="w-full min-w-[760px] text-sm">
-            <thead>
-              <tr className="border-b border-slate-700 text-left text-xs text-slate-500">
-                <th className="px-3 py-2 font-medium">일자</th>
-                <th className="px-3 py-2 font-medium">거래소</th>
-                <th className="px-3 py-2 font-medium">심볼</th>
-                <th className="px-3 py-2 font-medium">방향</th>
-                <th className="px-3 py-2 font-medium">손익</th>
-                <th className="px-3 py-2 font-medium">메모</th>
-              </tr>
-            </thead>
-            <tbody>
-              {trades.map((trade) => (
-                <tr key={`${trade.date}-${trade.exchange}-${trade.symbol}-${trade.result}`} className="border-b border-slate-800 last:border-0">
-                  <td className="px-3 py-3 text-slate-300">{trade.date}</td>
-                  <td className="px-3 py-3 text-slate-300">{trade.exchange}</td>
-                  <td className="px-3 py-3 font-medium text-white">{trade.symbol}</td>
-                  <td className="px-3 py-3 text-slate-300">{trade.side}</td>
-                  <td className={`px-3 py-3 font-semibold ${trade.result.startsWith("+") ? "text-[#00c853]" : "text-[#ff1744]"}`}>
-                    {trade.result} USDT
-                  </td>
-                  <td className="px-3 py-3 text-slate-400">{trade.note}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        )}
       </div>
     </div>
   );

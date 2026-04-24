@@ -4,7 +4,6 @@ import { Link } from "wouter";
 const commands = ["잔고 조회", "오늘 매매 복기", "PF 현황", "BTC 분석"];
 
 export default function QuickCommandWidget() {
-  // TODO: 여기에 tRPC 실시간 데이터 연결
   return (
     <div className="rounded-xl border border-border bg-card p-5">
       <div className="mb-4 flex items-center gap-3">
@@ -13,7 +12,7 @@ export default function QuickCommandWidget() {
         </div>
         <div>
           <h3 className="text-base font-semibold text-card-foreground">빠른 AI 명령</h3>
-          <p className="text-xs text-muted-foreground">자주 쓰는 명령을 바로 입력</p>
+          <p className="text-xs text-muted-foreground">자주 쓰는 명령을 채팅으로 바로 보냅니다.</p>
         </div>
       </div>
       <div className="flex flex-wrap gap-2">

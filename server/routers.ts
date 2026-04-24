@@ -9,6 +9,8 @@ import { llmRouter } from "./routers/llm.ts";
 import { googleWorkspaceRouter } from "./routers/google-workspace.ts";
 import { apiSettingsRouter } from "./routers/api-settings.ts";
 import { chatSyncRouter } from "./routers/chat-sync.ts";
+import { tradingRouter } from "./trpc/routers/trading.ts";
+import { realestateRouter } from "./trpc/routers/realestate.ts";
 
 const ADMIN_USERNAME = "admin";
 const ADMIN_PASSWORD = "admin123";
@@ -57,6 +59,8 @@ export const appRouter = router({
   googleWorkspace: googleWorkspaceRouter,
   apiSettings: apiSettingsRouter,
   chatSync: chatSyncRouter,
+  trading: tradingRouter,
+  realestate: realestateRouter,
 });
 
 export type AppRouter = typeof appRouter;

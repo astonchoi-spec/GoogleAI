@@ -1,32 +1,31 @@
-import { Plus } from "lucide-react";
-import { useState } from "react";
+import { Loader2, Plus } from "lucide-react";
+import { useMemo, useState } from "react";
+import { trpc } from "@/lib/trpc";
 import DealCard from "./DealCard";
 import DealModal from "./DealModal";
-import type { Deal, DealStage } from "./types";
+import type { Deal } from "./types";
 
-const stages: DealStage[] = ["소싱", "심사", "약정", "실행", "회수"];
-
-const deals: Deal[] = [
-  { id: "1", name: "역삼 오피스 개발", location: "서울 강남구 역삼동", amount: "500억", ltv: "65%", stage: "소싱", sponsor: "A 시행", memo: "토지 매입 협의 진행 중" },
-  { id: "2", name: "판교 물류센터", location: "성남시 분당구", amount: "800억", ltv: "70%", stage: "심사", sponsor: "B 로지스", memo: "임차 LOI 검토 필요" },
-  { id: "3", name: "마곡 R&D 센터", location: "서울 강서구 마곡동", amount: "620억", ltv: "62%", stage: "약정", sponsor: "C 개발", memo: "약정서 최종 문안 협의" },
-  { id: "4", name: "강남 주상복합", location: "서울 강남구 논현동", amount: "1,200억", ltv: "60%", stage: "실행", sponsor: "D 홀딩스", memo: "1차 기표 완료" },
-  { id: "5", name: "부산 해운대 호텔", location: "부산 해운대구", amount: "430억", ltv: "55%", stage: "회수", sponsor: "E 관광개발", memo: "분양 수입 회수 단계" },
-];
+const fallbackStages = ["소싱", "심사", "약정", "실행", "회수", "완료"];
 
 export default function DealPipeline() {
-  // TODO: 여기에 tRPC 연결
   const [selectedDeal, setSelectedDeal] = useState<Deal | null>(null);
   const [showNewDeal, setShowNewDeal] = useState(false);
+  const dealsQuery = trpc.realestate.getDealList.useQuery(undefined, { retry: false });
+  const deals = (dealsQuery.data ?? []) as Deal[];
+  const stages = useMemo(() => {
+    const unique = Array.from(new Set([...fallbackStages, ...deals.map((deal) => deal.stage).filter(Boolean)]));
+    return unique;
+  }, [deals]);
+  const totalExposure = deals.reduce((sum, deal) => sum + deal.loanAmount, 0);
 
   return (
     <div className="space-y-4">
       <div className="grid gap-3 md:grid-cols-4">
         {[
-          ["총 딜수", "5건"],
-          ["총 익스포저", "3,550억"],
-          ["진행중", "4건"],
-          ["완료", "1건"],
+          ["총 딜 수", `${deals.length}건`],
+          ["총 익스포저", `${totalExposure.toLocaleString("ko-KR", { maximumFractionDigits: 1 })}억`],
+          ["진행 중", `${deals.filter((deal) => !["완료", "회수"].includes(deal.stage)).length}건`],
+          ["완료/회수", `${deals.filter((deal) => ["완료", "회수"].includes(deal.stage)).length}건`],
         ].map(([label, value]) => (
           <div key={label} className="rounded-xl border border-slate-700 bg-slate-900/50 p-4">
             <p className="text-xs text-slate-500">{label}</p>
@@ -35,32 +34,47 @@ export default function DealPipeline() {
         ))}
       </div>
 
-      <div className="overflow-x-auto rounded-xl border border-slate-700 bg-slate-900/50 p-4">
-        <div className="grid min-w-[980px] grid-cols-5 gap-3">
-          {stages.map((stage) => (
-            <div key={stage} className="rounded-xl border border-slate-700 bg-slate-800/40 p-3">
-              <div className="mb-3 flex items-center justify-between">
-                <h3 className="text-sm font-semibold text-white">{stage}</h3>
-                <span className="rounded bg-slate-700 px-2 py-0.5 text-xs text-slate-300">
-                  {deals.filter((deal) => deal.stage === stage).length}
-                </span>
-              </div>
-              <div className="space-y-2">
-                {deals.filter((deal) => deal.stage === stage).map((deal) => (
-                  <DealCard key={deal.id} deal={deal} onClick={setSelectedDeal} />
-                ))}
-              </div>
-            </div>
-          ))}
+      {dealsQuery.isLoading ? (
+        <div className="flex h-48 items-center justify-center rounded-xl border border-slate-700 bg-slate-900/50 text-slate-400">
+          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+          PF 딜 조회 중
         </div>
-      </div>
+      ) : dealsQuery.error ? (
+        <div className="rounded-xl border border-red-900/60 bg-red-950/30 p-4 text-sm text-red-300">
+          {dealsQuery.error.message || "Google Sheets PF 파이프라인을 연결해주세요."}
+        </div>
+      ) : deals.length === 0 ? (
+        <div className="rounded-xl border border-slate-700 bg-slate-900/50 p-8 text-center text-sm text-slate-400">
+          등록된 PF 딜이 없습니다.
+        </div>
+      ) : (
+        <div className="overflow-x-auto rounded-xl border border-slate-700 bg-slate-900/50 p-4">
+          <div className="grid min-w-[980px] grid-cols-6 gap-3">
+            {stages.map((stage) => (
+              <div key={stage} className="rounded-xl border border-slate-700 bg-slate-800/40 p-3">
+                <div className="mb-3 flex items-center justify-between">
+                  <h3 className="text-sm font-semibold text-white">{stage}</h3>
+                  <span className="rounded bg-slate-700 px-2 py-0.5 text-xs text-slate-300">
+                    {deals.filter((deal) => deal.stage === stage).length}
+                  </span>
+                </div>
+                <div className="space-y-2">
+                  {deals.filter((deal) => deal.stage === stage).map((deal) => (
+                    <DealCard key={deal.id} deal={deal} onClick={setSelectedDeal} />
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       <button
         onClick={() => setShowNewDeal(true)}
         className="flex items-center gap-2 rounded-md bg-cyan-600 px-4 py-2 text-sm font-medium text-white hover:bg-cyan-700"
       >
         <Plus className="h-4 w-4" />
-        새 딜 추가
+        딜 추가
       </button>
 
       <DealModal deal={selectedDeal} onClose={() => setSelectedDeal(null)} />

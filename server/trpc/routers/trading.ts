@@ -5,6 +5,7 @@ import { protectedProcedure, router } from "../../_core/trpc.ts";
 import { addAlert, getAlerts, removeAlert } from "../../alerts/alertEngine.ts";
 import { exchangeConnector, type SupportedExchangeId } from "../../exchanges/exchangeConnector.ts";
 import { kiwoomRestConnector } from "../../exchanges/kiwoomRest.ts";
+import { kiwoomRealtimeFeed } from "../../exchanges/kiwoomWebSocket.ts";
 import { redis } from "../../_core/redis.ts";
 import { googleAuthManager } from "../../routers/google-workspace.ts";
 import { getOrCreateConversation } from "../../db-chat.ts";
@@ -204,6 +205,47 @@ export const tradingRouter = router({
     )
     .query(async ({ input }) => {
       return kiwoomRestConnector.getQuote(input.market, input.symbol);
+    }),
+
+  startKiwoomRealtime: protectedProcedure
+    .input(
+      z.object({
+        market: kiwoomMarketSchema,
+        symbols: z.array(z.string().min(1)).min(1),
+      })
+    )
+    .mutation(async ({ input }) => {
+      await kiwoomRealtimeFeed.connect(input.market, input.symbols);
+      return {
+        success: true as const,
+        market: input.market,
+        symbols: input.symbols,
+      };
+    }),
+
+  stopKiwoomRealtime: protectedProcedure
+    .input(z.object({ market: kiwoomMarketSchema }))
+    .mutation(async ({ input }) => {
+      kiwoomRealtimeFeed.disconnect(input.market);
+      return {
+        success: true as const,
+        market: input.market,
+      };
+    }),
+
+  getKiwoomRealtimeStatus: protectedProcedure.query(async () => {
+    return kiwoomRealtimeFeed.getStatus();
+  }),
+
+  getKiwoomRealtimePrice: protectedProcedure
+    .input(
+      z.object({
+        market: kiwoomMarketSchema,
+        symbol: z.string().min(1),
+      })
+    )
+    .query(async ({ input }) => {
+      return kiwoomRealtimeFeed.getCachedPrice(input.market, input.symbol);
     }),
 });
 

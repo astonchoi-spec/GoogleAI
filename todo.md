@@ -463,3 +463,15 @@
   - `trading.getKiwoomQuote`
 - [x] `.env.example` extended with Gate and Kiwoom variables
 - [ ] Next focus: `7-2` Kiwoom WebSocket realtime feed
+
+## 2026-04-24 Phase 2 Realtime Step 1 Completion
+
+- [x] `7-2` Kiwoom WebSocket realtime feed added (`server/exchanges/kiwoomWebSocket.ts`)
+- [x] Kiwoom realtime tRPC procedures added:
+  - `trading.startKiwoomRealtime`
+  - `trading.stopKiwoomRealtime`
+  - `trading.getKiwoomRealtimeStatus`
+  - `trading.getKiwoomRealtimePrice`
+- [x] Server startup now attempts Kiwoom WS auto-connect when env is configured
+- [x] `.env.example` extended with Kiwoom WS env variables
+- [ ] Next focus: `7-3` TradingView webhook receiver

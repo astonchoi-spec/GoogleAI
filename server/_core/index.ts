@@ -11,6 +11,7 @@ import { serveStatic, setupVite } from "./vite.ts";
 import telegramRouter, { initializeTelegramBot } from "../webhooks/telegram.ts";
 import googleCallbackRouter, { initializeGoogleAuth } from "../webhooks/google-callback.ts";
 import { googleAuthManager } from "../routers/google-workspace.ts";
+import { kiwoomRealtimeFeed } from "../exchanges/kiwoomWebSocket.ts";
 
 function isPortAvailable(port: number): Promise<boolean> {
   return new Promise(resolve => {
@@ -108,6 +109,12 @@ async function startServer() {
   
   // Initialize Telegram bot
   await initializeTelegramBot();
+
+  if (kiwoomRealtimeFeed.isConfigured()) {
+    void kiwoomRealtimeFeed.connectFromEnv().catch((error) => {
+      console.warn("[KiwoomWebSocket] Initial connect failed:", error instanceof Error ? error.message : String(error));
+    });
+  }
 
   app.use((err: unknown, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
     const message = err instanceof Error ? err.message : "Internal server error";

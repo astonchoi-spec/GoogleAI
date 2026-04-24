@@ -439,7 +439,14 @@
 ## 2026-04-24 Master Plan Sync
 
 - reference: `docs/WORKLIST_MASTER_2026-04-24.md`
-- current focus: `Phase 1.5`
+- current focus: `Phase 2 foundation`
 - next tasks:
-  - [ ] `6-1` Trading market tabs + TradingView advanced chart widget
-  - [ ] `6-2` Journal manual form + csv import UI
+  - [ ] `7` Gate.io connector (ccxt)
+  - [ ] `7-1` Kiwoom REST connector
+
+## 2026-04-24 Phase 1.5 Completion
+
+- [x] `6-1` Trading market tabs added
+- [x] TradingView advanced chart widget applied
+- [x] `6-2` Journal manual entry form UI added
+- [x] Journal CSV import UI added

@@ -1,8 +1,8 @@
 # Aston Workstation Master Worklist
 
 - last_updated: `2026-04-24`
-- current_focus: `Phase 1.5 ready to start`
-- progress: `7/27 completed`
+- current_focus: `Phase 2 foundation ready`
+- progress: `9/27 completed`
 
 ## Real Trading Environment
 
@@ -37,10 +37,10 @@
 - [x] `5` AI chat UI extension (mic + tts + quick actions)
 - [x] `6` Home dashboard widgets
 
-## Phase 1.5 - UI Reinforcement (Current)
+## Phase 1.5 - UI Reinforcement (Completed)
 
-- [ ] `6-1` Trading page market tabs + TradingView advanced chart widget
-- [ ] `6-2` Journal manual form + csv import UI (Toss fallback)
+- [x] `6-1` Trading page market tabs + TradingView advanced chart widget
+- [x] `6-2` Journal manual form + csv import UI (Toss fallback)
 
 ## Phase 2 - Backend Modules
 
@@ -78,12 +78,11 @@
 
 ## Recommended Execution Order
 
-1. Phase 1.5: `6-1` -> `6-2`
-2. Phase 2 foundation: `7`, `7-1`
-3. Phase 2 realtime: `7-2`, `7-3`, `8`
-4. Phase 2 parallel: `9`, `12`, `10-1`, `13`, `14`, `15`, `16`
-5. Phase 2 dependent final: `10`, `11`
-6. Phase 3: `17` -> `18` -> `19`
+1. Phase 2 foundation: `7`, `7-1`
+2. Phase 2 realtime: `7-2`, `7-3`, `8`
+3. Phase 2 parallel: `9`, `12`, `10-1`, `13`, `14`, `15`, `16`
+4. Phase 2 dependent final: `10`, `11`
+5. Phase 3: `17` -> `18` -> `19`
 
 ## Package and Env Summary
 
@@ -99,7 +98,7 @@
 ## Task Count
 
 - phase1: `7` completed
-- phase1_5: `2` pending
+- phase1_5: `2` completed
 - phase2: `15` pending
 - phase3: `3` pending
-- total: `27` tasks, `7` completed
+- total: `27` tasks, `9` completed

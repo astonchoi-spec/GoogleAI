@@ -243,7 +243,7 @@
   - Error notifications
   - Success feedback
 
-- [ ] Advanced chat features
+- [x] Advanced chat features
   - [x] Message editing capability
   - [x] Message deletion
   - [x] Conversation export (JSON)

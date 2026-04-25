@@ -1,4 +1,4 @@
-import { useState } from "react";
+﻿import { useState } from "react";
 import { toast } from "sonner";
 import { motion, AnimatePresence } from "framer-motion";
 import { Mail, Send, Loader2, RefreshCw, PenSquare, X } from "lucide-react";
@@ -19,16 +19,18 @@ export default function GmailPanel() {
 
   const sendMutation = trpc.googleWorkspace.gmail.sendEmail.useMutation({
     onSuccess: () => {
-      toast.success("?�메?�이 ?�송?�었?�니??");
+      toast.success("메일이 전송되었습니다.");
       setShowCompose(false);
-      setTo(""); setSubject(""); setBody("");
+      setTo("");
+      setSubject("");
+      setBody("");
     },
-    onError: (err) => toast.error(`?�송 ?�패: ${err.message}`),
+    onError: (err) => toast.error(`전송 실패: ${err.message}`),
   });
 
   const handleSend = () => {
     if (!to || !subject || !body) {
-      toast.error("받는 ?�람, ?�목, ?�용??모두 ?�력?�세??");
+      toast.error("받는 사람, 제목, 내용을 모두 입력하세요.");
       return;
     }
     sendMutation.mutate({ to, subject, body });
@@ -36,11 +38,13 @@ export default function GmailPanel() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <h3 className="text-[var(--aston-text)] font-semibold flex items-center gap-2">
+      {/* MODIFIED: stack the Gmail header on narrow screens so action buttons do not clip. */}
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <h3 className="flex items-center gap-2 font-semibold text-[var(--aston-text)]">
           <Mail className="w-4 h-4 text-cyan-400" />
-          받�? ?��???        </h3>
-        <div className="flex gap-2">
+          받은 편지함
+        </h3>
+        <div className="flex flex-wrap gap-2">
           <Button
             onClick={() => refetch()}
             variant="ghost"
@@ -52,10 +56,10 @@ export default function GmailPanel() {
           <Button
             onClick={() => setShowCompose((v) => !v)}
             size="sm"
-            className="bg-cyan-600 hover:bg-cyan-700 text-[var(--aston-text)]"
+            className="bg-cyan-600 text-[var(--aston-text)] hover:bg-cyan-700"
           >
             <PenSquare className="w-3 h-3 mr-1" />
-            ?��? ?�기
+            편지 쓰기
           </Button>
         </div>
       </div>
@@ -67,43 +71,43 @@ export default function GmailPanel() {
             animate={{ opacity: 1, height: "auto" }}
             exit={{ opacity: 0, height: 0 }}
           >
-            <Card className="bg-[var(--aston-panel)] border-white/10 p-4 space-y-3">
-              <div className="flex items-center justify-between mb-1">
-                <span className="text-sm font-medium text-[var(--aston-text)]">??메일 ?�성</span>
-                <button onClick={() => setShowCompose(false)}>
+            <Card className="space-y-3 border-white/10 bg-[var(--aston-panel)] p-4">
+              <div className="mb-1 flex items-center justify-between">
+                <span className="text-sm font-medium text-[var(--aston-text)]">새 메일 작성</span>
+                <button type="button" onClick={() => setShowCompose(false)}>
                   <X className="w-4 h-4 text-[var(--aston-muted)] hover:text-slate-300" />
                 </button>
               </div>
               <Input
-                placeholder="받는 ?�람 (?�메??"
+                placeholder="받는 사람 (이메일)"
                 value={to}
                 onChange={(e) => setTo(e.target.value)}
-                className="bg-black/15 border-white/10 text-[var(--aston-text)] placeholder-slate-500"
+                className="border-white/10 bg-black/15 text-[var(--aston-text)] placeholder-slate-500"
               />
               <Input
-                placeholder="?�목"
+                placeholder="제목"
                 value={subject}
                 onChange={(e) => setSubject(e.target.value)}
-                className="bg-black/15 border-white/10 text-[var(--aston-text)] placeholder-slate-500"
+                className="border-white/10 bg-black/15 text-[var(--aston-text)] placeholder-slate-500"
               />
               <textarea
-                placeholder="?�용???�력?�세??.."
+                placeholder="내용을 입력하세요..."
                 value={body}
                 onChange={(e) => setBody(e.target.value)}
                 rows={4}
-                className="w-full rounded-md bg-slate-700 border border-white/10 text-[var(--aston-text)] placeholder-slate-500 p-3 text-sm resize-none focus:outline-none focus:ring-1 focus:ring-cyan-500"
+                className="w-full resize-none rounded-md border border-white/10 bg-slate-700 p-3 text-sm text-[var(--aston-text)] placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-cyan-500"
               />
               <Button
                 onClick={handleSend}
                 disabled={sendMutation.isPending}
-                className="w-full bg-cyan-600 hover:bg-cyan-700 text-[var(--aston-text)]"
+                className="w-full bg-cyan-600 text-[var(--aston-text)] hover:bg-cyan-700"
               >
                 {sendMutation.isPending ? (
-                  <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 ) : (
-                  <Send className="w-4 h-4 mr-2" />
+                  <Send className="mr-2 h-4 w-4" />
                 )}
-                ?�송
+                전송
               </Button>
             </Card>
           </motion.div>
@@ -112,11 +116,11 @@ export default function GmailPanel() {
 
       {isLoading ? (
         <div className="flex justify-center py-8">
-          <Loader2 className="w-6 h-6 animate-spin text-cyan-400" />
+          <Loader2 className="h-6 w-6 animate-spin text-cyan-400" />
         </div>
       ) : !data?.emails?.length ? (
-        <p className="text-[var(--aston-muted)] text-sm text-center py-8">
-          ?�메?�이 ?�거??Google 계정???�결?��? ?�았?�니??
+        <p className="py-8 text-center text-sm text-[var(--aston-muted)]">
+          메일함이 비었습니다. Google 계정이 연결되면 메일을 표시합니다.
         </p>
       ) : (
         <div className="space-y-2">
@@ -127,21 +131,21 @@ export default function GmailPanel() {
               animate={{ opacity: 1, x: 0 }}
             >
               <Card
-                className={`p-3 border-white/10 cursor-default ${
+                className={`cursor-default border-white/10 p-3 ${
                   email.isRead ? "bg-black/10" : "bg-black/15"
                 }`}
               >
                 <div className="flex items-start justify-between gap-2">
                   <div className="min-w-0 flex-1">
-                    <p className={`text-sm truncate ${email.isRead ? "text-[var(--aston-muted)]" : "text-[var(--aston-text)] font-medium"}`}>
+                    <p className={`truncate text-sm ${email.isRead ? "text-[var(--aston-muted)]" : "font-medium text-[var(--aston-text)]"}`}>
                       {email.from}
                     </p>
-                    <p className={`text-sm truncate ${email.isRead ? "text-[var(--aston-muted)]" : "text-slate-300"}`}>
+                    <p className={`truncate text-sm ${email.isRead ? "text-[var(--aston-muted)]" : "text-slate-300"}`}>
                       {email.subject}
                     </p>
-                    <p className="text-xs text-slate-600 truncate mt-0.5">{email.body}</p>
+                    <p className="mt-0.5 truncate text-xs text-slate-600">{email.body}</p>
                   </div>
-                  <p className="text-xs text-[var(--aston-muted)] shrink-0">
+                  <p className="shrink-0 text-xs text-[var(--aston-muted)]">
                     {new Date(email.date).toLocaleDateString("ko-KR")}
                   </p>
                 </div>
@@ -153,12 +157,3 @@ export default function GmailPanel() {
     </div>
   );
 }
-
-
-
-
-
-
-
-
-

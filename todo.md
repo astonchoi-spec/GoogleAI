@@ -551,3 +551,17 @@
   - `npm run check` passed
   - `npm run build` passed
   - Headless browser screenshot confirmed the shell styling on the login entry screen
+
+## Work Log - 2026-04-26
+
+- [x] Mobile QA pass
+  - Verified the shell at 390px width across Home, Chat, Trading, Real Estate PF, Google Workspace, Monitoring, and Settings
+  - Confirmed the mobile sidebar/status bar remain usable and the command-center shell does not break on narrow screens
+- [x] Mobile layout fixes
+  - Updated `client/src/pages/Settings.tsx` to stack the top header and badge on small screens
+  - Updated `client/src/components/GoogleWorkspace/GoogleAuthCard.tsx` to wrap the auth row on narrow screens
+  - Rewrote `client/src/components/GoogleWorkspace/GmailPanel.tsx` in clean UTF-8 and simplified the mobile-friendly header/composer layout
+- [x] Mobile verification
+  - Re-ran `npm run check`
+  - Re-ran `npm run build`
+  - Captured authenticated mobile screenshots for Google Workspace and Settings to confirm the fix

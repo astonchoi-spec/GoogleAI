@@ -75,8 +75,9 @@ GOOGLE_REDIRECT_URI=http://localhost:4000/api/webhooks/google/callback`}
 
   return (
     <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }}>
-      <Card className="flex items-center justify-between border-white/10 bg-[var(--aston-panel)] p-4">
-        <div className="flex items-center gap-3">
+      {/* MODIFIED: allow the auth row to wrap on narrow screens instead of clipping actions. */}
+      <Card className="flex flex-col gap-4 border-white/10 bg-[var(--aston-panel)] p-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex min-w-0 items-center gap-3">
           {isAuthenticated ? (
             <CheckCircle2 className="h-5 w-5 text-green-400" />
           ) : (
@@ -114,7 +115,7 @@ GOOGLE_REDIRECT_URI=http://localhost:4000/api/webhooks/google/callback`}
           <Button
             onClick={handleConnect}
             size="sm"
-            className="bg-cyan-500 text-slate-950 hover:bg-cyan-400"
+            className="self-start bg-cyan-500 text-slate-950 hover:bg-cyan-400 sm:self-auto"
           >
             <LogIn className="mr-1 h-3 w-3" />
             Google 연결

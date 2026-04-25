@@ -58,14 +58,15 @@ export default function Settings() {
   return (
     <div className="px-4 py-5 sm:px-6 lg:px-8">
       <div className="mx-auto flex w-full max-w-7xl flex-col gap-5">
-        <div className="flex items-center justify-between gap-3">
+        {/* MODIFIED: stack the page header on small screens to avoid clipping the badge. */}
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <Link href="/chat">
             <a className="inline-flex items-center gap-2 text-sm text-[var(--aston-muted)] transition hover:text-[var(--aston-text)]">
               <ArrowLeft className="h-4 w-4" />
               채팅으로 돌아가기
             </a>
           </Link>
-          <Badge className="border-cyan-400/20 bg-cyan-400/10 text-cyan-300">
+          <Badge className="self-start border-cyan-400/20 bg-cyan-400/10 text-cyan-300">
             User Profile & Settings
           </Badge>
         </div>

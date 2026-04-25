@@ -33,26 +33,26 @@ export default function SheetsPanel() {
 
   return (
     <div className="space-y-4">
-      <h3 className="flex items-center gap-2 font-semibold text-white">
+      <h3 className="flex items-center gap-2 font-semibold text-[var(--aston-text)]">
         <Table2 className="h-4 w-4 text-cyan-400" />
         Google Sheets
       </h3>
 
-      <Card className="space-y-3 border-slate-700 bg-slate-800 p-4">
+      <Card className="space-y-3 border-white/10 bg-[var(--aston-panel)] p-4">
         <Input
           placeholder="Spreadsheet ID"
           value={spreadsheetId}
           onChange={(e) => setSpreadsheetId(e.target.value)}
-          className="border-slate-600 bg-slate-700 text-white placeholder-slate-500"
+          className="border-slate-600 bg-black/15 text-[var(--aston-text)] placeholder-slate-500"
         />
         <div className="flex gap-2">
           <Input
             placeholder="Range, e.g. Sheet1!A1:Z100"
             value={range}
             onChange={(e) => setRange(e.target.value)}
-            className="border-slate-600 bg-slate-700 text-white placeholder-slate-500"
+            className="border-slate-600 bg-black/15 text-[var(--aston-text)] placeholder-slate-500"
           />
-          <Button onClick={handleLoad} size="sm" className="shrink-0 bg-cyan-600 text-white hover:bg-cyan-700">
+          <Button onClick={handleLoad} size="sm" className="shrink-0 bg-cyan-600 text-[var(--aston-text)] hover:bg-cyan-700">
             <Search className="h-4 w-4" />
           </Button>
         </div>
@@ -66,15 +66,15 @@ export default function SheetsPanel() {
 
       {sheetRows.length > 0 && (
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
-          <div className="overflow-x-auto rounded-lg border border-slate-700">
+          <div className="overflow-x-auto rounded-lg border border-white/10">
             <table className="w-full text-sm">
               <tbody>
                 {sheetHeaders.length > 0 && (
-                  <tr className="bg-slate-900">
+                  <tr className="bg-black/15">
                     {sheetHeaders.map((header: any, headerIdx: number) => (
                       <th
                         key={headerIdx}
-                        className="max-w-[200px] truncate border-r border-slate-700 px-3 py-2 text-left font-medium text-cyan-300 last:border-r-0"
+                        className="max-w-[200px] truncate border-r border-white/10 px-3 py-2 text-left font-medium text-cyan-300 last:border-r-0"
                       >
                         {String(header ?? "")}
                       </th>
@@ -82,11 +82,11 @@ export default function SheetsPanel() {
                   </tr>
                 )}
                 {sheetRows.map((row: any[], rowIdx: number) => (
-                  <tr key={rowIdx} className={rowIdx % 2 === 0 ? "bg-slate-800" : "bg-slate-800/50"}>
+                  <tr key={rowIdx} className={rowIdx % 2 === 0 ? "bg-black/10" : "bg-black/10/50"}>
                     {row.map((cell: any, cellIdx: number) => (
                       <td
                         key={cellIdx}
-                        className={`max-w-[200px] truncate border-r border-slate-700 px-3 py-2 last:border-r-0 ${
+                        className={`max-w-[200px] truncate border-r border-white/10 px-3 py-2 last:border-r-0 ${
                           rowIdx === 0 && sheetHeaders.length === 0 ? "font-medium text-cyan-300" : "text-slate-300"
                         }`}
                       >
@@ -102,8 +102,15 @@ export default function SheetsPanel() {
       )}
 
       {queryId && !isLoading && sheetRows.length === 0 && (
-        <p className="py-4 text-center text-sm text-slate-500">No rows were returned for this range.</p>
+        <p className="py-4 text-center text-sm text-[var(--aston-muted)]">No rows were returned for this range.</p>
       )}
     </div>
   );
 }
+
+
+
+
+
+
+

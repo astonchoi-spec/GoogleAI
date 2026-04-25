@@ -1,4 +1,6 @@
 import { useState } from "react";
+import { motion } from "framer-motion";
+import { Badge } from "@/components/ui/badge";
 import DealPipeline from "@/components/realestate/DealPipeline";
 import FeasibilityForm from "@/components/realestate/FeasibilityForm";
 import FeasibilityResult from "@/components/realestate/FeasibilityResult";
@@ -12,41 +14,68 @@ export default function RealEstatePage() {
   const [feasibilityData, setFeasibilityData] = useState<{ result: any; report: string } | null>(null);
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-slate-900 via-slate-950 to-black px-4 md:px-8 py-4">
-      <div className="mx-auto max-w-6xl space-y-6">
-        <div>
-          <h1 className="bg-gradient-to-r from-cyan-400 to-blue-500 bg-clip-text text-2xl font-bold leading-tight text-transparent md:text-3xl">
-            부동산 PF
-          </h1>
-          <p className="mt-1 text-sm text-slate-400">PF deal pipeline, feasibility analysis, and land data lookup.</p>
+    <div className="px-4 py-5 sm:px-6 lg:px-8">
+      <div className="mx-auto max-w-7xl space-y-5">
+        <motion.section
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.35 }}
+          className="rounded-2xl border border-white/10 bg-[var(--aston-panel)] p-5"
+        >
+          <div className="space-y-2">
+            <Badge variant="outline" className="border-cyan-500/20 bg-cyan-500/10 text-cyan-300">
+              Real Estate PF desk
+            </Badge>
+            <h1 className="text-3xl font-semibold tracking-tight text-[var(--aston-text)]">
+              부동산 PF
+            </h1>
+            <p className="max-w-3xl text-sm text-[var(--aston-muted)]">
+              PF 딜 파이프라인, 사업성 분석, 토지 조회를 한 화면에서 관리합니다.
+            </p>
+          </div>
+        </motion.section>
+
+        <div className="rounded-2xl border border-white/10 bg-[var(--aston-panel)] p-2">
+          <div className="flex gap-2 overflow-x-auto">
+            {tabs.map((tab) => (
+              <button
+                key={tab}
+                onClick={() => setActiveTab(tab)}
+                className={`min-w-[10rem] flex-1 rounded-xl px-4 py-3 text-sm font-medium transition ${
+                  activeTab === tab
+                    ? "bg-cyan-500 text-slate-950 shadow-lg shadow-cyan-500/20"
+                    : "bg-white/0 text-[var(--aston-muted)] hover:bg-white/5 hover:text-[var(--aston-text)]"
+                }`}
+              >
+                {tab}
+              </button>
+            ))}
+          </div>
         </div>
 
-        <div className="flex gap-1 rounded-lg border border-slate-700 bg-slate-800/50 p-1">
-          {tabs.map((tab) => (
-            <button
-              key={tab}
-              onClick={() => setActiveTab(tab)}
-              className={`flex-1 rounded-md px-3 py-2 text-sm font-medium transition-all ${
-                activeTab === tab
-                  ? "bg-cyan-600 text-white shadow"
-                  : "text-slate-400 hover:bg-slate-700/50 hover:text-slate-300"
-              }`}
-            >
-              {tab}
-            </button>
-          ))}
-        </div>
-
-        {activeTab === "파이프라인" && <DealPipeline />}
-        {activeTab === "사업성분석" && (
-          <div className="space-y-4">
-            <FeasibilityForm onRun={(payload) => setFeasibilityData(payload)} /> {/* MODIFIED: render feasibility result from real mutation output. */}
-            <FeasibilityResult data={feasibilityData} /> {/* MODIFIED: replace static result card with backend-driven analysis data. */}
+        {activeTab === "파이프라인" && (
+          <div className="rounded-2xl border border-white/10 bg-[var(--aston-panel)] p-4 md:p-5">
+            <DealPipeline />
           </div>
         )}
-        {activeTab === "토지조회" && <LandSearch />}
+
+        {activeTab === "사업성분석" && (
+          <div className="space-y-4">
+            <div className="rounded-2xl border border-white/10 bg-[var(--aston-panel)] p-4 md:p-5">
+              <FeasibilityForm onRun={(payload) => setFeasibilityData(payload)} /> {/* MODIFIED: render feasibility result from real mutation output. */}
+            </div>
+            <div className="rounded-2xl border border-white/10 bg-[var(--aston-panel)] p-4 md:p-5">
+              <FeasibilityResult data={feasibilityData} /> {/* MODIFIED: replace static result card with backend-driven analysis data. */}
+            </div>
+          </div>
+        )}
+
+        {activeTab === "토지조회" && (
+          <div className="rounded-2xl border border-white/10 bg-[var(--aston-panel)] p-4 md:p-5">
+            <LandSearch />
+          </div>
+        )}
       </div>
     </div>
   );
 }
-

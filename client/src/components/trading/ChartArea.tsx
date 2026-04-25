@@ -10,12 +10,12 @@ export default function ChartArea() {
   }); // MODIFIED: render live technical-analysis briefing in place of static chart placeholder.
 
   return (
-    <div className="rounded-xl border border-slate-700 bg-slate-900/50 p-4">
+    <div className="rounded-2xl border border-white/10 bg-[var(--aston-panel)] p-4">
       <div className="mb-3 flex items-center justify-between">
-        <h2 className="text-sm font-semibold text-white">Technical Snapshot</h2>
-        <span className="text-xs text-slate-500">BTC/USDT · 1h</span>
+        <h2 className="text-sm font-semibold text-[var(--aston-text)]">Technical Snapshot</h2>
+        <span className="text-xs text-[var(--aston-muted)]">BTC/USDT · 1h</span>
       </div>
-      <div className="rounded-lg border border-dashed border-slate-700 bg-slate-950/70 p-4">
+      <div className="rounded-lg border border-dashed border-white/10 bg-black/15 p-4">
         {analysis.isLoading && (
           <div className="flex h-56 items-center justify-center text-slate-400">Loading analysis...</div>
         )}
@@ -37,4 +37,8 @@ export default function ChartArea() {
     </div>
   );
 }
+
+
+
+
 

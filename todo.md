@@ -532,3 +532,22 @@
 - [x] Validation history
   - repeated `pnpm run check` pass
   - repeated `pnpm run build` pass
+
+<!-- MODIFIED: 2026-04-25 Aston UI shell follow-up -->
+## Work Log - 2026-04-25
+
+- [x] Aston Workstation shell follow-up
+  - Re-checked the new app shell, sidebar, status bar, and document menu against the current build
+  - Confirmed the command-center layout is present across the main app surface
+  - Noted that unauthenticated root access lands on the login screen, so login UI becomes part of the first impression
+- [x] Login screen shell polish
+  - Reworked `client/src/pages/Login.tsx` into the Aston dark panel style
+  - Kept auth flow unchanged: login still returns to the original route or `/`
+  - Added compact executive-style context cards for the access screen
+- [x] Chat shell alignment
+  - Tightened `client/src/components/UnifiedChatInterface.tsx` to use Aston panel tokens for the header, timeline, message cards, and composer
+  - Left chat routing, message sync, edit/delete, search, pinning, and export logic unchanged
+- [x] Verification
+  - `npm run check` passed
+  - `npm run build` passed
+  - Headless browser screenshot confirmed the shell styling on the login entry screen

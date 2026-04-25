@@ -24,37 +24,37 @@ export default function PortfolioSummary() {
   const hasError = !!binanceBalance.error || !!positions.error;
 
   return (
-    <div className="rounded-xl border border-slate-700 bg-slate-900/50 p-4">
+    <div className="rounded-2xl border border-white/10 bg-[var(--aston-panel)] p-4">
       <div className="mb-4 flex items-center gap-2">
         <Wallet className="h-4 w-4 text-cyan-400" />
-        <h2 className="text-sm font-semibold text-white">Portfolio Summary</h2>
+        <h2 className="text-sm font-semibold text-[var(--aston-text)]">Portfolio Summary</h2>
       </div>
       <div className="grid gap-3 sm:grid-cols-3">
-        <div className="rounded-lg border border-slate-700 bg-slate-800/70 p-3">
-          <p className="text-xs text-slate-500">Total Asset (Binance)</p>
-          <p className="mt-1 text-lg font-semibold text-white">
+        <div className="rounded-xl border border-white/10 bg-black/15 p-3">
+          <p className="text-xs text-[var(--aston-muted)]">Total Asset (Binance)</p>
+          <p className="mt-1 text-lg font-semibold text-[var(--aston-text)]">
             {loading ? "Loading..." : hasError ? "Unavailable" : `${formatNumber(totalAsset)} USDT`}
           </p>
         </div>
-        <div className="rounded-lg border border-slate-700 bg-slate-800/70 p-3">
-          <p className="text-xs text-slate-500">Unrealized PnL</p>
+        <div className="rounded-xl border border-white/10 bg-black/15 p-3">
+          <p className="text-xs text-[var(--aston-muted)]">Unrealized PnL</p>
           <p className={`mt-1 text-lg font-semibold ${totalPnl >= 0 ? "text-[#00c853]" : "text-[#ff1744]"}`}>
             {loading ? "Loading..." : hasError ? "Unavailable" : `${totalPnl >= 0 ? "+" : ""}${formatNumber(totalPnl)} USDT`}
           </p>
         </div>
-        <div className="rounded-lg border border-slate-700 bg-slate-800/70 p-3">
-          <p className="text-xs text-slate-500">Open Positions</p>
+        <div className="rounded-xl border border-white/10 bg-black/15 p-3">
+          <p className="text-xs text-[var(--aston-muted)]">Open Positions</p>
           <p className="mt-1 text-lg font-semibold text-cyan-300">
             {loading ? "Loading..." : hasError ? "Unavailable" : `${activePositions}`}
           </p>
         </div>
       </div>
       <div className="mt-4 grid gap-2 sm:grid-cols-2">
-        <div className="flex items-center gap-2 rounded-lg bg-cyan-950/30 px-3 py-2 text-xs text-cyan-300">
+        <div className="flex items-center gap-2 rounded-lg border border-cyan-500/20 bg-cyan-500/10 px-3 py-2 text-xs text-cyan-300">
           <Activity className="h-3.5 w-3.5" />
           Live position snapshot enabled
         </div>
-        <div className="flex items-center gap-2 rounded-lg bg-blue-950/30 px-3 py-2 text-xs text-blue-300">
+        <div className="flex items-center gap-2 rounded-lg border border-blue-500/20 bg-blue-500/10 px-3 py-2 text-xs text-blue-300">
           <Bell className="h-3.5 w-3.5" />
           Active alerts: {alerts.isLoading ? "..." : activeAlerts}
         </div>
@@ -62,4 +62,10 @@ export default function PortfolioSummary() {
     </div>
   );
 }
+
+
+
+
+
+
 

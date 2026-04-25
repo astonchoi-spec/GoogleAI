@@ -429,10 +429,11 @@ export default function UnifiedChatInterface() {
   };
 
   return (
-    <div className={`flex flex-col h-full bg-background ${preferences.compactChat ? "text-[0.95rem]" : ""}`}>
+    // MODIFIED: align the chat surface with the Aston command-center shell tokens.
+    <div className={`flex h-full min-h-0 flex-col bg-[var(--aston-bg)] text-[var(--aston-text)] ${preferences.compactChat ? "text-[0.95rem]" : ""}`}>
       {/* Login notice banner - shown when not authenticated */}
       {!isAuthenticated && (
-        <div className="flex items-center justify-between gap-2 px-4 py-2 bg-amber-500/10 border-b border-amber-500/20 flex-shrink-0">
+        <div className="flex flex-shrink-0 items-center justify-between gap-2 border-b border-[var(--aston-border)] bg-[var(--aston-panel)] px-4 py-2">
           <p className="text-xs text-amber-400">
             텔레그램 동기화는 로그인 후 사용 가능합니다
           </p>
@@ -447,7 +448,8 @@ export default function UnifiedChatInterface() {
       )}
 
       {/* Header - Top (Fixed) */}
-      <div className={`border-b border-border bg-card flex-shrink-0 flex items-center justify-between ${preferences.compactChat ? "px-3 py-2" : "px-4 py-3"}`}>
+      {/* MODIFIED: use the Aston panel style for the chat header and action row. */}
+      <div className={`flex flex-shrink-0 items-center justify-between border-b border-[var(--aston-border)] bg-[var(--aston-panel)] ${preferences.compactChat ? "px-3 py-2" : "px-4 py-3"}`}>
         <div className="flex items-center gap-2 text-sm font-semibold">
           <MessageCircle className="w-4 h-4 text-primary" />
           <span>통합 채팅</span>
@@ -507,7 +509,7 @@ export default function UnifiedChatInterface() {
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: "auto" }}
             exit={{ opacity: 0, height: 0 }}
-            className="overflow-hidden border-b border-border bg-card/50 flex-shrink-0"
+            className="flex-shrink-0 overflow-hidden border-b border-[var(--aston-border)] bg-[var(--aston-panel-soft)]"
           >
             <div className="p-4 space-y-3">
               <div className="grid grid-cols-2 gap-3">
@@ -584,7 +586,8 @@ export default function UnifiedChatInterface() {
       )}
 
       {/* Messages Area - Middle (Scrollable) */}
-      <div className={`flex-1 overflow-y-auto space-y-3 ${preferences.compactChat ? "p-3" : "p-4"}`}>
+      {/* MODIFIED: make the timeline area read as a framed executive panel. */}
+      <div className={`flex-1 overflow-y-auto space-y-3 bg-[var(--aston-bg)] ${preferences.compactChat ? "p-3" : "p-4"}`}>
         {canLoadOlderMessages && (
           <div className="flex justify-center pb-2">
             <Button
@@ -652,10 +655,10 @@ export default function UnifiedChatInterface() {
                 className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}
               >
                 <Card
-                  className={`group relative max-w-[75%] px-4 py-2 ${
+                className={`group relative max-w-[75%] rounded-xl border border-[var(--aston-border)] px-4 py-2 ${
                     msg.role === "user"
-                      ? "bg-primary text-primary-foreground"
-                      : "bg-muted text-white"
+                      ? "bg-[var(--aston-accent)] text-white"
+                      : "bg-[var(--aston-panel)] text-[var(--aston-text)]"
                   }`}
                 >
                   {conversationId && (
@@ -663,7 +666,7 @@ export default function UnifiedChatInterface() {
                       <button
                         type="button"
                         onClick={() => startEditingMessage(msg)}
-                        className="rounded-full border border-border bg-card p-1 text-muted-foreground shadow-md transition hover:text-cyan-300"
+                        className="rounded-full border border-[var(--aston-border)] bg-[var(--aston-panel)] p-1 text-muted-foreground shadow-md transition hover:text-cyan-300"
                         aria-label="메시지 편집"
                       >
                         <Pencil className="h-3 w-3" />
@@ -672,7 +675,7 @@ export default function UnifiedChatInterface() {
                         type="button"
                         onClick={() => void handleDeleteMessage(msg.id)}
                         disabled={deletingMessageId === msg.id}
-                        className="rounded-full border border-border bg-card p-1 text-muted-foreground shadow-md transition hover:text-red-400"
+                        className="rounded-full border border-[var(--aston-border)] bg-[var(--aston-panel)] p-1 text-muted-foreground shadow-md transition hover:text-red-400"
                         aria-label="메시지 삭제"
                       >
                         {deletingMessageId === msg.id ? (
@@ -707,7 +710,7 @@ export default function UnifiedChatInterface() {
             animate={{ opacity: 1, y: 0 }}
             className="flex justify-start"
           >
-            <Card className="bg-muted px-4 py-2">
+            <Card className="border border-[var(--aston-border)] bg-[var(--aston-panel)] px-4 py-2">
               <div className="flex items-center gap-2">
                 <Loader2 className="w-4 h-4 animate-spin" />
                 <span className="text-sm">응답 중...</span>
@@ -720,7 +723,8 @@ export default function UnifiedChatInterface() {
       </div>
 
       {/* Input Area - Bottom (Fixed) */}
-      <div className={`border-t border-border bg-card flex-shrink-0 ${preferences.compactChat ? "p-3" : "p-4"}`}>
+      {/* MODIFIED: align the composer with the same premium panel treatment. */}
+      <div className={`flex-shrink-0 border-t border-[var(--aston-border)] bg-[var(--aston-panel)] ${preferences.compactChat ? "p-3" : "p-4"}`}>
         <QuickActions onSelect={(text) => void sendMessageText(text)} disabled={isLoading} /> {/* ADDED: quick command buttons. */}
         <form onSubmit={handleSendMessage} className="flex gap-2">
           <Input

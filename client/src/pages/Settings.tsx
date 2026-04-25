@@ -23,10 +23,10 @@ function SettingsRow({
   onCheckedChange: (checked: boolean) => void;
 }) {
   return (
-    <div className="flex items-start justify-between gap-4 rounded-xl border border-slate-700 bg-slate-950/50 p-4">
+    <div className="flex items-start justify-between gap-4 rounded-xl border border-white/10 bg-black/15 p-4">
       <div>
-        <p className="font-medium text-white">{title}</p>
-        <p className="mt-1 text-sm text-slate-400">{description}</p>
+        <p className="font-medium text-[var(--aston-text)]">{title}</p>
+        <p className="mt-1 text-sm text-[var(--aston-muted)]">{description}</p>
       </div>
       <Switch checked={checked} onCheckedChange={onCheckedChange} />
     </div>
@@ -56,13 +56,13 @@ export default function Settings() {
     : user?.email || "No email linked";
 
   return (
-    <div className="min-h-[calc(100vh-48px)] bg-gradient-to-b from-slate-950 via-slate-900 to-black text-white">
-      <div className="mx-auto flex w-full max-w-6xl flex-col gap-6 px-4 py-6 md:px-8">
+    <div className="px-4 py-5 sm:px-6 lg:px-8">
+      <div className="mx-auto flex w-full max-w-7xl flex-col gap-5">
         <div className="flex items-center justify-between gap-3">
           <Link href="/chat">
-            <a className="inline-flex items-center gap-2 text-sm text-slate-400 hover:text-white">
+            <a className="inline-flex items-center gap-2 text-sm text-[var(--aston-muted)] transition hover:text-[var(--aston-text)]">
               <ArrowLeft className="h-4 w-4" />
-              Chat으로 돌아가기
+              채팅으로 돌아가기
             </a>
           </Link>
           <Badge className="border-cyan-400/20 bg-cyan-400/10 text-cyan-300">
@@ -74,26 +74,28 @@ export default function Settings() {
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.35 }}
-          className="grid gap-6 lg:grid-cols-[1.1fr_0.9fr]"
+          className="grid gap-5 lg:grid-cols-[1.1fr_0.9fr]"
         >
-          <Card className="border-slate-700 bg-slate-900/60">
+          <Card className="border-white/10 bg-[var(--aston-panel)] text-[var(--aston-text)]">
             <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-white">
+              <CardTitle className="flex items-center gap-2">
                 <UserCircle2 className="h-5 w-5 text-cyan-300" />
                 프로필
               </CardTitle>
-              <CardDescription>현재 로그인 사용자 정보와 계정 상태를 확인합니다.</CardDescription>
+              <CardDescription className="text-[var(--aston-muted)]">
+                현재 로그인 사용자와 계정 상태를 확인합니다.
+              </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="flex items-center gap-4 rounded-2xl border border-slate-700 bg-slate-950/60 p-4">
+              <div className="flex items-center gap-4 rounded-2xl border border-white/10 bg-black/15 p-4">
                 <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-cyan-500/15 text-xl font-bold text-cyan-300">
                   {profileInitials || "U"}
                 </div>
                 <div className="min-w-0 flex-1">
-                  <p className="text-lg font-semibold text-white">{maskedName}</p>
-                  <p className="truncate text-sm text-slate-400">{maskedEmail}</p>
+                  <p className="text-lg font-semibold text-[var(--aston-text)]">{maskedName}</p>
+                  <p className="truncate text-sm text-[var(--aston-muted)]">{maskedEmail}</p>
                   <div className="mt-2 flex flex-wrap gap-2">
-                    <Badge variant="outline" className="border-slate-700 text-slate-300">
+                    <Badge variant="outline" className="border-white/10 text-[var(--aston-muted)]">
                       {user?.role || "user"}
                     </Badge>
                     <Badge variant={isAuthenticated ? "default" : "secondary"}>
@@ -104,69 +106,75 @@ export default function Settings() {
               </div>
 
               <div className="grid gap-3 sm:grid-cols-2">
-                <div className="rounded-xl border border-slate-700 bg-slate-950/50 p-4">
-                  <p className="text-xs uppercase tracking-wide text-slate-500">Login method</p>
-                  <p className="mt-1 text-sm text-white">{user?.loginMethod || "password"}</p>
+                <div className="rounded-xl border border-white/10 bg-black/15 p-4">
+                  <p className="text-xs uppercase tracking-wide text-[var(--aston-muted)]">Login method</p>
+                  <p className="mt-1 text-sm text-[var(--aston-text)]">{user?.loginMethod || "password"}</p>
                 </div>
-                <div className="rounded-xl border border-slate-700 bg-slate-950/50 p-4">
-                  <p className="text-xs uppercase tracking-wide text-slate-500">Status</p>
-                  <p className="mt-1 text-sm text-white">{loading ? "Loading..." : "Ready"}</p>
+                <div className="rounded-xl border border-white/10 bg-black/15 p-4">
+                  <p className="text-xs uppercase tracking-wide text-[var(--aston-muted)]">Status</p>
+                  <p className="mt-1 text-sm text-[var(--aston-text)]">{loading ? "Loading..." : "Ready"}</p>
                 </div>
               </div>
 
               <div className="flex flex-wrap gap-2">
-                <Button variant="outline" onClick={toggleTheme} className="border-slate-700 bg-slate-950/50 text-white hover:bg-slate-800">
+                <Button
+                  variant="outline"
+                  onClick={toggleTheme}
+                  className="border-white/10 bg-white/5 text-[var(--aston-text)] hover:bg-white/10"
+                >
                   {theme === "dark" ? <Sun className="mr-2 h-4 w-4" /> : <Moon className="mr-2 h-4 w-4" />}
-                  {theme === "dark" ? "Light mode" : "Dark mode"}
+                  {theme === "dark" ? "라이트 모드" : "다크 모드"}
                 </Button>
                 <Button
                   variant="outline"
                   onClick={() => void logout()}
-                  className="border-slate-700 bg-slate-950/50 text-white hover:bg-slate-800"
+                  className="border-white/10 bg-white/5 text-[var(--aston-text)] hover:bg-white/10"
                 >
                   <ShieldCheck className="mr-2 h-4 w-4" />
-                  Logout
+                  로그아웃
                 </Button>
               </div>
             </CardContent>
           </Card>
 
-          <Card className="border-slate-700 bg-slate-900/60">
+          <Card className="border-white/10 bg-[var(--aston-panel)] text-[var(--aston-text)]">
             <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-white">
+              <CardTitle className="flex items-center gap-2">
                 <Bell className="h-5 w-5 text-amber-300" />
-                환경설정
+                알림 설정
               </CardTitle>
-              <CardDescription>토스트, 알림, 채팅 표시 방식을 조정합니다.</CardDescription>
+              <CardDescription className="text-[var(--aston-muted)]">
+                시스템 알림, 채팅 표시 방식, 개인 정보 보호를 제어합니다.
+              </CardDescription>
             </CardHeader>
             <CardContent className="space-y-3">
               <SettingsRow
                 title="새 메시지 알림"
-                description="Telegram/Web 새 메시지를 토스트로 표시합니다."
+                description="Telegram/Web 새 메시지를 즉시 표시합니다."
                 checked={preferences.notifyNewMessages}
                 onCheckedChange={(checked) => updatePreferences({ notifyNewMessages: checked })}
               />
               <SettingsRow
                 title="에러 알림"
-                description="API 오류와 작업 실패를 토스트로 표시합니다."
+                description="API 오류나 작업 실패를 즉시 표시합니다."
                 checked={preferences.notifyErrors}
                 onCheckedChange={(checked) => updatePreferences({ notifyErrors: checked })}
               />
               <SettingsRow
-                title="사운드 피드백"
-                description="향후 알림 사운드에 사용됩니다."
+                title="사운드 알림"
+                description="알림 발생 시 소리를 재생합니다."
                 checked={preferences.notifySounds}
                 onCheckedChange={(checked) => updatePreferences({ notifySounds: checked })}
               />
               <SettingsRow
                 title="컴팩트 채팅"
-                description="채팅 영역 패딩을 줄여 더 많은 메시지를 한 화면에 보여줍니다."
+                description="채팅 영역을 더 촘촘하게 보여줍니다."
                 checked={preferences.compactChat}
                 onCheckedChange={(checked) => updatePreferences({ compactChat: checked })}
               />
               <SettingsRow
                 title="개인정보 보호"
-                description="이름과 이메일 일부를 마스킹해 화면 노출을 줄입니다."
+                description="이름과 이메일을 마스킹해서 표시합니다."
                 checked={preferences.privacyMode}
                 onCheckedChange={(checked) => updatePreferences({ privacyMode: checked })}
               />
@@ -178,54 +186,58 @@ export default function Settings() {
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.35, delay: 0.08 }}
-          className="grid gap-6 lg:grid-cols-2"
+          className="grid gap-5 lg:grid-cols-2"
         >
-          <Card className="border-slate-700 bg-slate-900/60">
+          <Card className="border-white/10 bg-[var(--aston-panel)] text-[var(--aston-text)]">
             <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-white">
+              <CardTitle className="flex items-center gap-2">
                 <MessageSquare className="h-5 w-5 text-cyan-300" />
                 채팅 동작
               </CardTitle>
-              <CardDescription>대화 화면의 표시와 반응 방식을 제어합니다.</CardDescription>
+              <CardDescription className="text-[var(--aston-muted)]">
+                대화 화면의 표시 및 반응 방식을 제어합니다.
+              </CardDescription>
             </CardHeader>
-            <CardContent className="space-y-4 text-sm text-slate-300">
-              <div className="rounded-xl border border-slate-700 bg-slate-950/50 p-4">
-                <p className="font-medium text-white">현재 설정 반영</p>
-                <p className="mt-1 text-slate-400">
-                  새 메시지 알림, 오류 토스트, 컴팩트 뷰는 즉시 채팅 화면과 토스트 브리지에 반영됩니다.
+            <CardContent className="space-y-4 text-sm text-[var(--aston-muted)]">
+              <div className="rounded-xl border border-white/10 bg-black/15 p-4">
+                <p className="font-medium text-[var(--aston-text)]">현재 설정 반영</p>
+                <p className="mt-1">
+                  새 메시지 알림, 에러 알림, 컴팩트 모드는 즉시 채팅 화면과 시스템 브리지에 반영됩니다.
                 </p>
               </div>
-              <Separator className="bg-slate-700" />
+              <Separator className="bg-white/10" />
               <div className="flex flex-wrap gap-2">
-                <Badge variant="outline" className="border-slate-700 text-slate-300">
+                <Badge variant="outline" className="border-white/10 text-[var(--aston-muted)]">
                   theme: {theme}
                 </Badge>
-                <Badge variant="outline" className="border-slate-700 text-slate-300">
+                <Badge variant="outline" className="border-white/10 text-[var(--aston-muted)]">
                   notifications: {preferences.notifyErrors && preferences.notifyNewMessages ? "on" : "partial"}
                 </Badge>
-                <Badge variant="outline" className="border-slate-700 text-slate-300">
+                <Badge variant="outline" className="border-white/10 text-[var(--aston-muted)]">
                   compact: {preferences.compactChat ? "enabled" : "disabled"}
                 </Badge>
               </div>
             </CardContent>
           </Card>
 
-          <Card className="border-slate-700 bg-slate-900/60">
+          <Card className="border-white/10 bg-[var(--aston-panel)] text-[var(--aston-text)]">
             <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-white">
+              <CardTitle className="flex items-center gap-2">
                 <RefreshCcw className="h-5 w-5 text-emerald-300" />
-                초기화
+                설정 초기화
               </CardTitle>
-              <CardDescription>선호도만 초기화하고 계정 정보는 유지합니다.</CardDescription>
+              <CardDescription className="text-[var(--aston-muted)]">
+                현재 사용자 설정만 초기값으로 되돌립니다.
+              </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              <p className="text-sm text-slate-400">
-                테마와 알림 선호도를 초기값으로 되돌립니다. 다음 로그인과 즉시 동작 반영에 사용됩니다.
+              <p className="text-sm text-[var(--aston-muted)]">
+                테마와 알림은 필요 시 다시 변경할 수 있습니다. 이 작업은 서버 데이터나 계정 상태를 건드리지 않습니다.
               </p>
               <Button
                 variant="outline"
                 onClick={resetPreferences}
-                className="border-slate-700 bg-slate-950/50 text-white hover:bg-slate-800"
+                className="border-white/10 bg-white/5 text-[var(--aston-text)] hover:bg-white/10"
               >
                 설정 초기화
               </Button>

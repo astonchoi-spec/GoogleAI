@@ -2,11 +2,11 @@ import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import NotFound from "@/pages/NotFound";
 import { Suspense, lazy } from "react"; // MODIFIED: split route bundles to reduce initial client payload.
-import { Route, Switch, useLocation } from "wouter";
+import { Route, Switch } from "wouter";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { ThemeProvider } from "./contexts/ThemeContext";
-import Navbar from "./components/Navbar";
 import GlobalToastBridge from "./components/GlobalToastBridge"; // MODIFIED: centralize toast notifications for query/mutation errors.
+import AppShell from "./components/layout/AppShell";
 
 const Home = lazy(() => import("./pages/Home")); // MODIFIED: code-split the landing page bundle.
 const Chat = lazy(() => import("./pages/Chat")); // MODIFIED: code-split the chat page bundle.
@@ -18,9 +18,6 @@ const RealEstatePage = lazy(() => import("./pages/RealEstatePage")); // MODIFIED
 const Monitoring = lazy(() => import("./pages/Monitoring")); // MODIFIED: code-split the monitoring dashboard bundle.
 
 function Router() {
-  const [location] = useLocation();
-  const showNav = location !== "/";
-
   return (
     <Suspense
       fallback={
@@ -29,8 +26,7 @@ function Router() {
         </div>
       }
     >
-      <>
-        {showNav && <Navbar />}
+      <AppShell>
         <Switch>
           <Route path={"/"} component={Home} />
           <Route path={"/chat"} component={Chat} />
@@ -43,7 +39,7 @@ function Router() {
           <Route path={"/404"} component={NotFound} />
           <Route component={NotFound} />
         </Switch>
-      </>
+      </AppShell>
     </Suspense>
   );
 }

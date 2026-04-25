@@ -1,6 +1,7 @@
 import { Fragment, useState } from "react";
 import { motion } from "framer-motion";
 import { Mail, Calendar, HardDrive, Table2 } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 import GoogleAuthCard from "@/components/GoogleWorkspace/GoogleAuthCard";
 import GmailPanel from "@/components/GoogleWorkspace/GmailPanel";
 import CalendarPanel from "@/components/GoogleWorkspace/CalendarPanel";
@@ -20,45 +21,52 @@ export default function Google() {
   const [activeTab, setActiveTab] = useState<TabId>("gmail");
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-slate-900 via-slate-950 to-black px-4 md:px-8 py-4">
-      <motion.div
-        initial={{ opacity: 0, y: -10 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.4 }}
-        className="max-w-4xl mx-auto space-y-6"
-      >
-        <div>
-          <h1 className="text-2xl md:text-3xl font-bold bg-gradient-to-r from-cyan-400 to-blue-500 bg-clip-text text-transparent leading-tight">
-            Google Workspace
-          </h1>
-          <p className="text-slate-400 text-sm mt-1">
-            Gmail · Calendar · Drive · Sheets 통합 관리
-          </p>
-        </div>
+    <div className="px-4 py-5 sm:px-6 lg:px-8">
+      <div className="mx-auto max-w-7xl space-y-5">
+        <motion.section
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.35 }}
+          className="rounded-2xl border border-white/10 bg-[var(--aston-panel)] p-5"
+        >
+          <div className="space-y-2">
+            <Badge variant="outline" className="border-cyan-500/20 bg-cyan-500/10 text-cyan-300">
+              Google Workspace operations
+            </Badge>
+            <h1 className="text-3xl font-semibold tracking-tight text-[var(--aston-text)]">
+              Google Workspace
+            </h1>
+            <p className="max-w-3xl text-sm text-[var(--aston-muted)]">
+              Gmail, Calendar, Drive, Sheets를 하나의 업무 패널에서 통합 관리합니다.
+            </p>
+          </div>
+        </motion.section>
 
         <GoogleAuthCard />
 
-        <div className="flex gap-1 overflow-x-auto bg-slate-800/50 p-1 rounded-lg border border-slate-700"> {/* MODIFIED: let the tab strip scroll on narrow screens instead of wrapping awkwardly. */}
-          {TABS.map((tab) => {
-            const Icon = tab.icon;
-            const isActive = activeTab === tab.id;
-            return (
-              <Fragment key={tab.id}>
-                {/* MODIFIED: keep each tab tappable on mobile without squashing labels. */}
-                <button
-                  onClick={() => setActiveTab(tab.id)}
-                  className={`flex-1 shrink-0 flex items-center justify-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-all ${
-                    isActive
-                      ? "bg-cyan-600 text-white shadow"
-                      : "text-slate-400 hover:text-slate-300 hover:bg-slate-700/50"
-                  }`}
-                >
-                <Icon className="w-4 h-4" />
-                <span className="hidden sm:inline">{tab.label}</span>
-                </button>
-              </Fragment>
-            );
-          })}
+        <div className="rounded-2xl border border-white/10 bg-[var(--aston-panel)] p-2">
+          <div className="flex gap-2 overflow-x-auto">
+            {TABS.map((tab) => {
+              const Icon = tab.icon;
+              const isActive = activeTab === tab.id;
+
+              return (
+                <Fragment key={tab.id}>
+                  <button
+                    onClick={() => setActiveTab(tab.id)}
+                    className={`flex min-w-[8rem] flex-1 items-center justify-center gap-2 rounded-xl px-4 py-3 text-sm font-medium transition ${
+                      isActive
+                        ? "bg-cyan-500 text-slate-950 shadow-lg shadow-cyan-500/20"
+                        : "bg-white/0 text-[var(--aston-muted)] hover:bg-white/5 hover:text-[var(--aston-text)]"
+                    }`}
+                  >
+                    <Icon className="h-4 w-4" />
+                    <span>{tab.label}</span>
+                  </button>
+                </Fragment>
+              );
+            })}
+          </div>
         </div>
 
         <motion.div
@@ -66,14 +74,14 @@ export default function Google() {
           initial={{ opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.2 }}
-          className="bg-slate-900/50 border border-slate-700 rounded-xl p-4 md:p-6"
+          className="rounded-2xl border border-white/10 bg-[var(--aston-panel)] p-4 md:p-6"
         >
           {activeTab === "gmail" && <GmailPanel />}
           {activeTab === "calendar" && <CalendarPanel />}
           {activeTab === "drive" && <DrivePanel />}
           {activeTab === "sheets" && <SheetsPanel />}
         </motion.div>
-      </motion.div>
+      </div>
     </div>
   );
 }

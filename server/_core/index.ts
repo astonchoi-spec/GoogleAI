@@ -11,6 +11,7 @@ import { serveStatic, setupVite } from "./vite.ts";
 import telegramRouter, { initializeTelegramBot } from "../webhooks/telegram.ts";
 import googleCallbackRouter, { initializeGoogleAuth } from "../webhooks/google-callback.ts";
 import { googleAuthManager } from "../routers/google-workspace.ts";
+import { installDeploymentGuards, logStartupSummary } from "./deployment.ts"; // MODIFIED: add production bootstrap checks and persistent error logging.
 
 function isPortAvailable(port: number): Promise<boolean> {
   return new Promise(resolve => {
@@ -32,6 +33,9 @@ async function findAvailablePort(startPort: number = 3000): Promise<number> {
 }
 
 async function startServer() {
+  installDeploymentGuards(); // MODIFIED: capture fatal runtime errors before the app starts handling requests.
+  await logStartupSummary(); // MODIFIED: surface production readiness warnings at boot time.
+
   const app = express();
   const server = createServer(app);
   // Configure body parser with larger size limit for file uploads

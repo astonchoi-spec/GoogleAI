@@ -445,7 +445,7 @@
 - [x] Move intent classification away from hardcoded `gemini/flash`
 - [x] Move Telegram Workspace command parsing away from hardcoded `gemini/flash`
 - [x] Add LLM adapter environment variables to `.env.example`
-- [ ] Add future adapter implementations only when needed:
+- [x] Add future adapter implementations only when needed:
   - `OpenRouterAdapter`
   - `HermesAdapter`
   - OpenClaw automation client/skill bridge

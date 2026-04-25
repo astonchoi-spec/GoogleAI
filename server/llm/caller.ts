@@ -27,6 +27,7 @@ export class LLMCaller {
   private ollamaHost: string;
   private geminiApiKey: string;
   private openaiApiKey: string;
+  private openaiBaseUrl?: string;
   private anthropicApiKey: string;
   private axiosInstance = axios.create({
     timeout: 30000, // 30 second timeout
@@ -36,11 +37,13 @@ export class LLMCaller {
     ollamaHost: string = process.env.OLLAMA_HOST || "http://localhost:11434",
     geminiApiKey: string = process.env.GEMINI_API_KEY || "",
     openaiApiKey: string = process.env.OPENAI_API_KEY || "",
+    openaiBaseUrl: string = process.env.OPENAI_BASE_URL || "",
     anthropicApiKey: string = process.env.ANTHROPIC_API_KEY || ""
   ) {
     this.ollamaHost = ollamaHost;
     this.geminiApiKey = geminiApiKey;
     this.openaiApiKey = openaiApiKey;
+    this.openaiBaseUrl = openaiBaseUrl || undefined;
     this.anthropicApiKey = anthropicApiKey;
   }
 
@@ -52,11 +55,13 @@ export class LLMCaller {
     openai?: string;
     anthropic?: string;
     ollama?: string;
+    openaiBaseUrl?: string;
   }): void {
     if (keys.gemini) this.geminiApiKey = keys.gemini;
     if (keys.openai) this.openaiApiKey = keys.openai;
     if (keys.anthropic) this.anthropicApiKey = keys.anthropic;
     if (keys.ollama) this.ollamaHost = keys.ollama;
+    if (keys.openaiBaseUrl) this.openaiBaseUrl = keys.openaiBaseUrl;
   }
 
   /**
@@ -214,7 +219,10 @@ export class LLMCaller {
     systemPrompt?: string
   ): Promise<LLMResponse> {
     try {
-      const client = new OpenAI({ apiKey: this.openaiApiKey });
+      const client = new OpenAI({
+        apiKey: this.openaiApiKey,
+        baseURL: this.openaiBaseUrl,
+      });
 
       const apiMessages = messages.map((msg) => ({
         role: msg.role as "user" | "assistant" | "system",

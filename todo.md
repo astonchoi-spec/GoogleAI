@@ -255,18 +255,18 @@
   - Notification preferences
   - Privacy settings
 
-- [ ] Analytics and monitoring
+- [x] Analytics and monitoring
   - Message count statistics
   - API usage tracking
   - Response time metrics
   - User activity logs
 
-- [ ] Mobile responsiveness
+- [x] Mobile responsiveness
   - Optimize layout for mobile devices
   - Touch-friendly buttons and inputs
   - Mobile-specific UI adjustments
 
-- [ ] Performance optimization
+- [x] Performance optimization
   - Message pagination (load older messages on scroll)
   - Lazy loading for images/media
   - Database query optimization
@@ -335,27 +335,27 @@
 
 ### ?묒뾽 17. tRPC ?쇱슦???깅줉
 
-- [ ] `server/trpc/routers/trading.ts` ?앹꽦
+- [x] `server/trpc/routers/trading.ts` ?앹꽦
   - 嫄곕옒???붽퀬 議고쉶
   - ?ъ???議고쉶
   - 湲곗닠??遺꾩꽍 議고쉶
   - ?좊Ъ 由ъ뒪??怨꾩궛
   - ?뚮┝ 紐⑸줉/異붽?/??젣
 
-- [ ] `server/trpc/routers/realestate.ts` ?앹꽦
+- [x] `server/trpc/routers/realestate.ts` ?앹꽦
   - PF ??紐⑸줉/異붽?/?④퀎 蹂寃??붿빟
   - ?ъ뾽??遺꾩꽍 ?ㅽ뻾
   - ?좎?議고쉶/嫄댁텞臾쇰????ㅺ굅?섍? 議고쉶
 
-- [ ] `server/trpc/routers/finance.ts` ?앹꽦
+- [x] `server/trpc/routers/finance.ts` ?앹꽦
   - DART 怨듭떆 議고쉶
   - DART ?щТ?쒗몴 議고쉶
   - DART ?뚯궗 寃??
-- [ ] `appRouter`???좉퇋 ?쇱슦???깅줉
+- [x] `appRouter`???좉퇋 ?쇱슦???깅줉
   - 紐⑤뱺 input? zod 寃利?  - API ???꾨씫, Google Auth ?꾨씫, Redis 誘몄뿰寃??ㅻ쪟 硫붿떆吏 ?뺣━
 
 ### ?묒뾽 18. AI ?섎룄 ?뚯떛 ?쇱슦??
-- [ ] `server/trpc/routers/intent.ts` ?먮뒗 湲곗〈 LLM ?쇱슦???뺤옣
+- [x] `server/trpc/routers/intent.ts` ?먮뒗 湲곗〈 LLM ?쇱슦???뺤옣
   - Gemini濡??먯뿰???섎룄 遺꾨쪟
   - intent: trading / realestate / finance / google / chat
   - action: 議고쉶 / 遺꾩꽍 / ?앹꽦 / ?섏젙 / ??젣 援щ텇

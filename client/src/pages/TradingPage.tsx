@@ -30,12 +30,13 @@ export default function TradingPage() {
           <p className="mt-1 text-sm text-slate-400">거래소 포지션, 매매일지, 알림을 통합 관리합니다.</p>
         </div>
 
-        <div className="flex gap-1 rounded-lg border border-slate-700 bg-slate-800/50 p-1">
+        {/* MODIFIED: allow the tab row to scroll horizontally on small screens. */}
+        <div className="flex gap-1 overflow-x-auto rounded-lg border border-slate-700 bg-slate-800/50 p-1">
           {tabs.map((tab) => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
-              className={`flex-1 rounded-md px-3 py-2 text-sm font-medium transition-all ${
+              className={`flex-1 shrink-0 rounded-md px-3 py-2 text-sm font-medium transition-all ${
                 activeTab === tab
                   ? "bg-cyan-600 text-white shadow"
                   : "text-slate-400 hover:bg-slate-700/50 hover:text-slate-300"

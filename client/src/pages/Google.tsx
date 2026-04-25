@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { Fragment, useState } from "react";
 import { motion } from "framer-motion";
 import { Mail, Calendar, HardDrive, Table2 } from "lucide-react";
 import GoogleAuthCard from "@/components/GoogleWorkspace/GoogleAuthCard";
@@ -38,23 +38,25 @@ export default function Google() {
 
         <GoogleAuthCard />
 
-        <div className="flex gap-1 bg-slate-800/50 p-1 rounded-lg border border-slate-700">
+        <div className="flex gap-1 overflow-x-auto bg-slate-800/50 p-1 rounded-lg border border-slate-700"> {/* MODIFIED: let the tab strip scroll on narrow screens instead of wrapping awkwardly. */}
           {TABS.map((tab) => {
             const Icon = tab.icon;
             const isActive = activeTab === tab.id;
             return (
-              <button
-                key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
-                className={`flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-all ${
-                  isActive
-                    ? "bg-cyan-600 text-white shadow"
-                    : "text-slate-400 hover:text-slate-300 hover:bg-slate-700/50"
-                }`}
-              >
+              <Fragment key={tab.id}>
+                {/* MODIFIED: keep each tab tappable on mobile without squashing labels. */}
+                <button
+                  onClick={() => setActiveTab(tab.id)}
+                  className={`flex-1 shrink-0 flex items-center justify-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-all ${
+                    isActive
+                      ? "bg-cyan-600 text-white shadow"
+                      : "text-slate-400 hover:text-slate-300 hover:bg-slate-700/50"
+                  }`}
+                >
                 <Icon className="w-4 h-4" />
                 <span className="hidden sm:inline">{tab.label}</span>
-              </button>
+                </button>
+              </Fragment>
             );
           })}
         </div>

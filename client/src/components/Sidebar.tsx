@@ -1,6 +1,6 @@
 import { motion } from "framer-motion";
 import { Link } from "wouter";
-import { ChevronRight, MessageCircle, LayoutGrid, Settings2 } from "lucide-react";
+import { ChevronRight, MessageCircle, LayoutGrid, Settings2, Activity } from "lucide-react";
 
 interface SidebarProps {
   isOpen: boolean;
@@ -95,6 +95,13 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
               Settings
             </a>
           </Link>
+          {/* MODIFIED: surface the monitoring page in the home sidebar quick links. */}
+          <Link href="/monitoring">
+            <a className="flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-semibold bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-300 transition-colors">
+              <Activity className="w-4 h-4" />
+              Monitoring
+            </a>
+          </Link>
         </motion.div>
 
         {/* Footer */}
@@ -166,6 +173,16 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
             >
               <Settings2 className="w-4 h-4" />
               Settings
+            </a>
+          </Link>
+          {/* MODIFIED: surface the monitoring page in the mobile sidebar quick links. */}
+          <Link href="/monitoring">
+            <a
+              className="flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-semibold bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-300 transition-colors"
+              onClick={onClose}
+            >
+              <Activity className="w-4 h-4" />
+              Monitoring
             </a>
           </Link>
         </div>

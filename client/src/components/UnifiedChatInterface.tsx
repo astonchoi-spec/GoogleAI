@@ -68,6 +68,7 @@ export default function UnifiedChatInterface() {
   const [isEditing, setIsEditing] = useState(false); // MODIFIED: show edit-in-flight state in the edit bar.
   const [isPinned, setIsPinned] = useState(false); // MODIFIED: track favorite state for the active conversation.
   const [isTogglingPin, setIsTogglingPin] = useState(false); // MODIFIED: show favorite toggle progress.
+  const [messageLimit, setMessageLimit] = useState(50); // MODIFIED: paginate older messages in fixed-size batches for better chat performance.
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const utils = trpc.useUtils(); // MODIFIED: reuse tRPC cache helpers after mutation-driven timeline changes.
 
@@ -84,7 +85,7 @@ export default function UnifiedChatInterface() {
     enabled: isAuthenticated,
   });
   const messagesQuery = trpc.chatSync.getMessages.useQuery(
-    { conversationId: conversationId || 0, limit: 50 },
+    { conversationId: conversationId || 0, limit: messageLimit },
     { enabled: isAuthenticated && !!conversationId }
   );
   const recentMessagesQuery = trpc.chatSync.getRecentMessages.useQuery(
@@ -199,6 +200,7 @@ export default function UnifiedChatInterface() {
     .reverse();
 
   const renderedMessages = searchParams ? searchedMessages : messages; // MODIFIED: toggle between live timeline and search result list.
+  const canLoadOlderMessages = !!conversationId && !searchParams && messagesQuery.data?.length === messageLimit; // MODIFIED: show pagination only when there may be older history.
 
   const executeSearch = () => { // MODIFIED: apply current filters and trigger server-side query.
     setSearchParams({ ...searchFilters });
@@ -207,6 +209,10 @@ export default function UnifiedChatInterface() {
   const clearSearch = () => { // MODIFIED: reset search mode and resume real-time timeline.
     setSearchFilters({ query: "", source: "all", dateFrom: "", dateTo: "" });
     setSearchParams(null);
+  };
+
+  const loadOlderMessages = () => { // MODIFIED: expand the history window instead of rendering an unbounded message list.
+    setMessageLimit((current) => current + 50);
   };
 
   const toggleConversationPin = async () => { // MODIFIED: persist favorite state for the current conversation.
@@ -579,6 +585,20 @@ export default function UnifiedChatInterface() {
 
       {/* Messages Area - Middle (Scrollable) */}
       <div className={`flex-1 overflow-y-auto space-y-3 ${preferences.compactChat ? "p-3" : "p-4"}`}>
+        {canLoadOlderMessages && (
+          <div className="flex justify-center pb-2">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={loadOlderMessages}
+              disabled={messagesQuery.isFetching}
+              className="border-border bg-card text-muted-foreground hover:text-white"
+            >
+              {messagesQuery.isFetching ? "Loading older messages..." : "Load older messages"}
+            </Button>
+          </div>
+        )}
         <AnimatePresence>
           {renderedMessages.length === 0 ? ( // MODIFIED: respect either live messages or search results.
             <motion.div

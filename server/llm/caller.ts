@@ -9,6 +9,7 @@ import OpenAI from "openai";
 import axios from "axios";
 import type { LLMEngine } from "./models.ts";
 import { getModel } from "./models.ts";
+import { recordApiUsage } from "../_core/apiUsage.ts"; // MODIFIED: capture lightweight API telemetry for the monitoring dashboard.
 
 export interface LLMMessage {
   role: "user" | "assistant" | "system";
@@ -72,17 +73,41 @@ export class LLMCaller {
       throw new Error(`Model not found: ${engine}:${modelKey}`);
     }
 
-    switch (engine) {
-      case "gemma4":
-        return this.callGemma4(model.modelId, messages, systemPrompt);
-      case "gemini":
-        return this.callGemini(model.modelId, messages, systemPrompt);
-      case "codex":
-        return this.callCodex(model.modelId, messages, systemPrompt);
-      case "claude":
-        return this.callClaude(model.modelId, messages, systemPrompt);
-      default:
-        throw new Error(`Unknown engine: ${engine}`);
+    const startedAt = Date.now(); // MODIFIED: measure end-to-end provider latency for monitoring.
+
+    try {
+      const response = await (async () => {
+        switch (engine) {
+          case "gemma4":
+            return this.callGemma4(model.modelId, messages, systemPrompt);
+          case "gemini":
+            return this.callGemini(model.modelId, messages, systemPrompt);
+          case "codex":
+            return this.callCodex(model.modelId, messages, systemPrompt);
+          case "claude":
+            return this.callClaude(model.modelId, messages, systemPrompt);
+          default:
+            throw new Error(`Unknown engine: ${engine}`);
+        }
+      })();
+
+      await recordApiUsage({
+        engine: response.engine,
+        model: response.model,
+        success: true,
+        latencyMs: Date.now() - startedAt,
+        tokensUsed: response.tokensUsed,
+      });
+
+      return response;
+    } catch (error) {
+      await recordApiUsage({
+        engine,
+        model: model.modelId,
+        success: false,
+        latencyMs: Date.now() - startedAt,
+      });
+      throw error;
     }
   }
 

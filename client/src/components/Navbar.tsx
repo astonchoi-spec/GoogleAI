@@ -8,6 +8,7 @@ import {
   TrendingUp,
   Building2,
   Settings2,
+  Activity,
 } from "lucide-react";
 
 const NAV_LINKS = [
@@ -17,12 +18,14 @@ const NAV_LINKS = [
   { href: "/real-estate-pf", icon: Building2, label: "부동산PF" },
   { href: "/google", icon: LayoutGrid, label: "Google Workspace" },
   { href: "/settings", icon: Settings2, label: "설정" },
+  { href: "/monitoring", icon: Activity, label: "모니터링" }, // MODIFIED: surface analytics dashboard in primary navigation.
 ];
 
 const BACK_LINKS: Record<string, string> = {
   "/chat": "/",
   "/google": "/chat",
   "/settings": "/google",
+  "/monitoring": "/settings", // MODIFIED: keep the analytics page in the back-navigation chain.
   "/trading": "/chat",
   "/real-estate-pf": "/trading",
 };
@@ -58,13 +61,13 @@ export default function Navbar() {
 
         <div className="flex-1" />
 
-        <nav className="flex items-center gap-1">
+        <nav className="flex max-w-full items-center gap-1 overflow-x-auto pb-1">
           {NAV_LINKS.map(({ href, icon: Icon, label }) => {
             const isActive = location === href;
             return (
               <Link key={href} href={href}>
                 <a
-                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${
+                  className={`flex shrink-0 items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium transition-all ${
                     isActive
                       ? "bg-cyan-600/20 text-cyan-400 border border-cyan-600/30"
                       : "text-slate-400 hover:text-white hover:bg-slate-800"

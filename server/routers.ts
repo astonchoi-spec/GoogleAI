@@ -13,6 +13,7 @@ import { tradingRouter } from "./routers/trading.ts"; // MODIFIED: Phase 3 tradi
 import { realestateRouter } from "./routers/realestate.ts"; // MODIFIED: Phase 3 real estate PF router registration
 import { financeRouter } from "./routers/finance.ts"; // MODIFIED: Phase 3 finance router registration
 import { intentRouter } from "./routers/intent.ts"; // MODIFIED: Phase 3 intent routing entrypoint registration
+import { analyticsRouter } from "./routers/analytics.ts"; // MODIFIED: expose analytics dashboard data via appRouter.
 
 const ADMIN_USERNAME = "admin";
 const ADMIN_PASSWORD = "admin123";
@@ -65,6 +66,7 @@ export const appRouter = router({
   realestate: realestateRouter, // MODIFIED: expose real estate PF procedures via appRouter
   finance: financeRouter, // MODIFIED: expose finance(DART) procedures via appRouter
   intent: intentRouter, // MODIFIED: expose intent classify/route procedures for AI action routing
+  analytics: analyticsRouter, // MODIFIED: expose monitoring metrics for the dashboard page.
 });
 
 export type AppRouter = typeof appRouter;

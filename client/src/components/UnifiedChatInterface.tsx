@@ -25,6 +25,7 @@ import MessageEditBar from "./MessageEditBar";
 import QuickActions from "./QuickActions"; // ADDED: quick command row above the input area.
 import { useSpeechRecognition, useTextToSpeech } from "@/hooks/useSpeech"; // ADDED: browser speech recognition and TTS logic.
 import MessageSearchControls from "./MessageSearchControls"; // MODIFIED: add dedicated search UI component for message search filters.
+import { useAppPreferences } from "@/hooks/useAppPreferences";
 
 interface UnifiedMessage {
   id: string;
@@ -43,6 +44,7 @@ interface MessageSearchFilters { // MODIFIED: keep search state typed and aligne
 
 export default function UnifiedChatInterface() {
   const { isAuthenticated } = useAuth();
+  const { preferences } = useAppPreferences();
   const [messages, setMessages] = useState<UnifiedMessage[]>([]);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -174,7 +176,7 @@ export default function UnifiedChatInterface() {
         const existingIds = new Set(prev.map((m) => m.id));
         const uniqueNewMessages = newMessages.filter((m) => !existingIds.has(m.id));
         const telegramIncoming = uniqueNewMessages.filter((m) => m.source === "telegram" && m.role === "user"); // MODIFIED: detect newly synced Telegram user messages for toast alerting.
-        if (telegramIncoming.length > 0) {
+        if (preferences.notifyNewMessages && telegramIncoming.length > 0) {
           const latest = telegramIncoming[telegramIncoming.length - 1];
           const preview = latest.content.length > 40 ? `${latest.content.slice(0, 40)}...` : latest.content;
           toast.info(`텔레그램 새 메시지: ${preview}`); // MODIFIED: provide real-time new-message toast notification requested in todo.
@@ -184,7 +186,7 @@ export default function UnifiedChatInterface() {
 
       setLastSyncTime(new Date());
     }
-  }, [recentMessagesQuery.data, searchParams]);
+  }, [preferences.notifyNewMessages, recentMessagesQuery.data, searchParams]);
 
   const searchedMessages: UnifiedMessage[] = (searchMessagesQuery.data ?? []) // MODIFIED: normalize tRPC search results into unified render shape.
     .map((msg: any) => ({
@@ -421,7 +423,7 @@ export default function UnifiedChatInterface() {
   };
 
   return (
-    <div className="flex flex-col h-full bg-background">
+    <div className={`flex flex-col h-full bg-background ${preferences.compactChat ? "text-[0.95rem]" : ""}`}>
       {/* Login notice banner - shown when not authenticated */}
       {!isAuthenticated && (
         <div className="flex items-center justify-between gap-2 px-4 py-2 bg-amber-500/10 border-b border-amber-500/20 flex-shrink-0">
@@ -439,7 +441,7 @@ export default function UnifiedChatInterface() {
       )}
 
       {/* Header - Top (Fixed) */}
-      <div className="border-b border-border bg-card px-4 py-3 flex-shrink-0 flex items-center justify-between">
+      <div className={`border-b border-border bg-card flex-shrink-0 flex items-center justify-between ${preferences.compactChat ? "px-3 py-2" : "px-4 py-3"}`}>
         <div className="flex items-center gap-2 text-sm font-semibold">
           <MessageCircle className="w-4 h-4 text-primary" />
           <span>통합 채팅</span>
@@ -576,7 +578,7 @@ export default function UnifiedChatInterface() {
       )}
 
       {/* Messages Area - Middle (Scrollable) */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-3">
+      <div className={`flex-1 overflow-y-auto space-y-3 ${preferences.compactChat ? "p-3" : "p-4"}`}>
         <AnimatePresence>
           {renderedMessages.length === 0 ? ( // MODIFIED: respect either live messages or search results.
             <motion.div
@@ -698,7 +700,7 @@ export default function UnifiedChatInterface() {
       </div>
 
       {/* Input Area - Bottom (Fixed) */}
-      <div className="border-t border-border bg-card p-4 flex-shrink-0">
+      <div className={`border-t border-border bg-card flex-shrink-0 ${preferences.compactChat ? "p-3" : "p-4"}`}>
         <QuickActions onSelect={(text) => void sendMessageText(text)} disabled={isLoading} /> {/* ADDED: quick command buttons. */}
         <form onSubmit={handleSendMessage} className="flex gap-2">
           <Input

@@ -1,6 +1,6 @@
 import { motion } from "framer-motion";
 import { Link } from "wouter";
-import { ChevronRight, MessageCircle, LayoutGrid } from "lucide-react";
+import { ChevronRight, MessageCircle, LayoutGrid, Settings2 } from "lucide-react";
 
 interface SidebarProps {
   isOpen: boolean;
@@ -89,6 +89,12 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
               Google Workspace
             </a>
           </Link>
+          <Link href="/settings">
+            <a className="flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-semibold bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 transition-colors">
+              <Settings2 className="w-4 h-4" />
+              Settings
+            </a>
+          </Link>
         </motion.div>
 
         {/* Footer */}
@@ -151,6 +157,15 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
             >
               <LayoutGrid className="w-4 h-4" />
               Google Workspace
+            </a>
+          </Link>
+          <Link href="/settings">
+            <a
+              className="flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-semibold bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 transition-colors"
+              onClick={onClose}
+            >
+              <Settings2 className="w-4 h-4" />
+              Settings
             </a>
           </Link>
         </div>

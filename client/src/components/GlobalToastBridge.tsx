@@ -3,6 +3,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { TRPCClientError } from "@trpc/client";
 import { toast } from "sonner";
 import { UNAUTHED_ERR_MSG } from "@shared/const";
+import { useAppPreferences } from "@/hooks/useAppPreferences";
 
 function extractErrorMessage(error: unknown): string {
   if (error instanceof TRPCClientError) return error.message;
@@ -12,6 +13,7 @@ function extractErrorMessage(error: unknown): string {
 
 export default function GlobalToastBridge() {
   const queryClient = useQueryClient();
+  const { preferences } = useAppPreferences();
   const lastErrorRef = useRef<string>("");
   const lastShownAtRef = useRef<number>(0);
 
@@ -19,6 +21,7 @@ export default function GlobalToastBridge() {
     const maybeShowErrorToast = (error: unknown) => {
       const message = extractErrorMessage(error).trim();
       if (!message || message === UNAUTHED_ERR_MSG) return; // MODIFIED: keep existing auth redirect flow without duplicate toast noise.
+      if (!preferences.notifyErrors) return; // MODIFIED: honor user notification preference for error toasts.
 
       const now = Date.now();
       const isDuplicate = lastErrorRef.current === message && now - lastShownAtRef.current < 3000;
@@ -45,7 +48,7 @@ export default function GlobalToastBridge() {
       unSubQuery();
       unSubMutation();
     };
-  }, [queryClient]);
+  }, [preferences.notifyErrors, queryClient]);
 
   return null;
 }

@@ -249,7 +249,7 @@
   - [x] Conversation export (JSON)
   - [x] Conversation pinning/favorites
 
-- [ ] User profile and settings
+- [x] User profile and settings
   - User preference management
   - Theme customization (dark/light mode)
   - Notification preferences

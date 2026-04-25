@@ -11,6 +11,7 @@ import Google from "./pages/Google";
 import TradingPage from "./pages/TradingPage"; // MODIFIED: add route target for the new trading tab.
 import RealEstatePage from "./pages/RealEstatePage"; // MODIFIED: add route target for the new real estate PF tab.
 import Navbar from "./components/Navbar";
+import GlobalToastBridge from "./components/GlobalToastBridge"; // MODIFIED: centralize toast notifications for query/mutation errors.
 
 function Router() {
   const [location] = useLocation();
@@ -47,6 +48,7 @@ function App() {
       >
         <TooltipProvider>
           <Toaster />
+          <GlobalToastBridge /> {/* MODIFIED: enable app-wide error toast notifications with de-duplication. */}
           <Router />
         </TooltipProvider>
       </ThemeProvider>

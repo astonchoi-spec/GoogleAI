@@ -8,7 +8,10 @@ import { z } from "zod";
 import {
   getOrCreateConversation,
   getConversationMessages,
+  getConversationMessagesAsc,
   getRecentMessages,
+  deleteMessage,
+  searchConversationMessages,
   saveMessage,
   getConversationByTelegramChatId,
   getConversationById,
@@ -61,6 +64,35 @@ export const chatSyncRouter = router({
     )
     .query(async ({ input }) => {
       const msgs = await getRecentMessages(input.conversationId, input.since);
+      return msgs.map((msg) => ({
+        ...msg,
+        metadata: msg.metadata ? JSON.parse(msg.metadata) : null,
+      }));
+    }),
+
+  /**
+   * Search conversation messages by keyword/date/source
+   */
+  searchMessages: protectedProcedure // MODIFIED: add server-side message search with filters for unified chat UI.
+    .input(
+      z.object({
+        conversationId: z.number(),
+        query: z.string().max(500).optional(),
+        source: z.enum(["all", "web", "telegram"]).default("all"),
+        dateFrom: z.date().optional(),
+        dateTo: z.date().optional(),
+        limit: z.number().min(1).max(200).default(100),
+      })
+    )
+    .query(async ({ input }) => {
+      const msgs = await searchConversationMessages({
+        conversationId: input.conversationId,
+        query: input.query,
+        source: input.source,
+        dateFrom: input.dateFrom,
+        dateTo: input.dateTo,
+        limit: input.limit,
+      });
       return msgs.map((msg) => ({
         ...msg,
         metadata: msg.metadata ? JSON.parse(msg.metadata) : null,
@@ -127,6 +159,56 @@ export const chatSyncRouter = router({
     )
     .mutation(async ({ input }) => {
       await updateConversationTitle(input.conversationId, input.title);
+      return { success: true };
+    }),
+
+  /**
+   * Export conversation as JSON with full message history
+   */
+  exportConversation: protectedProcedure // MODIFIED: expose structured conversation export for chat history download.
+    .input(
+      z.object({
+        conversationId: z.number(),
+      })
+    )
+    .query(async ({ input, ctx }) => {
+      const conversation = await getConversationById(input.conversationId);
+      if (!conversation || conversation.userId !== ctx.user.id) {
+        throw new Error("Conversation not found");
+      }
+
+      const messages = await getConversationMessagesAsc(input.conversationId);
+      return {
+        conversation: {
+          ...conversation,
+          createdAt: conversation.createdAt?.toISOString?.() ?? conversation.createdAt,
+          updatedAt: conversation.updatedAt?.toISOString?.() ?? conversation.updatedAt,
+        },
+        messages: messages.map((msg) => ({
+          ...msg,
+          metadata: msg.metadata ? JSON.parse(msg.metadata) : null,
+          createdAt: msg.createdAt?.toISOString?.() ?? msg.createdAt,
+        })),
+      };
+    }),
+
+  /**
+   * Delete a single message from the current conversation
+   */
+  deleteMessage: protectedProcedure // MODIFIED: allow users to prune a message from the unified timeline.
+    .input(
+      z.object({
+        conversationId: z.number(),
+        messageId: z.number(),
+      })
+    )
+    .mutation(async ({ input, ctx }) => {
+      const conversation = await getConversationById(input.conversationId);
+      if (!conversation || conversation.userId !== ctx.user.id) {
+        throw new Error("Conversation not found");
+      }
+
+      await deleteMessage(input.conversationId, input.messageId);
       return { success: true };
     }),
 

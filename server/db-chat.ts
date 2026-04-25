@@ -1,7 +1,7 @@
 import { getDb } from "./db.ts";
 import { conversations, messages } from "../drizzle/schema.ts";
 import type { Conversation, Message } from "../drizzle/schema.ts";
-import { eq, and, desc, gte } from "drizzle-orm";
+import { eq, and, desc, gte, lte, like } from "drizzle-orm";
 
 export async function getOrCreateConversation(userId: number): Promise<Conversation> {
   const db = getDb();
@@ -79,6 +79,16 @@ export async function saveMessage(
   return inserted;
 }
 
+export async function deleteMessage(
+  conversationId: number,
+  messageId: number
+): Promise<void> {
+  const db = getDb();
+  await db
+    .delete(messages)
+    .where(and(eq(messages.id, messageId), eq(messages.conversationId, conversationId)));
+}
+
 export async function getConversationMessages(
   conversationId: number,
   limit: number = 50
@@ -92,6 +102,17 @@ export async function getConversationMessages(
     .limit(limit);
 }
 
+export async function getConversationMessagesAsc(
+  conversationId: number
+): Promise<Message[]> {
+  const db = getDb();
+  return db
+    .select()
+    .from(messages)
+    .where(eq(messages.conversationId, conversationId))
+    .orderBy(messages.createdAt);
+}
+
 export async function getRecentMessages(
   conversationId: number,
   since: Date
@@ -102,6 +123,42 @@ export async function getRecentMessages(
     .from(messages)
     .where(and(eq(messages.conversationId, conversationId), gte(messages.createdAt, since)))
     .orderBy(desc(messages.createdAt));
+}
+
+export async function searchConversationMessages(params: { // MODIFIED: support message search by keyword/date/source for unified chat history.
+  conversationId: number;
+  query?: string;
+  source?: "all" | "web" | "telegram";
+  dateFrom?: Date;
+  dateTo?: Date;
+  limit?: number;
+}): Promise<Message[]> {
+  const db = getDb();
+  const conditions = [eq(messages.conversationId, params.conversationId)];
+
+  const normalizedQuery = params.query?.trim();
+  if (normalizedQuery) {
+    conditions.push(like(messages.content, `%${normalizedQuery}%`));
+  }
+
+  if (params.source && params.source !== "all") {
+    conditions.push(eq(messages.source, params.source));
+  }
+
+  if (params.dateFrom) {
+    conditions.push(gte(messages.createdAt, params.dateFrom));
+  }
+
+  if (params.dateTo) {
+    conditions.push(lte(messages.createdAt, params.dateTo));
+  }
+
+  return db
+    .select()
+    .from(messages)
+    .where(and(...conditions))
+    .orderBy(desc(messages.createdAt))
+    .limit(params.limit ?? 100);
 }
 
 export async function getConversationByTelegramChatId(

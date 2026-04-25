@@ -231,13 +231,13 @@
 
 ## Remaining Features (To Do)
 
-- [ ] Message search functionality
+- [x] Message search functionality
   - Search conversations by keyword
   - Filter by date range
   - Filter by source (web/telegram)
   - Search UI component
 
-- [ ] Toast notifications system
+- [x] Toast notifications system
   - New message alerts
   - API key save/delete confirmations
   - Error notifications
@@ -245,8 +245,8 @@
 
 - [ ] Advanced chat features
   - Message editing capability
-  - Message deletion
-  - Conversation export (PDF/JSON)
+  - [x] Message deletion
+  - [x] Conversation export (JSON)
   - Conversation pinning/favorites
 
 - [ ] User profile and settings

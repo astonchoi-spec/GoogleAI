@@ -6,7 +6,7 @@
 import { useState, useRef, useEffect } from "react";
 import { toast } from "sonner";
 import { motion, AnimatePresence } from "framer-motion";
-import { Send, Loader2, Settings2, MessageCircle, Sliders, Smartphone, Globe, Check, LogIn, Mic, Volume2 } from "lucide-react"; // ADDED: voice input and TTS toggle icons.
+import { Send, Loader2, Settings2, MessageCircle, Sliders, Smartphone, Globe, Check, LogIn, Mic, Volume2, Download, Trash2 } from "lucide-react"; // ADDED: voice input and TTS toggle icons.
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
@@ -22,6 +22,7 @@ import { useAuth } from "@/_core/hooks/useAuth";
 import ApiSettingsModal from "./ApiSettingsModal";
 import QuickActions from "./QuickActions"; // ADDED: quick command row above the input area.
 import { useSpeechRecognition, useTextToSpeech } from "@/hooks/useSpeech"; // ADDED: browser speech recognition and TTS logic.
+import MessageSearchControls from "./MessageSearchControls"; // MODIFIED: add dedicated search UI component for message search filters.
 
 interface UnifiedMessage {
   id: string;
@@ -29,6 +30,13 @@ interface UnifiedMessage {
   content: string;
   source: "web" | "telegram";
   timestamp: Date;
+}
+
+interface MessageSearchFilters { // MODIFIED: keep search state typed and aligned with backend filters.
+  query: string;
+  source: "all" | "web" | "telegram";
+  dateFrom: string;
+  dateTo: string;
 }
 
 export default function UnifiedChatInterface() {
@@ -42,7 +50,17 @@ export default function UnifiedChatInterface() {
   const [showApiSettings, setShowApiSettings] = useState(false);
   const [conversationId, setConversationId] = useState<number | null>(null);
   const [lastSyncTime, setLastSyncTime] = useState<Date>(new Date());
+  const [searchFilters, setSearchFilters] = useState<MessageSearchFilters>({ // MODIFIED: track keyword/date/source filters for server-side message search.
+    query: "",
+    source: "all",
+    dateFrom: "",
+    dateTo: "",
+  });
+  const [searchParams, setSearchParams] = useState<MessageSearchFilters | null>(null); // MODIFIED: separate applied filters from in-progress input values.
+  const [deletingMessageId, setDeletingMessageId] = useState<string | null>(null); // MODIFIED: give per-message delete feedback in the unified timeline.
+  const [isExporting, setIsExporting] = useState(false); // MODIFIED: show loading state while exporting conversation JSON.
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const utils = trpc.useUtils(); // MODIFIED: reuse tRPC cache helpers after mutation-driven timeline changes.
 
   // tRPC queries and mutations
   const { data: engines } = trpc.llm.getEngines.useQuery();
@@ -64,12 +82,24 @@ export default function UnifiedChatInterface() {
     { conversationId: conversationId || 0, since: lastSyncTime },
     { enabled: isAuthenticated && !!conversationId, refetchInterval: 2000 }
   );
+  const searchMessagesQuery = trpc.chatSync.searchMessages.useQuery( // MODIFIED: fetch filtered messages only when user explicitly activates search mode.
+    {
+      conversationId: conversationId || 0,
+      query: searchParams?.query || undefined,
+      source: searchParams?.source ?? "all",
+      dateFrom: searchParams?.dateFrom ? new Date(`${searchParams.dateFrom}T00:00:00`) : undefined,
+      dateTo: searchParams?.dateTo ? new Date(`${searchParams.dateTo}T23:59:59`) : undefined,
+      limit: 100,
+    },
+    { enabled: isAuthenticated && !!conversationId && !!searchParams }
+  );
 
   // Mutations
   const chatMutation = trpc.llm.chat.useMutation();
   const intentRouteMutation = trpc.intent.route.useMutation(); // MODIFIED: run intent-based domain routing before generic chat fallback.
   const saveWebMessageMutation = trpc.chatSync.saveWebMessage.useMutation();
   const forwardToTelegramMutation = trpc.chatSync.forwardToTelegram.useMutation();
+  const deleteMessageMutation = trpc.chatSync.deleteMessage.useMutation();
   const switchEngineMutation = trpc.llm.switchEngineAndModel.useMutation();
   const [switchSuccess, setSwitchSuccess] = useState(false);
   const tts = useTextToSpeech(); // ADDED: TTS state and playback helpers.
@@ -103,7 +133,7 @@ export default function UnifiedChatInterface() {
 
   // Load initial messages
   useEffect(() => {
-    if (messagesQuery.data) {
+    if (messagesQuery.data && !searchParams) { // MODIFIED: keep live message list intact while search mode is active.
       const loadedMessages: UnifiedMessage[] = messagesQuery.data
         .map((msg: any) => ({
           id: `${msg.id}`,
@@ -119,7 +149,7 @@ export default function UnifiedChatInterface() {
 
   // Sync recent messages
   useEffect(() => {
-    if (recentMessagesQuery.data && recentMessagesQuery.data.length > 0) {
+    if (!searchParams && recentMessagesQuery.data && recentMessagesQuery.data.length > 0) { // MODIFIED: pause polling merge while showing fixed search results.
       const newMessages: UnifiedMessage[] = recentMessagesQuery.data
         .map((msg: any) => ({
           id: `${msg.id}`,
@@ -133,12 +163,83 @@ export default function UnifiedChatInterface() {
       setMessages((prev) => {
         const existingIds = new Set(prev.map((m) => m.id));
         const uniqueNewMessages = newMessages.filter((m) => !existingIds.has(m.id));
+        const telegramIncoming = uniqueNewMessages.filter((m) => m.source === "telegram" && m.role === "user"); // MODIFIED: detect newly synced Telegram user messages for toast alerting.
+        if (telegramIncoming.length > 0) {
+          const latest = telegramIncoming[telegramIncoming.length - 1];
+          const preview = latest.content.length > 40 ? `${latest.content.slice(0, 40)}...` : latest.content;
+          toast.info(`텔레그램 새 메시지: ${preview}`); // MODIFIED: provide real-time new-message toast notification requested in todo.
+        }
         return [...prev, ...uniqueNewMessages];
       });
 
       setLastSyncTime(new Date());
     }
-  }, [recentMessagesQuery.data]);
+  }, [recentMessagesQuery.data, searchParams]);
+
+  const searchedMessages: UnifiedMessage[] = (searchMessagesQuery.data ?? []) // MODIFIED: normalize tRPC search results into unified render shape.
+    .map((msg: any) => ({
+      id: `${msg.id}`,
+      role: msg.role as "user" | "assistant",
+      content: msg.content,
+      source: msg.source as "web" | "telegram",
+      timestamp: new Date(msg.createdAt),
+    }))
+    .reverse();
+
+  const renderedMessages = searchParams ? searchedMessages : messages; // MODIFIED: toggle between live timeline and search result list.
+
+  const executeSearch = () => { // MODIFIED: apply current filters and trigger server-side query.
+    setSearchParams({ ...searchFilters });
+  };
+
+  const clearSearch = () => { // MODIFIED: reset search mode and resume real-time timeline.
+    setSearchFilters({ query: "", source: "all", dateFrom: "", dateTo: "" });
+    setSearchParams(null);
+  };
+
+  const exportConversation = async () => { // MODIFIED: export full conversation history as JSON download.
+    if (!conversationId) return;
+    setIsExporting(true);
+    try {
+      const payload = await utils.chatSync.exportConversation.fetch({ conversationId });
+      const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `conversation-${conversationId}.json`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+      toast.success("대화 기록을 JSON으로 내보냈습니다.");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "대화 내보내기에 실패했습니다.");
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
+  const handleDeleteMessage = async (messageId: string) => { // MODIFIED: remove a single message from the unified timeline.
+    if (!conversationId) return;
+    setDeletingMessageId(messageId);
+    try {
+      await deleteMessageMutation.mutateAsync({
+        conversationId,
+        messageId: Number(messageId),
+      });
+      setMessages((prev) => prev.filter((msg) => msg.id !== messageId));
+      await Promise.all([
+        utils.chatSync.getMessages.invalidate({ conversationId, limit: 50 }),
+        utils.chatSync.getRecentMessages.invalidate({ conversationId, since: lastSyncTime }),
+        utils.chatSync.searchMessages.invalidate(),
+      ]);
+      toast.success("메시지를 삭제했습니다.");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "메시지 삭제에 실패했습니다.");
+    } finally {
+      setDeletingMessageId(null);
+    }
+  };
 
   // Auto-scroll to bottom
   useEffect(() => {
@@ -304,6 +405,16 @@ export default function UnifiedChatInterface() {
             <Settings2 className="w-4 h-4 mr-1.5" />
             API
           </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={exportConversation}
+            disabled={isExporting || !conversationId}
+            className="text-muted-foreground hover:text-foreground"
+          >
+            <Download className="w-4 h-4 mr-1.5" />
+            {isExporting ? "내보내는 중" : "Export"}
+          </Button>
         </div>
       </div>
 
@@ -368,10 +479,20 @@ export default function UnifiedChatInterface() {
         )}
       </AnimatePresence>
 
+      <MessageSearchControls // MODIFIED: expose message search controls directly in unified chat screen.
+        filters={searchFilters}
+        onChange={setSearchFilters}
+        onSearch={executeSearch}
+        onClear={clearSearch}
+        isSearching={searchMessagesQuery.isFetching}
+        isActive={!!searchParams}
+        resultCount={searchedMessages.length}
+      />
+
       {/* Messages Area - Middle (Scrollable) */}
       <div className="flex-1 overflow-y-auto p-4 space-y-3">
         <AnimatePresence>
-          {messages.length === 0 ? (
+          {renderedMessages.length === 0 ? ( // MODIFIED: respect either live messages or search results.
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
@@ -414,7 +535,7 @@ export default function UnifiedChatInterface() {
               </div>
             </motion.div>
           ) : (
-            messages.map((msg) => (
+            renderedMessages.map((msg) => ( // MODIFIED: render filtered result set while search is active.
               <motion.div
                 key={msg.id}
                 initial={{ opacity: 0, y: 10 }}
@@ -423,12 +544,27 @@ export default function UnifiedChatInterface() {
                 className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}
               >
                 <Card
-                  className={`max-w-[75%] px-4 py-2 ${
+                  className={`group relative max-w-[75%] px-4 py-2 ${
                     msg.role === "user"
                       ? "bg-primary text-primary-foreground"
                       : "bg-muted text-white"
                   }`}
                 >
+                  {conversationId && (
+                    <button
+                      type="button"
+                      onClick={() => void handleDeleteMessage(msg.id)}
+                      disabled={deletingMessageId === msg.id}
+                      className="absolute -top-2 -right-2 rounded-full border border-border bg-card p-1 text-muted-foreground opacity-0 shadow-md transition hover:text-red-400 group-hover:opacity-100"
+                      aria-label="메시지 삭제"
+                    >
+                      {deletingMessageId === msg.id ? (
+                        <Loader2 className="h-3 w-3 animate-spin" />
+                      ) : (
+                        <Trash2 className="h-3 w-3" />
+                      )}
+                    </button>
+                  )}
                   <div className="space-y-1">
                     <p className="text-sm whitespace-pre-wrap">{msg.content}</p>
                     <div className="flex items-center justify-between gap-2 text-xs opacity-70">

@@ -79,6 +79,18 @@ export async function saveMessage(
   return inserted;
 }
 
+export async function updateMessage(
+  conversationId: number,
+  messageId: number,
+  content: string
+): Promise<void> {
+  const db = getDb();
+  await db
+    .update(messages)
+    .set({ content })
+    .where(and(eq(messages.id, messageId), eq(messages.conversationId, conversationId)));
+}
+
 export async function deleteMessage(
   conversationId: number,
   messageId: number

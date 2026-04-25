@@ -6,7 +6,7 @@
 import { useState, useRef, useEffect } from "react";
 import { toast } from "sonner";
 import { motion, AnimatePresence } from "framer-motion";
-import { Send, Loader2, Settings2, MessageCircle, Sliders, Smartphone, Globe, Check, LogIn, Mic, Volume2, Download, Trash2 } from "lucide-react"; // ADDED: voice input and TTS toggle icons.
+import { Send, Loader2, Settings2, MessageCircle, Sliders, Smartphone, Globe, Check, LogIn, Mic, Volume2, Download, Trash2, Pencil } from "lucide-react"; // ADDED: voice input and TTS toggle icons.
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
@@ -20,6 +20,7 @@ import {
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
 import ApiSettingsModal from "./ApiSettingsModal";
+import MessageEditBar from "./MessageEditBar";
 import QuickActions from "./QuickActions"; // ADDED: quick command row above the input area.
 import { useSpeechRecognition, useTextToSpeech } from "@/hooks/useSpeech"; // ADDED: browser speech recognition and TTS logic.
 import MessageSearchControls from "./MessageSearchControls"; // MODIFIED: add dedicated search UI component for message search filters.
@@ -59,6 +60,9 @@ export default function UnifiedChatInterface() {
   const [searchParams, setSearchParams] = useState<MessageSearchFilters | null>(null); // MODIFIED: separate applied filters from in-progress input values.
   const [deletingMessageId, setDeletingMessageId] = useState<string | null>(null); // MODIFIED: give per-message delete feedback in the unified timeline.
   const [isExporting, setIsExporting] = useState(false); // MODIFIED: show loading state while exporting conversation JSON.
+  const [editingMessageId, setEditingMessageId] = useState<string | null>(null); // MODIFIED: keep one inline edit target at a time.
+  const [editingContent, setEditingContent] = useState(""); // MODIFIED: store edited message content before saving.
+  const [isEditing, setIsEditing] = useState(false); // MODIFIED: show edit-in-flight state in the edit bar.
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const utils = trpc.useUtils(); // MODIFIED: reuse tRPC cache helpers after mutation-driven timeline changes.
 
@@ -99,6 +103,7 @@ export default function UnifiedChatInterface() {
   const intentRouteMutation = trpc.intent.route.useMutation(); // MODIFIED: run intent-based domain routing before generic chat fallback.
   const saveWebMessageMutation = trpc.chatSync.saveWebMessage.useMutation();
   const forwardToTelegramMutation = trpc.chatSync.forwardToTelegram.useMutation();
+  const editMessageMutation = trpc.chatSync.editMessage.useMutation();
   const deleteMessageMutation = trpc.chatSync.deleteMessage.useMutation();
   const switchEngineMutation = trpc.llm.switchEngineAndModel.useMutation();
   const [switchSuccess, setSwitchSuccess] = useState(false);
@@ -195,6 +200,47 @@ export default function UnifiedChatInterface() {
   const clearSearch = () => { // MODIFIED: reset search mode and resume real-time timeline.
     setSearchFilters({ query: "", source: "all", dateFrom: "", dateTo: "" });
     setSearchParams(null);
+  };
+
+  const startEditingMessage = (message: UnifiedMessage) => { // MODIFIED: preload selected message into the edit bar.
+    setEditingMessageId(message.id);
+    setEditingContent(message.content);
+  };
+
+  const cancelEditing = () => { // MODIFIED: clear edit state without mutating the message list.
+    setEditingMessageId(null);
+    setEditingContent("");
+    setIsEditing(false);
+  };
+
+  const saveEditedMessage = async () => { // MODIFIED: persist edited content and refresh all relevant caches.
+    if (!conversationId || !editingMessageId) return;
+    const trimmed = editingContent.trim();
+    if (!trimmed) return;
+
+    setIsEditing(true);
+    try {
+      await editMessageMutation.mutateAsync({
+        conversationId,
+        messageId: Number(editingMessageId),
+        content: trimmed,
+      });
+      setMessages((prev) =>
+        prev.map((msg) => (msg.id === editingMessageId ? { ...msg, content: trimmed } : msg))
+      );
+      await Promise.all([
+        utils.chatSync.getMessages.invalidate({ conversationId, limit: 50 }),
+        utils.chatSync.getRecentMessages.invalidate({ conversationId, since: lastSyncTime }),
+        utils.chatSync.searchMessages.invalidate(),
+        utils.chatSync.exportConversation.invalidate({ conversationId }),
+      ]);
+      toast.success("메시지를 수정했습니다.");
+      cancelEditing();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "메시지 수정에 실패했습니다.");
+    } finally {
+      setIsEditing(false);
+    }
   };
 
   const exportConversation = async () => { // MODIFIED: export full conversation history as JSON download.
@@ -489,6 +535,18 @@ export default function UnifiedChatInterface() {
         resultCount={searchedMessages.length}
       />
 
+      {editingMessageId && (
+        <div className="px-4 pt-4">
+          <MessageEditBar
+            content={editingContent}
+            onChange={setEditingContent}
+            onSave={saveEditedMessage}
+            onCancel={cancelEditing}
+            isSaving={isEditing}
+          />
+        </div>
+      )}
+
       {/* Messages Area - Middle (Scrollable) */}
       <div className="flex-1 overflow-y-auto p-4 space-y-3">
         <AnimatePresence>
@@ -551,19 +609,29 @@ export default function UnifiedChatInterface() {
                   }`}
                 >
                   {conversationId && (
-                    <button
-                      type="button"
-                      onClick={() => void handleDeleteMessage(msg.id)}
-                      disabled={deletingMessageId === msg.id}
-                      className="absolute -top-2 -right-2 rounded-full border border-border bg-card p-1 text-muted-foreground opacity-0 shadow-md transition hover:text-red-400 group-hover:opacity-100"
-                      aria-label="메시지 삭제"
-                    >
-                      {deletingMessageId === msg.id ? (
-                        <Loader2 className="h-3 w-3 animate-spin" />
-                      ) : (
-                        <Trash2 className="h-3 w-3" />
-                      )}
-                    </button>
+                    <div className="absolute -top-2 -right-2 flex gap-1 opacity-0 transition group-hover:opacity-100">
+                      <button
+                        type="button"
+                        onClick={() => startEditingMessage(msg)}
+                        className="rounded-full border border-border bg-card p-1 text-muted-foreground shadow-md transition hover:text-cyan-300"
+                        aria-label="메시지 편집"
+                      >
+                        <Pencil className="h-3 w-3" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => void handleDeleteMessage(msg.id)}
+                        disabled={deletingMessageId === msg.id}
+                        className="rounded-full border border-border bg-card p-1 text-muted-foreground shadow-md transition hover:text-red-400"
+                        aria-label="메시지 삭제"
+                      >
+                        {deletingMessageId === msg.id ? (
+                          <Loader2 className="h-3 w-3 animate-spin" />
+                        ) : (
+                          <Trash2 className="h-3 w-3" />
+                        )}
+                      </button>
+                    </div>
                   )}
                   <div className="space-y-1">
                     <p className="text-sm whitespace-pre-wrap">{msg.content}</p>

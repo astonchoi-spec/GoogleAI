@@ -11,6 +11,7 @@ import {
   getConversationMessagesAsc,
   getRecentMessages,
   deleteMessage,
+  updateMessage,
   searchConversationMessages,
   saveMessage,
   getConversationByTelegramChatId,
@@ -209,6 +210,27 @@ export const chatSyncRouter = router({
       }
 
       await deleteMessage(input.conversationId, input.messageId);
+      return { success: true };
+    }),
+
+  /**
+   * Edit a single message in the current conversation
+   */
+  editMessage: protectedProcedure // MODIFIED: add message editing capability for the unified chat timeline.
+    .input(
+      z.object({
+        conversationId: z.number(),
+        messageId: z.number(),
+        content: z.string().trim().min(1).max(10_000),
+      })
+    )
+    .mutation(async ({ input, ctx }) => {
+      const conversation = await getConversationById(input.conversationId);
+      if (!conversation || conversation.userId !== ctx.user.id) {
+        throw new Error("Conversation not found");
+      }
+
+      await updateMessage(input.conversationId, input.messageId, input.content);
       return { success: true };
     }),
 

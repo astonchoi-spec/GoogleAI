@@ -244,7 +244,7 @@
   - Success feedback
 
 - [ ] Advanced chat features
-  - Message editing capability
+  - [x] Message editing capability
   - [x] Message deletion
   - [x] Conversation export (JSON)
   - Conversation pinning/favorites

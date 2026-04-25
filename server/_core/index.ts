@@ -34,7 +34,9 @@ async function findAvailablePort(startPort: number = 3000): Promise<number> {
 
 async function startServer() {
   installDeploymentGuards(); // MODIFIED: capture fatal runtime errors before the app starts handling requests.
-  await logStartupSummary(); // MODIFIED: surface production readiness warnings at boot time.
+  if (process.env.NODE_ENV === "production") {
+    await logStartupSummary(); // MODIFIED: surface production readiness warnings only in production boot logs.
+  }
 
   const app = express();
   const server = createServer(app);

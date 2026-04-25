@@ -565,3 +565,12 @@
   - Re-ran `npm run check`
   - Re-ran `npm run build`
   - Captured authenticated mobile screenshots for Google Workspace and Settings to confirm the fix
+
+## Work Log - 2026-04-26 (Ops Cleanup)
+
+- [x] Dev boot warning cleanup
+  - Updated `server/_core/index.ts` so production readiness warnings are only printed when `NODE_ENV=production`
+  - Dev startup logs are now quieter while the same production checks remain available
+- [x] Validation
+  - Re-ran `npm run check`
+  - Re-ran `npm run build`

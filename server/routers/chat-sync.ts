@@ -16,7 +16,9 @@ import {
   saveMessage,
   getConversationByTelegramChatId,
   getConversationById,
+  getPinnedConversations,
   updateConversationTitle,
+  updateConversationPinned,
 } from "../db-chat.ts";
 import { forwardToTelegram } from "../telegram-service.ts";
 
@@ -162,6 +164,33 @@ export const chatSyncRouter = router({
       await updateConversationTitle(input.conversationId, input.title);
       return { success: true };
     }),
+
+  /**
+   * Toggle conversation pin/favorite state
+   */
+  togglePinned: protectedProcedure // MODIFIED: let users mark the active conversation as a favorite.
+    .input(
+      z.object({
+        conversationId: z.number(),
+        pinned: z.boolean(),
+      })
+    )
+    .mutation(async ({ input, ctx }) => {
+      const conversation = await getConversationById(input.conversationId);
+      if (!conversation || conversation.userId !== ctx.user.id) {
+        throw new Error("Conversation not found");
+      }
+
+      await updateConversationPinned(input.conversationId, input.pinned);
+      return { success: true, pinned: input.pinned };
+    }),
+
+  /**
+   * List pinned conversations for the current user
+   */
+  getPinnedConversations: protectedProcedure.query(async ({ ctx }) => { // MODIFIED: expose favorites for future sidebar/history surfaces.
+    return getPinnedConversations(ctx.user.id);
+  }),
 
   /**
    * Export conversation as JSON with full message history

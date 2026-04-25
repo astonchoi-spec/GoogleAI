@@ -20,6 +20,7 @@ import {
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
 import ApiSettingsModal from "./ApiSettingsModal";
+import ConversationPinToggle from "./ConversationPinToggle"; // MODIFIED: add favorite toggle for the active conversation.
 import MessageEditBar from "./MessageEditBar";
 import QuickActions from "./QuickActions"; // ADDED: quick command row above the input area.
 import { useSpeechRecognition, useTextToSpeech } from "@/hooks/useSpeech"; // ADDED: browser speech recognition and TTS logic.
@@ -63,6 +64,8 @@ export default function UnifiedChatInterface() {
   const [editingMessageId, setEditingMessageId] = useState<string | null>(null); // MODIFIED: keep one inline edit target at a time.
   const [editingContent, setEditingContent] = useState(""); // MODIFIED: store edited message content before saving.
   const [isEditing, setIsEditing] = useState(false); // MODIFIED: show edit-in-flight state in the edit bar.
+  const [isPinned, setIsPinned] = useState(false); // MODIFIED: track favorite state for the active conversation.
+  const [isTogglingPin, setIsTogglingPin] = useState(false); // MODIFIED: show favorite toggle progress.
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const utils = trpc.useUtils(); // MODIFIED: reuse tRPC cache helpers after mutation-driven timeline changes.
 
@@ -105,6 +108,7 @@ export default function UnifiedChatInterface() {
   const forwardToTelegramMutation = trpc.chatSync.forwardToTelegram.useMutation();
   const editMessageMutation = trpc.chatSync.editMessage.useMutation();
   const deleteMessageMutation = trpc.chatSync.deleteMessage.useMutation();
+  const togglePinnedMutation = trpc.chatSync.togglePinned.useMutation();
   const switchEngineMutation = trpc.llm.switchEngineAndModel.useMutation();
   const [switchSuccess, setSwitchSuccess] = useState(false);
   const tts = useTextToSpeech(); // ADDED: TTS state and playback helpers.
@@ -133,6 +137,7 @@ export default function UnifiedChatInterface() {
   useEffect(() => {
     if (conversationQuery.data) {
       setConversationId(conversationQuery.data.id);
+      setIsPinned(!!conversationQuery.data.pinned); // MODIFIED: hydrate pin state from the current conversation record.
     }
   }, [conversationQuery.data]);
 
@@ -200,6 +205,24 @@ export default function UnifiedChatInterface() {
   const clearSearch = () => { // MODIFIED: reset search mode and resume real-time timeline.
     setSearchFilters({ query: "", source: "all", dateFrom: "", dateTo: "" });
     setSearchParams(null);
+  };
+
+  const toggleConversationPin = async () => { // MODIFIED: persist favorite state for the current conversation.
+    if (!conversationId) return;
+    const nextPinned = !isPinned;
+    setIsTogglingPin(true);
+    try {
+      await togglePinnedMutation.mutateAsync({
+        conversationId,
+        pinned: nextPinned,
+      });
+      setIsPinned(nextPinned);
+      toast.success(nextPinned ? "대화를 즐겨찾기에 추가했습니다." : "즐겨찾기를 해제했습니다.");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "즐겨찾기 변경에 실패했습니다.");
+    } finally {
+      setIsTogglingPin(false);
+    }
   };
 
   const startEditingMessage = (message: UnifiedMessage) => { // MODIFIED: preload selected message into the edit bar.
@@ -423,6 +446,11 @@ export default function UnifiedChatInterface() {
           <span className="text-xs text-muted-foreground font-normal">(웹 + Telegram)</span>
         </div>
         <div className="flex items-center gap-2">
+          <ConversationPinToggle
+            pinned={isPinned}
+            onToggle={toggleConversationPin}
+            isSaving={isTogglingPin || togglePinnedMutation.isPending}
+          />
           <Button
             variant="ghost"
             size="sm"

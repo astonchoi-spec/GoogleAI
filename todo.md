@@ -247,7 +247,7 @@
   - [x] Message editing capability
   - [x] Message deletion
   - [x] Conversation export (JSON)
-  - Conversation pinning/favorites
+  - [x] Conversation pinning/favorites
 
 - [ ] User profile and settings
   - User preference management

@@ -196,6 +196,26 @@ export async function updateConversationTitle(
     .where(eq(conversations.id, conversationId));
 }
 
+export async function updateConversationPinned(
+  conversationId: number,
+  pinned: boolean
+): Promise<void> {
+  const db = getDb();
+  await db
+    .update(conversations)
+    .set({ pinned, updatedAt: new Date() })
+    .where(eq(conversations.id, conversationId));
+}
+
+export async function getPinnedConversations(userId: number): Promise<Conversation[]> {
+  const db = getDb();
+  return db
+    .select()
+    .from(conversations)
+    .where(and(eq(conversations.userId, userId), eq(conversations.pinned, true)))
+    .orderBy(desc(conversations.updatedAt));
+}
+
 export async function getConversationById(id: number): Promise<Conversation | null> {
   const db = getDb();
   const result = await db

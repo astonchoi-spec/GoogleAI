@@ -42,6 +42,7 @@ export const conversations = sqliteTable(
     telegramChatId: integer("telegramChatId"),
     title: text("title").default("New Conversation"),
     isActive: integer("isActive", { mode: "boolean" }).default(true),
+    pinned: integer("pinned", { mode: "boolean" }).default(false).notNull(), // MODIFIED: mark favorite conversations for quick access and future lists.
     createdAt: integer("createdAt", { mode: "timestamp" }).notNull().$defaultFn(() => new Date()),
     updatedAt: integer("updatedAt", { mode: "timestamp" }).notNull().$defaultFn(() => new Date()),
   },

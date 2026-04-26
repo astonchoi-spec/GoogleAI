@@ -10,9 +10,7 @@ import GmailConnector from "../google/gmail.ts";
 import CalendarConnector from "../google/calendar.ts";
 import DriveConnector from "../google/drive.ts";
 import SheetsConnector from "../google/sheets.ts";
-import { SessionManager } from "../llm/session.ts";
-
-const sessionManager = new SessionManager();
+import { sessionManager } from "../llm/session.ts"; // MODIFIED: reuse the shared session store so Google auth state stays aligned with chat and Telegram.
 
 // Initialize Google Auth Manager
 const googleAuthManager = new GoogleAuthManager(

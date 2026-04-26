@@ -6,10 +6,8 @@
 import express from "express";
 import type { Request, Response } from "express";
 import GoogleAuthManager from "../google/auth.ts";
-import { SessionManager } from "../llm/session.ts";
 
 const router = express.Router();
-const sessionManager = new SessionManager();
 
 let googleAuthManager: GoogleAuthManager | null = null;
 

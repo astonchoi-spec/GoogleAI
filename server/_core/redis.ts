@@ -156,7 +156,8 @@ class RedisService {
 
   private logMemoryFallback(error: unknown): void {
     if (this.hasLoggedMemoryFallback) return; // MODIFIED: log memory fallback activation once per process.
-    const message = error instanceof Error ? error.message : String(error);
+    const detail = this.extractAggregateDetails(error); // MODIFIED: AggregateError.message can be empty on Windows connection failures.
+    const message = (error instanceof Error ? error.message : String(error)) || detail || "Redis unavailable"; // MODIFIED: keep fallback diagnostics actionable even when the top-level error is blank.
     console.warn(`[Redis] Falling back to in-memory store: ${message}`);
     this.hasLoggedMemoryFallback = true;
   }

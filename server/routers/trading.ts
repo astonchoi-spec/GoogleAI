@@ -1,6 +1,8 @@
 import { z } from "zod";
 import { protectedProcedure, router } from "../_core/trpc.ts";
 import { exchangeConnector, type SupportedExchangeId } from "../exchanges/exchangeConnector.ts";
+import { gateioConnector } from "../exchanges/gateioConnector.ts"; // MODIFIED: add Gate.io connector.
+import { kiwoomConnector } from "../exchanges/kiwoomConnector.ts"; // MODIFIED: add Kiwoom connector.
 import { taEngine } from "../trading/technicalAnalysis.ts";
 import { calculateFuturesRisk } from "../trading/riskCalculator.ts";
 import { TradeJournal } from "../trading/tradeJournal.ts";
@@ -162,4 +164,78 @@ export const tradingRouter = router({
       await removeAlert(input.id);
       return { success: true };
     }),
+
+  // MODIFIED: Gate.io connector namespace added.
+  gateio: router({
+    spotBalance: protectedProcedure.query(async () => {
+      return gateioConnector.getSpotBalance();
+    }),
+    futuresBalance: protectedProcedure.query(async () => {
+      return gateioConnector.getFuturesBalance();
+    }),
+    positions: protectedProcedure.query(async () => {
+      return gateioConnector.getPositions();
+    }),
+    ticker: protectedProcedure
+      .input(z.object({ symbol: z.string().min(1) }))
+      .query(async ({ input }) => {
+        return gateioConnector.getTicker(input.symbol);
+      }),
+    myTrades: protectedProcedure
+      .input(z.object({
+        symbol: z.string().min(1),
+        since: z.number().optional(),
+        limit: z.number().optional(),
+      }))
+      .query(async ({ input }) => {
+        return gateioConnector.getMyTrades(input.symbol, input.since, input.limit);
+      }),
+    order: protectedProcedure
+      .input(z.object({
+        symbol: z.string().min(1),
+        type: z.enum(["market", "limit"]),
+        side: z.enum(["buy", "sell"]),
+        amount: z.number().positive(),
+        price: z.number().positive().optional(),
+      }))
+      .mutation(async ({ input }) => {
+        return gateioConnector.placeOrder(input.symbol, input.type, input.side, input.amount, input.price);
+      }),
+  }),
+
+  // MODIFIED: Kiwoom connector namespace added.
+  kiwoom: router({
+    balance: protectedProcedure.query(async () => {
+      return kiwoomConnector.getBalance();
+    }),
+    quote: protectedProcedure
+      .input(z.object({ stockCode: z.string().min(1) }))
+      .query(async ({ input }) => {
+        return kiwoomConnector.getQuote(input.stockCode);
+      }),
+    orderbook: protectedProcedure
+      .input(z.object({ stockCode: z.string().min(1) }))
+      .query(async ({ input }) => {
+        return kiwoomConnector.getOrderbook(input.stockCode);
+      }),
+    order: protectedProcedure
+      .input(z.object({
+        stockCode: z.string().min(1),
+        side: z.enum(["buy", "sell"]),
+        qty: z.number().positive(),
+        price: z.number().positive(),
+        orderType: z.enum(["limit", "market"]),
+      }))
+      .mutation(async ({ input }) => {
+        return kiwoomConnector.placeOrder(input);
+      }),
+    executions: protectedProcedure
+      .input(z.object({
+        startDate: z.string().optional(),
+        endDate: z.string().optional(),
+      }))
+      .query(async ({ input }) => {
+        return kiwoomConnector.getExecutions(input.startDate, input.endDate);
+      }),
+  }),
 });

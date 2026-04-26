@@ -14,6 +14,8 @@ import { realestateRouter } from "./routers/realestate.ts"; // MODIFIED: Phase 3
 import { financeRouter } from "./routers/finance.ts"; // MODIFIED: Phase 3 finance router registration
 import { intentRouter } from "./routers/intent.ts"; // MODIFIED: Phase 3 intent routing entrypoint registration
 import { analyticsRouter } from "./routers/analytics.ts"; // MODIFIED: expose analytics dashboard data via appRouter.
+import { telegramRouter } from "./routers/telegram.ts"; // MODIFIED: register Telegram status endpoint in appRouter.
+import { homeRouter } from "./routers/home.ts"; // MODIFIED: register Home dashboard KPI endpoint in appRouter.
 
 const ADMIN_USERNAME = "admin";
 const ADMIN_PASSWORD = "admin123";
@@ -67,6 +69,8 @@ export const appRouter = router({
   finance: financeRouter, // MODIFIED: expose finance(DART) procedures via appRouter
   intent: intentRouter, // MODIFIED: expose intent classify/route procedures for AI action routing
   analytics: analyticsRouter, // MODIFIED: expose monitoring metrics for the dashboard page.
+  telegram: telegramRouter, // MODIFIED: expose Telegram status endpoint in appRouter.
+  home: homeRouter, // MODIFIED: expose Home dashboard KPI endpoint in appRouter.
 });
 
 export type AppRouter = typeof appRouter;

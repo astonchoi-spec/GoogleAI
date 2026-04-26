@@ -1,4 +1,6 @@
 ﻿import { exchangeConnector } from "../exchanges/exchangeConnector.ts";
+import { gateioConnector } from "../exchanges/gateioConnector.ts"; // MODIFIED: add Gate.io connector import for intent routing.
+import { kiwoomConnector } from "../exchanges/kiwoomConnector.ts"; // MODIFIED: add Kiwoom connector import for intent routing.
 import { taEngine } from "../trading/technicalAnalysis.ts";
 import { calculateFuturesRisk } from "../trading/riskCalculator.ts";
 import { DealPipeline } from "../realestate/dealPipeline.ts";
@@ -72,17 +74,34 @@ function fallbackIntent(message: string): IntentResult {
       action: "trading_balance",
       type: "query",
       confidence: 0.55,
-      params: { exchange: lower.includes("upbit") ? "upbit" : "binance" },
+      params: {
+        exchange: lower.includes("키움") ? "kiwoom" : lower.includes("upbit") ? "upbit" : (lower.includes("게이트") || lower.includes("gate")) ? "gateio" : "binance",
+      },
     };
   }
 
-  if (lower.includes("포지션") || lower.includes("position") || lower.includes("positions")) { // MODIFIED: normalize position keywords.
+  if (lower.includes("포지션") || lower.includes("position") || lower.includes("positions")) { // MODIFIED: normalize position keywords. Add Gate.io support.
     return {
       domain: "trading",
       action: "trading_positions",
       type: "query",
       confidence: 0.55,
-      params: { exchange: lower.includes("bybit") ? "bybit" : "binance" },
+      params: { exchange: lower.includes("bybit") ? "bybit" : (lower.includes("게이트") || lower.includes("gate")) ? "gateio" : "binance" },
+    };
+  }
+
+  // MODIFIED: Add Kiwoom stock quote recognition before TA analysis.
+  if (lower.includes("현재가") || lower.includes("주가") || lower.includes("코스피") || lower.includes("quote") ||
+      lower.includes("삼성") || lower.includes("lg") || lower.includes("sk") || /\d{6}/.test(message)) {
+    return {
+      domain: "trading",
+      action: "trading_balance", // Route to kiwoom balance via params
+      type: "query",
+      confidence: 0.6,
+      params: {
+        exchange: "kiwoom",
+        stockCode: /\d{6}/.test(message) ? message.match(/\d{6}/)?.[0] : "005930",
+      },
     };
   }
 
@@ -352,14 +371,34 @@ export async function routeIntentMessage(options: RouteIntentOptions): Promise<I
 
   try {
     if (intent.action === "trading_balance") {
-      const exchange = asString(intent.params.exchange, "binance") as "binance" | "upbit" | "bybit";
-      const data = await exchangeConnector.getBalance(exchange);
+      const exchange = asString(intent.params.exchange, "binance");
+      let data;
+      if (exchange === "gateio") {
+        // MODIFIED: handle Gate.io balance query via dedicated connector.
+        data = await gateioConnector.getSpotBalance();
+      } else if (exchange === "kiwoom") {
+        // MODIFIED: handle Kiwoom balance/quote query via dedicated connector.
+        const stockCode = asString(intent.params.stockCode, "");
+        if (stockCode) {
+          data = await kiwoomConnector.getQuote(stockCode);
+        } else {
+          data = await kiwoomConnector.getBalance();
+        }
+      } else {
+        data = await exchangeConnector.getBalance(exchange as "binance" | "upbit" | "bybit");
+      }
       return { intent, handled: true, requiresConfirmation: false, response: `${exchange} ?붽퀬 議고쉶瑜??꾨즺?덉뒿?덈떎.`, data };
     }
 
     if (intent.action === "trading_positions") {
-      const exchange = asString(intent.params.exchange, "binance") as "binance" | "upbit" | "bybit";
-      const data = await exchangeConnector.getPositions(exchange);
+      const exchange = asString(intent.params.exchange, "binance");
+      let data;
+      if (exchange === "gateio") {
+        // MODIFIED: handle Gate.io positions query via dedicated connector.
+        data = await gateioConnector.getPositions();
+      } else {
+        data = await exchangeConnector.getPositions(exchange as "binance" | "upbit" | "bybit");
+      }
       return { intent, handled: true, requiresConfirmation: false, response: `${exchange} ?ъ???議고쉶瑜??꾨즺?덉뒿?덈떎.`, data };
     }
 

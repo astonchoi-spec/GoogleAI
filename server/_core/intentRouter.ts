@@ -20,6 +20,7 @@ import { taEngine, type OhlcvArray } from "../trading/technicalAnalysis.ts";
 import { TradeJournal, type TradeStatsPeriod } from "../trading/tradeJournal.ts";
 import type { SupportedExchangeId } from "../exchanges/exchangeConnector.ts";
 import { getTvWebhookHistory } from "../alerts/tvWebhookServer.ts"; // MODIFIED: TV webhook history for intent routing.
+import { TradeJournalKorean } from "../trading/tradeJournal.ts"; // MODIFIED: 1-D 매매일지 인텐트 라우팅.
 
 export type IntentName =
   | "trading.getBalance"
@@ -40,6 +41,9 @@ export type IntentName =
   | "finance.getFinancialStatements"
   | "finance.dart"
   | "alerts.tvWebhookHistory"
+  | "journal.list"
+  | "journal.addManual"
+  | "journal.syncGateio"
   | "general.chat";
 
 export type ParsedIntent = {
@@ -69,11 +73,17 @@ const INTENT_SYSTEM_PROMPT = `너는 사용자의 자연어 명령을 분석해�
 - finance.getFinancialStatements: { corpCode, year, reportCode }
 - finance.dart: { corpCode, startDate, endDate }
 - alerts.tvWebhookHistory: { limit? }
+- journal.list: { limit? }
+- journal.addManual: { date, time, exchange, symbol, side, qty, price, fee, pnl?, memo? }
+- journal.syncGateio: { symbol }
 - general.chat: { message }
 
 규칙:
 - 회사 검색, 공시 조회, 재무제표 조회 문장은 finance.searchCompanyByName, finance.getDisclosures, finance.getFinancialStatements, finance.getCompanyInfo 중 가장 적절한 것으로 분기한다.
 - "TV 알림 내역", "트레이딩뷰 알림", "TradingView 알림", "웹훅 이력" 같은 요청은 alerts.tvWebhookHistory로 분기한다.
+- "매매일지", "오늘 거래 내역", "매매 기록", "체결 내역" 같은 조회 요청은 journal.list로 분기한다.
+- "수동 기록", "매매 입력", "거래 추가" 같은 요청은 journal.addManual로 분기한다.
+- "게이트 동기화", "체결 동기화", "Gate.io 동기화" 같은 요청은 journal.syncGateio로 분기한다.
 - 파라미터가 부족하면 clarification에 필요한 질문을 담아 반환한다.
 - 반드시 JSON만 응답한다: { intent: string, params: object, clarification: string|null }`;
 
@@ -225,6 +235,42 @@ export async function executeIntent(parsed: ParsedIntent, ctx: TrpcContext): Pro
       );
       return textResult("DART 공시 조회 결과", disclosures);
     }
+    case "journal.list": {
+      // MODIFIED: 1-D 매매일지 조회.
+      assertAuthenticated(ctx);
+      const limit = optionalNumber(parsed.params.limit) ?? 50;
+      const journal = await createKoreanJournal(ctx.user.id);
+      const records = await journal.getTradeHistory(Math.min(200, Math.max(1, limit)));
+      if (records.length === 0) return "저장된 매매일지 기록이 없습니다.";
+      return textResult("매매일지 최근 기록", records);
+    }
+    case "journal.addManual": {
+      // MODIFIED: 1-D 수동 매매 입력.
+      assertAuthenticated(ctx);
+      const trade = {
+        date: requiredString(parsed.params.date, "거래 날짜를 YYYY-MM-DD 형식으로 알려주세요."),
+        time: requiredString(parsed.params.time, "거래 시간을 HH:MM:SS 형식으로 알려주세요."),
+        exchange: requiredString(parsed.params.exchange, "거래소를 알려주세요."),
+        symbol: requiredString(parsed.params.symbol, "종목을 알려주세요."),
+        side: requiredTradeSide(parsed.params.side),
+        qty: requiredNumber(parsed.params.qty, "수량을 알려주세요."),
+        price: requiredNumber(parsed.params.price, "가격을 알려주세요."),
+        fee: requiredNumber(parsed.params.fee, "수수료를 알려주세요."),
+        pnl: optionalNumber(parsed.params.pnl),
+        memo: optionalString(parsed.params.memo),
+      } satisfies import("../trading/tradeJournal.ts").TradeRecord;
+      const journal = await createKoreanJournal(ctx.user.id);
+      const result = await journal.appendTrade(trade);
+      return textResult("매매일지 입력 완료", result);
+    }
+    case "journal.syncGateio": {
+      // MODIFIED: 1-D Gate.io 체결 동기화.
+      assertAuthenticated(ctx);
+      const symbol = requiredString(parsed.params.symbol, "동기화할 심볼을 알려주세요. 예: BTC/USDT");
+      const journal = await createKoreanJournal(ctx.user.id);
+      const result = await journal.syncGateioTrades(symbol);
+      return textResult("Gate.io 체결 동기화 완료", result);
+    }
     case "alerts.tvWebhookHistory": {
       // MODIFIED: return recent TradingView webhook alerts from Redis.
       const limit = optionalNumber(parsed.params.limit) ?? 20;
@@ -300,6 +346,9 @@ function isIntentName(value: string): value is IntentName {
     "finance.getFinancialStatements",
     "finance.dart",
     "alerts.tvWebhookHistory",
+    "journal.list",
+    "journal.addManual",
+    "journal.syncGateio",
     "general.chat",
   ].includes(value);
 }
@@ -313,6 +362,11 @@ function assertAuthenticated(ctx: TrpcContext): asserts ctx is TrpcContext & { u
 async function createTradeJournal(userId: number): Promise<TradeJournal> {
   const auth = await googleAuthManager.getAuthenticatedClient(String(userId));
   return new TradeJournal(auth, getWorkspaceSpreadsheetId());
+}
+
+async function createKoreanJournal(userId: number): Promise<TradeJournalKorean> {
+  const auth = await googleAuthManager.getAuthenticatedClient(String(userId));
+  return new TradeJournalKorean(auth, getWorkspaceSpreadsheetId());
 }
 
 async function createDealPipeline(userId: number): Promise<DealPipeline> {
@@ -362,6 +416,12 @@ function requiredSide(value: unknown): FuturesRiskInput["side"] {
   const side = requiredString(value, "포지션 방향을 알려주세요. 예: long, short").toLowerCase();
   if (side === "long" || side === "short") return side;
   throw new Error("포지션 방향은 long 또는 short만 가능합니다.");
+}
+
+function requiredTradeSide(value: unknown): "buy" | "sell" {
+  const side = requiredString(value, "매수/매도 방향을 알려주세요. 예: buy, sell").toLowerCase();
+  if (side === "buy" || side === "sell") return side;
+  throw new Error("매수/매도 방향은 buy 또는 sell만 가능합니다.");
 }
 
 function requiredAlertType(value: unknown): "price" | "rsi" | "funding" | "kimchi_premium" {

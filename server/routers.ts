@@ -17,6 +17,7 @@ import { analyticsRouter } from "./routers/analytics.ts"; // MODIFIED: expose an
 import { telegramRouter } from "./routers/telegram.ts"; // MODIFIED: register Telegram status endpoint in appRouter.
 import { homeRouter } from "./routers/home.ts"; // MODIFIED: register Home dashboard KPI endpoint in appRouter.
 import { alertsRouter } from "./routers/alerts.ts"; // MODIFIED: register alerts (TV webhook history) router.
+import { journalRouter } from "./routers/journal.ts"; // MODIFIED: 1-D 매매일지 라우터 등록.
 
 const ADMIN_USERNAME = "admin";
 const ADMIN_PASSWORD = "admin123";
@@ -73,6 +74,7 @@ export const appRouter = router({
   telegram: telegramRouter, // MODIFIED: expose Telegram status endpoint in appRouter.
   home: homeRouter, // MODIFIED: expose Home dashboard KPI endpoint in appRouter.
   alerts: alertsRouter, // MODIFIED: expose TV webhook history procedure.
+  journal: journalRouter, // MODIFIED: 1-D 매매일지 프로시저 노출.
 });
 
 export type AppRouter = typeof appRouter;

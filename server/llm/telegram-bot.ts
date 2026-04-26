@@ -9,6 +9,7 @@ import { SessionManager, sessionManager } from "./session.ts";
 import LLMCaller from "./caller.ts";
 import type { LLMEngine } from "./models.ts";
 import { getModel, getModelsByEngine, getAllEngines, getDefaultModel } from "./models.ts";
+import { getCommandArgs, normalizeEngineArg, normalizeModelArg } from "./telegram-command-utils.ts"; // MODIFIED: reuse normalized command parsing across Telegram command handlers.
 import { getOrCreateConversation, getOrCreateTelegramConversation, getConversationByTelegramChatId, saveMessage } from "../db-chat.ts";
 import { registerTelegramBot } from "../telegram-service.ts";
 import { googleAuthManager } from "../routers/google-workspace.ts";
@@ -83,8 +84,8 @@ export class TelegramBot {
     // /engine - Switch engine
     this.bot.command("engine", async (ctx) => {
       const messageText = (ctx.message as any)?.text as string | undefined;
-      const args = messageText?.split(" ").slice(1);
-      const engine = args?.[0] as LLMEngine | undefined;
+      const args = getCommandArgs(messageText); // MODIFIED: handle repeated whitespace and missing tokens consistently.
+      const engine = normalizeEngineArg(args[0]); // MODIFIED: accept case-insensitive engine arguments.
 
       if (!engine) {
         const engines = getAllEngines();
@@ -121,8 +122,8 @@ export class TelegramBot {
     // /model - Switch model within current engine
     this.bot.command("model", async (ctx) => {
       const messageText = (ctx.message as any)?.text as string | undefined;
-      const args = messageText?.split(" ").slice(1);
-      const modelKey = args?.[0];
+      const args = getCommandArgs(messageText); // MODIFIED: handle repeated whitespace and missing tokens consistently.
+      const modelKey = normalizeModelArg(args[0]); // MODIFIED: accept case-insensitive model key arguments.
 
       if (!modelKey) {
         if (!ctx.session?.userId) {
@@ -158,12 +159,12 @@ export class TelegramBot {
     // /use - Switch engine and model at once
     this.bot.command("use", async (ctx) => {
       const messageText = (ctx.message as any)?.text as string | undefined;
-      const args = messageText?.split(" ").slice(1);
-      const engine = args?.[0] as LLMEngine | undefined;
-      const modelKey = args?.[1];
+      const args = getCommandArgs(messageText); // MODIFIED: handle repeated whitespace and missing tokens consistently.
+      const engine = normalizeEngineArg(args[0]); // MODIFIED: accept case-insensitive engine arguments.
+      const modelKey = normalizeModelArg(args[1]); // MODIFIED: accept case-insensitive model key arguments.
 
       if (!engine || !modelKey) {
-        return await ctx.reply(`사용법: /use <엔진> <모델키>\n예: /use gemini flash`);
+        return await ctx.reply(`사용법: /use <엔진> <모델키>\n예: /use gemini flash`); // MODIFIED: keep malformed /use guidance short and explicit.
       }
 
       if (!getAllEngines().includes(engine)) {

@@ -39,7 +39,7 @@ describe('LLM Router - System Prompt Enhancement', () => {
     
     expect(session).toBeDefined();
     expect(session.engine).toBe('gemini');
-    expect(session.modelKey).toBe('flash');
+    expect(session.modelKey).toBe('pro');
   });
 
   it('should support model switching', async () => {

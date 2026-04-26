@@ -1,9 +1,10 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
 import { GateioConnector, type GateBalance, type GatePosition, type GateTicker } from "./gateioConnector";
 
-// Mock ccxt.gate
-vi.mock("ccxt", () => ({
-  gate: vi.fn(function (config?: Record<string, unknown>) {
+// vi.hoisted: vi.mock factory is hoisted to top of file, so variables referenced
+// inside it must also be hoisted via vi.hoisted().
+const { mockGateFactory } = vi.hoisted(() => {
+  const mockGateFactory = vi.fn(function (_config?: Record<string, unknown>) {
     return {
       has: { fetchPositions: true },
       fetchBalance: vi.fn(async (opts?: Record<string, unknown>) => {
@@ -67,10 +68,20 @@ vi.mock("ccxt", () => ({
         status: "closed",
       })),
     };
-  }),
-  AuthenticationError: class AuthenticationError extends Error {},
-  NetworkError: class NetworkError extends Error {},
-}));
+  });
+  return { mockGateFactory };
+});
+
+// Mock ccxt — connector uses `import ccxt from "ccxt"` (default import), so we
+// must expose the mock under the `default` key AND as named exports.
+vi.mock("ccxt", () => {
+  const mockModule = {
+    gate: mockGateFactory,
+    AuthenticationError: class AuthenticationError extends Error {},
+    NetworkError: class NetworkError extends Error {},
+  };
+  return { default: mockModule, ...mockModule };
+});
 
 describe("GateioConnector", () => {
   let connector: GateioConnector;

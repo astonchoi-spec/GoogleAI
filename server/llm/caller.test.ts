@@ -150,12 +150,12 @@ describe("LLMCaller", () => {
   });
 
   describe("Default Configuration", () => {
-    it("should default to the configured Gemini Flash model", () => {
-      const defaultModel = getDefaultModel(); // MODIFIED: assert the runtime default model instead of the legacy Ollama option.
+    it("should default to the configured Gemini Pro model", () => {
+      const defaultModel = getDefaultModel(); // MODIFIED: assert the runtime default model (pro) instead of the legacy flash option.
 
       expect(DEFAULT_ENGINE).toBe("gemini");
-      expect(DEFAULT_MODEL_KEY).toBe("flash");
-      expect(defaultModel.name).toBe("Gemini 2.5 Flash");
+      expect(DEFAULT_MODEL_KEY).toBe("pro");
+      expect(defaultModel.name).toBe("Gemini 2.5 Pro");
     });
   });
 });

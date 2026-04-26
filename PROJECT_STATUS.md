@@ -335,3 +335,60 @@ ollama pull gemma4:e4b
 - Dev runtime stability improved (Redis dependency behavior and actionable error normalization).
 - Home/Trading/Real-estate UI wiring now reflects live backend results and command routing.
 - Final validations in this session: `pnpm run check` passed, `pnpm run build` passed.
+
+---
+
+## Additional Updates from origin/main
+
+**Update**: 2026-04-24
+**Status**: Finance DART router and UI page added; navigation updated.
+
+---
+
+**Update**: 2026-04-24 Smoke Test
+**Status**: Core routes verified in browser; remaining work is Google Workspace feature completeness and missing-state review.
+
+---
+
+**Update**: 2026-04-24 Master Plan Sync
+**Status**: Master task list synced to `docs/WORKLIST_MASTER_2026-04-24.md`, current stage is Phase 1.5 waiting to start (`6-1`, `6-2`).
+
+---
+
+**Update**: 2026-04-24 Phase 1.5 Completion
+**Status**: Trading market tabs and TradingView advanced widget applied, journal manual entry and CSV UI completed. Next stage is Phase 2 foundation (`7`, `7-1`).
+
+---
+
+**Update**: 2026-04-24 Phase 2 Foundation Completion
+**Status**: Gate.io ccxt connector (`7`) and Kiwoom REST connector (`7-1`) implemented. Trading router now supports `gate`, Kiwoom balance/positions/quote procedures were added, and env template was updated for Gate/Kiwoom keys.
+
+---
+
+**Update**: 2026-04-24 Phase 2 Realtime Step 1 Completion
+**Status**: Kiwoom WebSocket realtime feed (`7-2`) implemented with reconnect logic, Redis caching, server startup auto-connect (env-based), and tRPC controls for start/stop/status/price lookup.
+
+---
+
+**Update**: 2026-04-24 Phase 2 Realtime Step 2 Completion
+**Status**: TradingView webhook receiver (`7-3`) added with secret validation, Redis event persistence/pubsub, health/recent endpoints, and Telegram forwarding support.
+
+---
+
+**Update**: 2026-04-24 Phase 2 Realtime Step 3 Completion
+**Status**: Upbit websocket monitor (`8`) productionized with startup auto-connect, redis-backed cached price lookup, and tRPC controls for start/stop/status/price.
+
+---
+
+**Update**: 2026-04-24 Phase 2 Parallel Step 1 Completion
+**Status**: Manual/CSV trade journal backend (`10-1`) implemented with Google Sheets persistence (`ManualTrades`) and tRPC APIs for add/list/csv-import.
+
+---
+
+**Update**: 2026-04-24 Phase 2 Parallel Step 2 Completion
+**Status**: Journal automation (`10`) expanded to include Kiwoom fills via `getMyTrades` + `syncKiwoomJournal`, alongside existing ccxt-based sync.
+
+---
+
+**Update**: 2026-04-24 EOD Handoff
+**Status**: Worklist and handoff docs finalized. Safe restart checklist documented for home environment with current progress at `16/27`.

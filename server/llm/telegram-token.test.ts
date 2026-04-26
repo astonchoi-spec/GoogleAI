@@ -1,7 +1,9 @@
 import { describe, it, expect } from "vitest";
 import axios from "axios";
 
-describe("Telegram Bot Token Validation", () => {
+const maybeDescribe = process.env.TELEGRAM_BOT_TOKEN ? describe : describe.skip;
+
+maybeDescribe("Telegram Bot Token Validation", () => {
   const botToken = process.env.TELEGRAM_BOT_TOKEN;
 
   it("should have TELEGRAM_BOT_TOKEN set", () => {

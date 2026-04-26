@@ -45,6 +45,9 @@ export default function SheetsPanel() {
     { enabled: !!queryId }
   );
 
+  const sheetRows = data?.data?.data ?? [];
+  const sheetHeaders = data?.data?.headers ?? [];
+
   const handleLoad = () => {
     if (!spreadsheetId.trim()) {
       toast.error("Please enter a spreadsheet ID.");
@@ -84,9 +87,6 @@ export default function SheetsPanel() {
       toast.error(error instanceof Error ? error.message : "기본 시트 연결에 실패했습니다.");
     }
   };
-
-  const sheetRows = data?.data?.data ?? [];
-  const sheetHeaders = data?.data?.headers ?? [];
 
   return (
     <div className="space-y-4">

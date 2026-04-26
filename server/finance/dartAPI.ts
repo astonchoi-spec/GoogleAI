@@ -51,6 +51,18 @@ export async function getFinancialStatements(
   }
 }
 
+export async function getCompanyInfo(corpCode: string): Promise<DartCompanyInfo> {
+  validateRequired({ corpCode });
+
+  try {
+    return await requestDart(DART_COMPANY_URL, {
+      corp_code: corpCode,
+    });
+  } catch (error) {
+    throw new Error(`Failed to fetch DART company info for "${corpCode}": ${errorMessage(error)}`);
+  }
+}
+
 export async function searchCompanyByName(name: string): Promise<DartCompanyInfo> {
   validateRequired({ name });
 

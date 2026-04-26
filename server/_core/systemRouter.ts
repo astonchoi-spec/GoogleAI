@@ -3,15 +3,12 @@ import { notifyOwner } from "./notification.ts";
 import { adminProcedure, publicProcedure, router } from "./trpc.ts";
 
 export const systemRouter = router({
-  health: publicProcedure
-    .input(
-      z.object({
-        timestamp: z.number().min(0, "timestamp cannot be negative"),
-      })
-    )
-    .query(() => ({
-      ok: true,
-    })),
+  health: publicProcedure.query(() => ({
+    ok: true,
+    timestamp: new Date().toISOString(),
+    environment: process.env.NODE_ENV || "development",
+    uptimeSeconds: Math.floor(process.uptime()),
+  })),
 
   notifyOwner: adminProcedure
     .input(

@@ -57,13 +57,18 @@ export function encrypt(plaintext: string): string {
 export function decrypt(encryptedData: string): string {
   try {
     const combined = Buffer.from(encryptedData, 'base64');
+    if (combined.length < 32) {
+      throw new Error('Encrypted payload too short');
+    }
     
     // Extract components
     const iv = combined.slice(0, 16);
     const authTag = combined.slice(-16);
     const ciphertext = combined.slice(16, -16);
     
-    const decipher = crypto.createDecipheriv(ALGORITHM, getEncryptionKey(), iv);
+    const decipher = crypto.createDecipheriv(ALGORITHM, getEncryptionKey(), iv, {
+      authTagLength: 16,
+    });
     decipher.setAuthTag(authTag);
     
     let decrypted = decipher.update(ciphertext.toString('hex'), 'hex', 'utf8');
@@ -71,7 +76,6 @@ export function decrypt(encryptedData: string): string {
     
     return decrypted;
   } catch (error) {
-    console.error('[Encryption] Failed to decrypt:', error);
     throw new Error('Decryption failed');
   }
 }

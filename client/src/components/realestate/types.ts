@@ -1,12 +1,16 @@
-export type DealStage = "소싱" | "심사" | "약정" | "실행" | "회수";
+export type DealStage = string;
 
 export type Deal = {
   id: string;
-  name: string;
+  projectName: string;
   location: string;
-  amount: string;
-  ltv: string;
   stage: DealStage;
-  sponsor: string;
-  memo: string;
+  totalProjectCost: number;
+  loanAmount: number;
+  ltv: number;
+  equityAmount: number;
+  lenders: string;
+  nextMilestone: string;
+  nextMilestoneDate: string;
+  notes: string;
 };

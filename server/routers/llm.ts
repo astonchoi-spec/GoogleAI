@@ -157,9 +157,10 @@ export const llmRouter = router({
       const userApiKeys = ctx.user ? await getDecryptedApiSettings(ctx.user.id) : {};
 
       const userLlmCaller = new LLMCaller(
-        userApiKeys.ollama,
+        userApiKeys.ollama || process.env.OLLAMA_HOST, // MODIFIED: preserve env Ollama host when no user override exists.
         userApiKeys.gemini || process.env.GEMINI_API_KEY,
         userApiKeys.openai || process.env.OPENAI_API_KEY,
+        process.env.OPENAI_BASE_URL, // MODIFIED: keep constructor arguments aligned so Anthropic key is not treated as an OpenAI base URL.
         userApiKeys.anthropic || process.env.ANTHROPIC_API_KEY
       );
 

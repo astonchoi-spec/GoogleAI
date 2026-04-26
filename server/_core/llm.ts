@@ -7,6 +7,7 @@ const caller = new LLMCaller(
   undefined,
   process.env.GEMINI_API_KEY,
   process.env.OPENAI_API_KEY,
+  process.env.OPENAI_BASE_URL, // MODIFIED: pass the OpenAI base URL explicitly before the Anthropic key.
   process.env.ANTHROPIC_API_KEY
 );
 

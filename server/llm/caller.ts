@@ -4,7 +4,6 @@
  */
 
 import { Anthropic } from "@anthropic-ai/sdk";
-import { GoogleGenerativeAI } from "@google/generative-ai";
 import OpenAI from "openai";
 import axios from "axios";
 import type { LLMEngine } from "./models.ts";
@@ -21,6 +20,74 @@ export interface LLMResponse {
   model: string;
   engine: LLMEngine;
   tokensUsed?: number;
+}
+
+type GeminiGroundingChunk = {
+  web?: {
+    uri?: string;
+    title?: string;
+  };
+};
+
+type GeminiGroundingMetadata = {
+  groundingChunks?: GeminiGroundingChunk[];
+  webSearchQueries?: string[];
+};
+
+type GeminiGenerateContentResponse = {
+  candidates?: Array<{
+    content?: {
+      parts?: Array<{
+        text?: string;
+      }>;
+    };
+    groundingMetadata?: GeminiGroundingMetadata;
+  }>;
+  usageMetadata?: {
+    totalTokenCount?: number;
+  };
+};
+
+function shouldEnableGeminiGrounding(modelId: string): boolean {
+  if (process.env.GEMINI_GROUNDING_ENABLED === "false") return false; // MODIFIED: allow disabling search grounding without code changes.
+  return modelId.startsWith("gemini-2.") || modelId.startsWith("gemini-3."); // MODIFIED: current Gemini models support google_search grounding.
+}
+
+function appendGroundingSources(content: string, chunks: GeminiGroundingChunk[] | undefined): string {
+  const sources = (chunks ?? [])
+    .map((chunk) => chunk.web)
+    .filter((web): web is { uri: string; title?: string } => !!web?.uri)
+    .filter((web, index, array) => array.findIndex((item) => item.uri === web.uri) === index)
+    .slice(0, 5);
+
+  if (sources.length === 0) return content;
+
+  // TODO: 검색 출처 UI 표시 - 현재는 응답 텍스트 하단에 임시로 출처를 붙이고, 이후 전용 citation UI로 분리한다.
+  const sourceLines = sources.map((source, index) => {
+    const title = source.title?.trim() || `출처 ${index + 1}`;
+    return `- [${title}](${source.uri})`;
+  });
+
+  return `${content}\n\n출처:\n${sourceLines.join("\n")}`; // MODIFIED: surface Google Search grounding citations in chat responses.
+}
+
+function logGeminiGroundingMetadata(modelId: string, metadata?: GeminiGroundingMetadata): void {
+  const queries = metadata?.webSearchQueries ?? [];
+  const sources = (metadata?.groundingChunks ?? [])
+    .map((chunk) => chunk.web)
+    .filter((web): web is { uri: string; title?: string } => !!web?.uri)
+    .filter((web, index, array) => array.findIndex((item) => item.uri === web.uri) === index);
+
+  if (queries.length === 0 && sources.length === 0) return;
+
+  console.info("[Gemini Grounding]", {
+    model: modelId,
+    queries,
+    sources: sources.map((source) => ({
+      title: source.title ?? "",
+      uri: source.uri,
+    })),
+  }); // MODIFIED: log grounding queries and source URLs for server-side verification.
 }
 
 export class LLMCaller {
@@ -172,10 +239,6 @@ export class LLMCaller {
       if (!apiKey) {
         throw new Error("Gemini API key not configured");
       }
-      const genAI = new GoogleGenerativeAI(apiKey);
-      const model = genAI.getGenerativeModel({
-        model: modelId,
-      });
 
       const history = messages.slice(0, -1).map((msg) => ({
         role: msg.role === "user" ? "user" : "model",
@@ -187,23 +250,48 @@ export class LLMCaller {
         throw new Error("No messages provided");
       }
 
-      const result = await model.generateContent({
-        contents: [
-          ...(systemPrompt ? [{ role: "user", parts: [{ text: systemPrompt }] }] : []),
-          ...history,
-          {
-            role: lastMessage.role === "user" ? "user" : "model",
-            parts: [{ text: lastMessage.content }],
+      const response = await this.axiosInstance.post<GeminiGenerateContentResponse>( // MODIFIED: use REST so current google_search grounding is supported by this older SDK project.
+        `https://generativelanguage.googleapis.com/v1beta/models/${modelId}:generateContent`,
+        {
+          ...(systemPrompt ? { systemInstruction: { parts: [{ text: systemPrompt }] } } : {}),
+          contents: [
+            ...history,
+            {
+              role: lastMessage.role === "user" ? "user" : "model",
+              parts: [{ text: lastMessage.content }],
+            },
+          ],
+          ...(shouldEnableGeminiGrounding(modelId) ? { tools: [{ google_search: {} }] } : {}),
+        },
+        {
+          headers: {
+            "Content-Type": "application/json",
+            "x-goog-api-key": apiKey,
           },
-        ],
-      });
+        }
+      );
 
-      const textContent = result.response.text();
+      const candidate = response.data.candidates?.[0];
+      const textContent = candidate?.content?.parts
+        ?.map((part) => part.text ?? "")
+        .join("")
+        .trim();
+
+      if (!textContent) {
+        throw new Error("Gemini returned an empty response");
+      }
+
+      const groundedContent = appendGroundingSources(
+        textContent,
+        candidate?.groundingMetadata?.groundingChunks
+      );
+      logGeminiGroundingMetadata(modelId, candidate?.groundingMetadata);
 
       return {
-        content: textContent,
+        content: groundedContent,
         model: modelId,
         engine: "gemini",
+        tokensUsed: response.data.usageMetadata?.totalTokenCount,
       };
     } catch (error) {
       throw new Error(`Gemini API error: ${error instanceof Error ? error.message : String(error)}`);

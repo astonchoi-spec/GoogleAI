@@ -11,6 +11,7 @@ import {
   getConversationMessagesAsc,
   getRecentMessages,
   deleteMessage,
+  clearConversationMessages,
   updateMessage,
   searchConversationMessages,
   saveMessage,
@@ -239,6 +240,25 @@ export const chatSyncRouter = router({
       }
 
       await deleteMessage(input.conversationId, input.messageId);
+      return { success: true };
+    }),
+
+  /**
+   * Clear all messages in the current conversation
+   */
+  clearConversation: protectedProcedure // MODIFIED: give the UI a durable chat reset action instead of only clearing local state.
+    .input(
+      z.object({
+        conversationId: z.number(),
+      })
+    )
+    .mutation(async ({ input, ctx }) => {
+      const conversation = await getConversationById(input.conversationId);
+      if (!conversation || conversation.userId !== ctx.user.id) {
+        throw new Error("Conversation not found");
+      }
+
+      await clearConversationMessages(input.conversationId);
       return { success: true };
     }),
 

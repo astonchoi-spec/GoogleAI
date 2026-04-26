@@ -21,6 +21,7 @@ export default function GlobalToastBridge() {
     const maybeShowErrorToast = (error: unknown) => {
       const message = extractErrorMessage(error).trim();
       if (!message || message === UNAUTHED_ERR_MSG) return; // MODIFIED: keep existing auth redirect flow without duplicate toast noise.
+      if (message === "GOOGLE_WORKSPACE_API_DISABLED") return; // MODIFIED: Sheets panel renders a richer recovery card, so suppress duplicate global toast.
       if (!preferences.notifyErrors) return; // MODIFIED: honor user notification preference for error toasts.
 
       const now = Date.now();

@@ -4,12 +4,13 @@
  */
 
 import { z } from "zod";
-import { publicProcedure, router } from "../_core/trpc.ts";
+import { protectedProcedure, publicProcedure, router } from "../_core/trpc.ts";
 import GoogleAuthManager from "../google/auth.ts";
 import GmailConnector from "../google/gmail.ts";
 import CalendarConnector from "../google/calendar.ts";
 import DriveConnector from "../google/drive.ts";
 import SheetsConnector from "../google/sheets.ts";
+import { getConfiguredWorkspaceSheet, saveConfiguredWorkspaceSheet } from "../google/workspace-sheet-config.ts";
 import { sessionManager } from "../llm/session.ts"; // MODIFIED: reuse the shared session store so Google auth state stays aligned with chat and Telegram.
 
 // Initialize Google Auth Manager
@@ -49,9 +50,13 @@ export const googleWorkspaceRouter = router({
    * Check if user is authenticated with Google
    */
   isAuthenticated: publicProcedure.query(async ({ ctx }: any) => {
+    if (ctx.user?.loginMethod !== "google") {
+      return { authenticated: false, appAuthenticated: !!ctx.user, loginMethod: ctx.user?.loginMethod ?? null };
+    }
+
     const userId = ctx.user?.id.toString() || "anonymous";
     const authenticated = await googleAuthManager.isAuthenticated(userId);
-    return { authenticated };
+    return { authenticated, appAuthenticated: true, loginMethod: "google" };
   }),
 
   /**
@@ -328,6 +333,54 @@ export const googleWorkspaceRouter = router({
 
   // Sheets operations
   sheets: router({
+    getDefaultSpreadsheet: publicProcedure.query(async () => {
+      const configured = await getConfiguredWorkspaceSheet();
+      return {
+        spreadsheetId: configured?.spreadsheetId || "",
+        title: configured?.title || "",
+        sheetTitle: configured?.sheetTitle || "",
+        configured: !!configured?.spreadsheetId,
+        source: process.env.WORKSPACE_SPREADSHEET_ID ? "env" : configured?.spreadsheetId ? "local" : "none",
+      };
+    }),
+
+    connectDefaultSpreadsheet: protectedProcedure
+      .input(
+        z.object({
+          title: z.string().trim().min(1).max(200).default("Aston Workspace Data"),
+        })
+      )
+      .mutation(async ({ ctx, input }) => {
+        const existing = await getConfiguredWorkspaceSheet();
+        if (existing?.spreadsheetId) {
+          return { ...existing, created: false };
+        }
+
+        const userId = ctx.user.id.toString();
+        const auth = await googleAuthManager.getAuthenticatedClient(userId);
+        const sheets = new SheetsConnector(auth);
+        const spreadsheetId = await sheets.createSpreadsheet(input.title);
+        const firstSheet = await sheets.getFirstSheetInfo(spreadsheetId);
+        const sheetTitle = "Workspace";
+        if (firstSheet.title !== sheetTitle) {
+          await sheets.renameSheet(spreadsheetId, firstSheet.sheetId, sheetTitle);
+        }
+
+        await sheets.writeSheet({
+          spreadsheetId,
+          range: `'${sheetTitle.replace(/'/g, "''")}'!A1:F1`,
+          values: [["구분", "제목", "내용", "상태", "담당", "작성일"]],
+        });
+
+        const saved = await saveConfiguredWorkspaceSheet({
+          spreadsheetId,
+          title: input.title,
+          sheetTitle,
+        });
+
+        return { ...saved, created: true };
+      }),
+
     /**
      * Read sheet data
      */

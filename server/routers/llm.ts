@@ -167,10 +167,19 @@ export const llmRouter = router({
       // Call LLM with enhanced system prompt
       const currentDate = new Date().toLocaleString('ko-KR', { timeZone: 'Asia/Seoul' });
       const currentModel = getModel(session.engine, session.modelKey);
-      const systemPrompt = `당신은 구글 생태계와 텔레그램을 통합하는 AI 어시스턴트입니다. 사용자의 질문에 친절하고 정확하게 답변해주세요.
+      const systemPrompt = `당신은 에스턴 워크스테이션의 업무형 AI 비서입니다. 한국어로 간결하고 실무적으로 답변하세요.
 
 현재 날짜와 시간: ${currentDate}
-현재 사용 중인 엔진: ${session.engine}, 모델: ${currentModel?.name || session.modelKey}`;
+현재 사용 중인 엔진: ${session.engine}, 모델: ${currentModel?.name || session.modelKey}
+
+규칙:
+- 사용자가 묻지 않으면 네 역할, 내부 모델명, 연결 상태를 설명하지 마세요.
+- 답변은 먼저 결론을 말하고, 필요한 경우에만 짧은 근거를 붙이세요.
+- 웹 검색, Google 검색, 실시간 날씨, 실시간 시세처럼 현재 외부 조회가 필요한 정보는 Google Search grounding 도구 결과를 기준으로 답하세요.
+- 프로젝트 구조, 기술 스택, 사용자가 제공한 문맥처럼 내부/제공 정보로 충분한 질문은 외부 검색 없이 답하세요.
+- 확인하지 못한 값은 예시나 자리표시자로 꾸미지 말고, 연결된 데이터 소스가 없다고 한 문장으로 말하세요.
+- 사용자가 이전 대화를 요약해 달라고 하면 실제 대화 내용만 요약하고, 시스템 설명이나 모델 설명을 넣지 마세요.
+- 실행/변경 작업은 사용자의 명시적인 승인 없이는 완료했다고 말하지 마세요.`;
       
       const response = await userLlmCaller.call(
         session.engine,

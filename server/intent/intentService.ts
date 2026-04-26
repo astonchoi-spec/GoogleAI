@@ -270,6 +270,20 @@ function yyyymmdd(date: Date): string {
   return `${y}${m}${d}`;
 }
 
+function normalizeIntent(intent: IntentResult): IntentResult {
+  if (intent.domain === "chat" || intent.action === "chat") {
+    return {
+      domain: "chat",
+      action: "chat",
+      type: "query",
+      confidence: Math.min(intent.confidence || 0.3, 0.3),
+      params: {},
+    }; // MODIFIED: chat is never an execute action; let generic LLM fallback answer normal conversation.
+  }
+
+  return intent;
+}
+
 export async function classifyIntent(message: string): Promise<IntentResult> {
   const now = new Date().toLocaleString("ko-KR", { timeZone: "Asia/Seoul" });
   const prompt = `?ъ슜??硫붿떆吏瑜?遺꾩꽍??JSON留?諛섑솚?섏꽭??
@@ -306,13 +320,13 @@ export async function classifyIntent(message: string): Promise<IntentResult> {
     const parsed = await llmAdapter.parseJson<Partial<IntentResult>>(message, prompt);
     if (!parsed.domain || !parsed.action || !parsed.type) return fallbackIntent(message);
 
-    return {
+    return normalizeIntent({
       domain: parsed.domain,
       action: parsed.action,
       type: parsed.type,
       confidence: Number.isFinite(parsed.confidence) ? Number(parsed.confidence) : 0,
       params: parsed.params && typeof parsed.params === "object" ? parsed.params : {},
-    } as IntentResult;
+    } as IntentResult);
   } catch {
     return fallbackIntent(message);
   }

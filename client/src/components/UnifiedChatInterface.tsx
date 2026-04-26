@@ -10,6 +10,7 @@ import { Send, Loader2, Settings2, MessageCircle, Sliders, Smartphone, Globe, Ch
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
+import { useLocation } from "wouter"; // MODIFIED: handle chat deep links from dashboard/status-bar buttons.
 import {
   Select,
   SelectContent,
@@ -42,7 +43,27 @@ interface MessageSearchFilters { // MODIFIED: keep search state typed and aligne
   dateTo: string;
 }
 
+function normalizeSyncedMessage(msg: any): UnifiedMessage {
+  return {
+    id: `${msg.id}`,
+    role: msg.role as "user" | "assistant",
+    content: msg.content,
+    source: msg.source as "web" | "telegram",
+    timestamp: new Date(msg.createdAt),
+  };
+}
+
+function isDuplicateMessage(candidate: UnifiedMessage, existing: UnifiedMessage) {
+  if (candidate.id === existing.id) return true;
+  if (candidate.role !== existing.role) return false;
+  if (candidate.source !== existing.source) return false;
+  if (candidate.content !== existing.content) return false;
+
+  return Math.abs(candidate.timestamp.getTime() - existing.timestamp.getTime()) < 15_000;
+}
+
 export default function UnifiedChatInterface() {
+  const [location] = useLocation(); // MODIFIED: react to /chat query changes without remounting the chat component.
   const { isAuthenticated } = useAuth();
   const { preferences } = useAppPreferences();
   const [messages, setMessages] = useState<UnifiedMessage[]>([]);
@@ -66,10 +87,12 @@ export default function UnifiedChatInterface() {
   const [editingMessageId, setEditingMessageId] = useState<string | null>(null); // MODIFIED: keep one inline edit target at a time.
   const [editingContent, setEditingContent] = useState(""); // MODIFIED: store edited message content before saving.
   const [isEditing, setIsEditing] = useState(false); // MODIFIED: show edit-in-flight state in the edit bar.
+  const [isClearingConversation, setIsClearingConversation] = useState(false); // MODIFIED: show progress while clearing the current chat history.
   const [isPinned, setIsPinned] = useState(false); // MODIFIED: track favorite state for the active conversation.
   const [isTogglingPin, setIsTogglingPin] = useState(false); // MODIFIED: show favorite toggle progress.
   const [messageLimit, setMessageLimit] = useState(50); // MODIFIED: paginate older messages in fixed-size batches for better chat performance.
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const sendInFlightRef = useRef(false); // MODIFIED: block duplicate sends from overlapping form/button/keyboard events.
   const utils = trpc.useUtils(); // MODIFIED: reuse tRPC cache helpers after mutation-driven timeline changes.
 
   // tRPC queries and mutations
@@ -111,6 +134,7 @@ export default function UnifiedChatInterface() {
   const forwardToTelegramMutation = trpc.chatSync.forwardToTelegram.useMutation();
   const editMessageMutation = trpc.chatSync.editMessage.useMutation();
   const deleteMessageMutation = trpc.chatSync.deleteMessage.useMutation();
+  const clearConversationMutation = trpc.chatSync.clearConversation.useMutation();
   const togglePinnedMutation = trpc.chatSync.togglePinned.useMutation();
   const switchEngineMutation = trpc.llm.switchEngineAndModel.useMutation();
   const [switchSuccess, setSwitchSuccess] = useState(false);
@@ -148,13 +172,7 @@ export default function UnifiedChatInterface() {
   useEffect(() => {
     if (messagesQuery.data && !searchParams) { // MODIFIED: keep live message list intact while search mode is active.
       const loadedMessages: UnifiedMessage[] = messagesQuery.data
-        .map((msg: any) => ({
-          id: `${msg.id}`,
-          role: msg.role as "user" | "assistant",
-          content: msg.content,
-          source: msg.source as "web" | "telegram",
-          timestamp: new Date(msg.createdAt),
-        }))
+        .map(normalizeSyncedMessage)
         .reverse();
       setMessages(loadedMessages);
     }
@@ -164,18 +182,13 @@ export default function UnifiedChatInterface() {
   useEffect(() => {
     if (!searchParams && recentMessagesQuery.data && recentMessagesQuery.data.length > 0) { // MODIFIED: pause polling merge while showing fixed search results.
       const newMessages: UnifiedMessage[] = recentMessagesQuery.data
-        .map((msg: any) => ({
-          id: `${msg.id}`,
-          role: msg.role as "user" | "assistant",
-          content: msg.content,
-          source: msg.source as "web" | "telegram",
-          timestamp: new Date(msg.createdAt),
-        }))
+        .map(normalizeSyncedMessage)
         .reverse();
 
       setMessages((prev) => {
-        const existingIds = new Set(prev.map((m) => m.id));
-        const uniqueNewMessages = newMessages.filter((m) => !existingIds.has(m.id));
+        const uniqueNewMessages = newMessages.filter((message) =>
+          !prev.some((existing) => isDuplicateMessage(message, existing))
+        );
         const telegramIncoming = uniqueNewMessages.filter((m) => m.source === "telegram" && m.role === "user"); // MODIFIED: detect newly synced Telegram user messages for toast alerting.
         if (preferences.notifyNewMessages && telegramIncoming.length > 0) {
           const latest = telegramIncoming[telegramIncoming.length - 1];
@@ -190,13 +203,7 @@ export default function UnifiedChatInterface() {
   }, [preferences.notifyNewMessages, recentMessagesQuery.data, searchParams]);
 
   const searchedMessages: UnifiedMessage[] = (searchMessagesQuery.data ?? []) // MODIFIED: normalize tRPC search results into unified render shape.
-    .map((msg: any) => ({
-      id: `${msg.id}`,
-      role: msg.role as "user" | "assistant",
-      content: msg.content,
-      source: msg.source as "web" | "telegram",
-      timestamp: new Date(msg.createdAt),
-    }))
+    .map(normalizeSyncedMessage)
     .reverse();
 
   const renderedMessages = searchParams ? searchedMessages : messages; // MODIFIED: toggle between live timeline and search result list.
@@ -232,6 +239,12 @@ export default function UnifiedChatInterface() {
       setIsTogglingPin(false);
     }
   };
+
+  useEffect(() => {
+    if (!status) return;
+    setSelectedEngine(status.engine);
+    setSelectedModel(status.modelKey);
+  }, [status]);
 
   const startEditingMessage = (message: UnifiedMessage) => { // MODIFIED: preload selected message into the edit bar.
     setEditingMessageId(message.id);
@@ -318,13 +331,43 @@ export default function UnifiedChatInterface() {
     }
   };
 
+  const clearConversation = async () => {
+    if (renderedMessages.length === 0 || isClearingConversation) return;
+
+    const confirmed = window.confirm("현재 대화 기록을 모두 삭제할까요? 이 작업은 되돌릴 수 없습니다.");
+    if (!confirmed) return;
+
+    setIsClearingConversation(true);
+    try {
+      if (conversationId) {
+        await clearConversationMutation.mutateAsync({ conversationId });
+        await Promise.all([
+          utils.chatSync.getMessages.invalidate({ conversationId, limit: messageLimit }),
+          utils.chatSync.getRecentMessages.invalidate(),
+          utils.chatSync.searchMessages.invalidate(),
+          utils.chatSync.exportConversation.invalidate({ conversationId }),
+        ]);
+      }
+      setMessages([]);
+      setSearchParams(null);
+      setSearchFilters({ query: "", source: "all", dateFrom: "", dateTo: "" });
+      setLastSyncTime(new Date());
+      toast.success("대화 기록을 초기화했습니다.");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "대화 초기화에 실패했습니다.");
+    } finally {
+      setIsClearingConversation(false);
+    }
+  };
+
   // Auto-scroll to bottom
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, isLoading]);
 
   const sendMessageText = async (text: string) => { // ADDED: shared sender for typed, voice, and quick action messages.
-    if (!text.trim() || isLoading) return;
+    if (!text.trim() || isLoading || sendInFlightRef.current) return;
+    sendInFlightRef.current = true;
 
     const userMessage = text.trim();
     setInput("");
@@ -343,11 +386,15 @@ export default function UnifiedChatInterface() {
     try {
       // Save user message to DB only if logged in (conversationId exists)
       if (conversationId) {
-        await saveWebMessageMutation.mutateAsync({
+        const savedUserMessage = await saveWebMessageMutation.mutateAsync({
           conversationId,
           role: "user",
           content: userMessage,
         });
+        const normalizedUserMessage = normalizeSyncedMessage(savedUserMessage);
+        setMessages((prev) =>
+          prev.map((message) => (message.id === userMsg.id ? normalizedUserMessage : message))
+        );
       }
 
       // Get AI response (intent route first, fallback to generic LLM chat)
@@ -355,7 +402,7 @@ export default function UnifiedChatInterface() {
       if (isAuthenticated) { // MODIFIED: intent.route is protected, so call only for authenticated users.
         try { // MODIFIED: do not fail entire send flow if intent routing endpoint errors.
           const routed = await intentRouteMutation.mutateAsync({ message: userMessage }); // MODIFIED: attempt domain action routing first.
-          if (typeof (routed as any).formattedMessage === "string" && (routed as any).formattedMessage.trim()) {
+          if ((routed.requiresConfirmation || routed.handled) && typeof (routed as any).formattedMessage === "string" && (routed as any).formattedMessage.trim()) {
             aiResponseText = (routed as any).formattedMessage; // MODIFIED: consume shared server formatter for consistent intent response structure.
           } else if (routed.requiresConfirmation || routed.handled) {
             aiResponseText = routed.response; // MODIFIED: fallback for compatibility if formatter field is absent.
@@ -371,33 +418,42 @@ export default function UnifiedChatInterface() {
       }
 
       // Save AI response to DB only if logged in
+      const aiMsg: UnifiedMessage = {
+        id: `temp-assistant-${Date.now()}`,
+        role: "assistant",
+        content: aiResponseText, // MODIFIED: render final response text independent of execution path.
+        source: "web",
+        timestamp: new Date(),
+      };
+
       if (conversationId) {
-        await saveWebMessageMutation.mutateAsync({
+        setMessages((prev) => [...prev, aiMsg]);
+        const savedAssistantMessage = await saveWebMessageMutation.mutateAsync({
           conversationId,
           role: "assistant",
           content: aiResponseText, // MODIFIED: persist routed or fallback response uniformly.
         });
+        const normalizedAssistantMessage = normalizeSyncedMessage(savedAssistantMessage);
+        setMessages((prev) =>
+          prev.map((message) => (message.id === aiMsg.id ? normalizedAssistantMessage : message))
+        );
         // Forward both messages to Telegram (양방향 sync)
         forwardToTelegramMutation.mutate({
           conversationId,
           userMessage,
           aiResponse: aiResponseText, // MODIFIED: forward unified response payload.
         });
+      } else {
+        setMessages((prev) => [...prev, aiMsg]);
       }
 
-      const aiMsg: UnifiedMessage = {
-        id: (Date.now() + 1).toString(),
-        role: "assistant",
-        content: aiResponseText, // MODIFIED: render final response text independent of execution path.
-        source: "web",
-        timestamp: new Date(),
-      };
-      setMessages((prev) => [...prev, aiMsg]);
+      setLastSyncTime(new Date());
       tts.speak(aiResponseText); // MODIFIED: speak intent-routed response or LLM fallback response.
     } catch (error) {
       toast.error("메시지 전송에 실패했습니다.");
       console.error("Error sending message:", error);
     } finally {
+      sendInFlightRef.current = false;
       setIsLoading(false);
     }
   };
@@ -412,13 +468,28 @@ export default function UnifiedChatInterface() {
     void sendMessageText(text);
   });
 
-  useEffect(() => { // ADDED: accept quick commands from home widgets via /chat?command=...
+  useEffect(() => { // ADDED: accept quick commands and status-bar actions via /chat query params.
     const params = new URLSearchParams(window.location.search);
     const command = params.get("command");
-    if (!command) return;
-    setInput(command);
-    window.history.replaceState({}, "", "/chat");
-  }, []);
+    const source = params.get("source");
+    const openApiSettings = params.get("openApiSettings");
+
+    if (command) {
+      setInput(command);
+    }
+
+    if (source === "telegram") {
+      setSearchFilters((current) => ({ ...current, source: "telegram" })); // MODIFIED: Telegram shortcuts prime the source filter instead of doing nothing.
+    }
+
+    if (openApiSettings === "1") {
+      setShowApiSettings(true); // MODIFIED: API shortcuts open the existing API settings modal directly.
+    }
+
+    if (command || source || openApiSettings) {
+      window.history.replaceState({}, "", "/chat");
+    }
+  }, [location]);
 
   const getSourceIcon = (source: "web" | "telegram") => {
     return source === "telegram" ? (
@@ -430,7 +501,7 @@ export default function UnifiedChatInterface() {
 
   return (
     // MODIFIED: align the chat surface with the Aston command-center shell tokens.
-    <div className={`flex h-full min-h-0 flex-col bg-[var(--aston-bg)] text-[var(--aston-text)] ${preferences.compactChat ? "text-[0.95rem]" : ""}`}>
+    <div className={`flex h-[calc(100vh-48px)] min-h-0 flex-col overflow-hidden bg-[var(--aston-bg)] text-[var(--aston-text)] ${preferences.compactChat ? "text-[0.95rem]" : ""}`}> {/* MODIFIED: keep the messenger surface fixed inside the app viewport. */}
       {/* Login notice banner - shown when not authenticated */}
       {!isAuthenticated && (
         <div className="flex flex-shrink-0 items-center justify-between gap-2 border-b border-[var(--aston-border)] bg-[var(--aston-panel)] px-4 py-2">
@@ -487,7 +558,21 @@ export default function UnifiedChatInterface() {
             className="text-muted-foreground hover:text-foreground"
           >
             <Settings2 className="w-4 h-4 mr-1.5" />
-            API
+            API 키
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={clearConversation}
+            disabled={isClearingConversation || renderedMessages.length === 0}
+            className="text-muted-foreground hover:text-red-300"
+          >
+            {isClearingConversation ? (
+              <Loader2 className="w-4 h-4 mr-1.5 animate-spin" />
+            ) : (
+              <Trash2 className="w-4 h-4 mr-1.5" />
+            )}
+            클리어
           </Button>
           <Button
             variant="ghost"
@@ -500,6 +585,53 @@ export default function UnifiedChatInterface() {
             {isExporting ? "내보내는 중" : "Export"}
           </Button>
         </div>
+      </div>
+
+      <div className="flex flex-shrink-0 flex-wrap items-center gap-2 border-b border-[var(--aston-border)] bg-[var(--aston-panel-soft)] px-4 py-2">
+        <span className="text-xs font-medium text-[var(--aston-muted)]">AI 모델</span>
+        <Select value={selectedEngine} onValueChange={handleEngineChange}>
+          <SelectTrigger className="h-8 w-[150px] border-white/10 bg-black/20 text-xs">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {engines?.map((engine: any) => (
+              <SelectItem key={engine.name} value={engine.name}>
+                {engine.name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <Select value={selectedModel} onValueChange={setSelectedModel}>
+          <SelectTrigger className="h-8 w-[220px] border-white/10 bg-black/20 text-xs">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {models?.map((model: any) => (
+              <SelectItem key={model.key} value={model.key}>
+                {model.name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <Button
+          onClick={handleApplyEngine}
+          disabled={switchEngineMutation.isPending}
+          size="sm"
+          className="h-8 bg-cyan-600 px-3 text-xs text-white hover:bg-cyan-700"
+        >
+          {switchEngineMutation.isPending ? (
+            <><Loader2 className="mr-1.5 h-3 w-3 animate-spin" />전환 중</>
+          ) : switchSuccess ? (
+            <><Check className="mr-1.5 h-3 w-3" />적용됨</>
+          ) : (
+            "모델 적용"
+          )}
+        </Button>
+        {status?.modelName ? (
+          <span className="text-xs text-[var(--aston-muted)]">
+            현재: {status.modelName}
+          </span>
+        ) : null}
       </div>
 
       {/* Settings Panel (collapsible) */}
@@ -587,7 +719,7 @@ export default function UnifiedChatInterface() {
 
       {/* Messages Area - Middle (Scrollable) */}
       {/* MODIFIED: make the timeline area read as a framed executive panel. */}
-      <div className={`flex-1 overflow-y-auto space-y-3 bg-[var(--aston-bg)] ${preferences.compactChat ? "p-3" : "p-4"}`}>
+      <div className={`min-h-0 flex-1 space-y-3 overflow-y-auto overscroll-contain bg-[var(--aston-bg)] ${preferences.compactChat ? "p-3" : "p-4"}`}> {/* MODIFIED: message history owns the scrollbar; header and composer stay fixed. */}
         {canLoadOlderMessages && (
           <div className="flex justify-center pb-2">
             <Button
@@ -733,12 +865,6 @@ export default function UnifiedChatInterface() {
             placeholder="메시지를 입력하세요..."
             disabled={isLoading}
             className="flex-1"
-            onKeyDown={(e) => {
-              if (e.key === "Enter" && !e.shiftKey) {
-                e.preventDefault();
-                handleSendMessage(e as any);
-              }
-            }}
           />
           {speech.isSupported && (
             <Button

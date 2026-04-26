@@ -27,12 +27,12 @@ const quickCommands = [
 ];
 
 const kpis = [
-  { label: "오늘 일정", value: "6", hint: "Calendar", icon: CalendarDays },
-  { label: "받은 메일", value: "12", hint: "Gmail", icon: Mail },
-  { label: "미확인 Telegram", value: "3", hint: "Telegram", icon: Smartphone },
-  { label: "열린 포지션", value: "4", hint: "Trading", icon: TrendingUp },
-  { label: "PF 딜", value: "8", hint: "Real Estate", icon: Building2 },
-  { label: "시스템 경고", value: "1", hint: "Monitoring", icon: ShieldAlert },
+  { label: "오늘 일정", value: "6", hint: "Calendar", icon: CalendarDays, href: "/google?tab=calendar" }, // MODIFIED: make dashboard KPI cards navigate to the matching live workspace.
+  { label: "받은 메일", value: "12", hint: "Gmail", icon: Mail, href: "/google?tab=gmail" }, // MODIFIED: make dashboard KPI cards navigate to the matching live workspace.
+  { label: "미확인 Telegram", value: "3", hint: "Telegram", icon: Smartphone, href: "/chat?source=telegram" }, // MODIFIED: make dashboard KPI cards navigate to the matching live workspace.
+  { label: "열린 포지션", value: "4", hint: "Trading", icon: TrendingUp, href: "/trading" }, // MODIFIED: make dashboard KPI cards navigate to the matching live workspace.
+  { label: "PF 딜", value: "8", hint: "Real Estate", icon: Building2, href: "/real-estate-pf" }, // MODIFIED: make dashboard KPI cards navigate to the matching live workspace.
+  { label: "시스템 경고", value: "1", hint: "Monitoring", icon: ShieldAlert, href: "/monitoring" }, // MODIFIED: make dashboard KPI cards navigate to the matching live workspace.
 ];
 
 const modules = [
@@ -75,12 +75,12 @@ const modules = [
 ];
 
 const activities = [
-  { label: "AI 지시", detail: "오늘 메일 요약을 정리했습니다.", time: "2분 전" },
-  { label: "Telegram 수신", detail: "새 메시지 3건이 동기화되었습니다.", time: "8분 전" },
-  { label: "Google 작업", detail: "Calendar 일정 초안이 생성되었습니다.", time: "17분 전" },
-  { label: "트레이딩 알림", detail: "BTC 포지션 변동 알림이 도착했습니다.", time: "31분 전" },
-  { label: "PF 변경 기록", detail: "한남 PF 사업성 메모가 갱신되었습니다.", time: "42분 전" },
-  { label: "시스템 오류", detail: "최근 알림 없음", time: "현재" },
+  { label: "AI 지시", detail: "오늘 메일 요약을 정리했습니다.", time: "2분 전", href: "/chat" }, // MODIFIED: recent activity rows now open the related operational screen.
+  { label: "Telegram 수신", detail: "새 메시지 3건이 동기화되었습니다.", time: "8분 전", href: "/chat?source=telegram" }, // MODIFIED: recent activity rows now open the related operational screen.
+  { label: "Google 작업", detail: "Calendar 일정 초안이 생성되었습니다.", time: "17분 전", href: "/google?tab=calendar" }, // MODIFIED: recent activity rows now open the related operational screen.
+  { label: "트레이딩 알림", detail: "BTC 포지션 변동 알림이 도착했습니다.", time: "31분 전", href: "/trading" }, // MODIFIED: recent activity rows now open the related operational screen.
+  { label: "PF 변경 기록", detail: "한남 PF 사업성 메모가 갱신되었습니다.", time: "42분 전", href: "/real-estate-pf" }, // MODIFIED: recent activity rows now open the related operational screen.
+  { label: "시스템 오류", detail: "최근 알림 없음", time: "현재", href: "/monitoring" }, // MODIFIED: recent activity rows now open the related operational screen.
 ];
 
 export default function Home() {
@@ -194,7 +194,16 @@ export default function Home() {
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.25, delay: index * 0.04 }}
-              className="rounded-2xl border border-white/10 bg-[var(--aston-panel)] p-4"
+              onClick={() => navigate(item.href)} // MODIFIED: KPI cards are now action cards instead of static counters.
+              role="button"
+              tabIndex={0}
+              onKeyDown={(event) => {
+                if (event.key === "Enter" || event.key === " ") {
+                  event.preventDefault();
+                  navigate(item.href);
+                }
+              }}
+              className="cursor-pointer rounded-2xl border border-white/10 bg-[var(--aston-panel)] p-4 transition hover:border-cyan-500/30 hover:bg-white/5"
             >
               <div className="flex items-start justify-between gap-4">
                 <div>
@@ -249,16 +258,18 @@ export default function Home() {
 
           <div className="space-y-3">
             {activities.map((item) => (
-              <div
+              <button
+                type="button"
                 key={`${item.label}-${item.time}`}
-                className="flex items-start justify-between gap-4 rounded-xl border border-white/10 bg-black/15 px-4 py-3"
+                onClick={() => navigate(item.href)} // MODIFIED: recent activity entries now drill into the relevant module.
+                className="flex w-full items-start justify-between gap-4 rounded-xl border border-white/10 bg-black/15 px-4 py-3 text-left transition hover:border-cyan-500/30 hover:bg-white/5"
               >
                 <div>
                   <div className="text-sm font-medium text-[var(--aston-text)]">{item.label}</div>
                   <div className="mt-1 text-sm text-[var(--aston-muted)]">{item.detail}</div>
                 </div>
                 <div className="shrink-0 text-xs text-[var(--aston-muted)]">{item.time}</div>
-              </div>
+              </button>
             ))}
           </div>
         </div>

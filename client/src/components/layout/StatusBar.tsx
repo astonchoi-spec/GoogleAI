@@ -1,9 +1,10 @@
 import { FormEvent, useMemo, useState } from "react";
 import { useLocation } from "wouter";
-import { Bell, Bot, Menu, Search, ShieldCheck, Sparkles, Wifi } from "lucide-react";
+import { Bell, Bot, KeyRound, LogIn, Menu, Search, Send, ShieldCheck, Sparkles, Wifi } from "lucide-react"; // MODIFIED: add explicit icons for top-bar action buttons.
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { trpc } from "@/lib/trpc";
 
 interface StatusBarProps {
   title: string;
@@ -12,14 +13,19 @@ interface StatusBarProps {
 }
 
 const connectionItems = [
-  { label: "Google", tone: "success" },
-  { label: "Telegram", tone: "info" },
-  { label: "API", tone: "neutral" },
+  { label: "Google", tone: "success", href: "/google" },
+  { label: "Telegram", tone: "info", href: "/chat?source=telegram" },
+  { label: "API", tone: "neutral", href: "/chat?openApiSettings=1" },
 ] as const;
 
 export default function StatusBar({ title, subtitle, onMenuClick }: StatusBarProps) {
   const [, navigate] = useLocation();
   const [command, setCommand] = useState("");
+  const utils = trpc.useUtils();
+  const { data: googleAuthStatus, isLoading: isGoogleAuthLoading } =
+    trpc.googleWorkspace.isAuthenticated.useQuery(); // MODIFIED: keep loading, logged-out, and connected states visually distinct.
+  const { data: googleAuthUrlData, refetch: refetchGoogleAuthUrl } =
+    trpc.googleWorkspace.getAuthUrl.useQuery(); // MODIFIED: keep the Google OAuth URL warm for a direct popup launch.
 
   const chips = useMemo(
     () =>
@@ -32,15 +38,17 @@ export default function StatusBar({ title, subtitle, onMenuClick }: StatusBarPro
               : "border-slate-500/30 bg-slate-500/10 text-slate-300";
 
         return (
-          <span
+          <button
             key={item.label}
-            className={`inline-flex items-center rounded-md border px-2.5 py-1 text-[11px] font-medium tracking-tight ${toneClass}`}
+            type="button"
+            onClick={() => navigate(item.href)} // MODIFIED: status chips now open the real integration surface instead of being decorative labels.
+            className={`inline-flex items-center rounded-md border px-2.5 py-1 text-[11px] font-medium tracking-tight transition hover:border-cyan-400/40 hover:bg-cyan-500/10 ${toneClass}`}
           >
             {item.label}
-          </span>
+          </button>
         );
       }),
-    []
+    [navigate]
   );
 
   const submitCommand = (event: FormEvent<HTMLFormElement>) => {
@@ -108,21 +116,86 @@ export default function StatusBar({ title, subtitle, onMenuClick }: StatusBarPro
             type="button"
             variant="ghost"
             size="icon-sm"
+            onClick={() => navigate("/monitoring")} // MODIFIED: bell button now opens monitoring instead of being a dead control.
             className="rounded-md border border-white/10 bg-white/5 text-[var(--aston-text)] hover:bg-white/10"
             aria-label="알림"
           >
             <Bell className="h-4 w-4" />
           </Button>
 
-          <div className="hidden items-center gap-2 rounded-md border border-white/10 bg-white/5 px-3 py-1.5 text-xs text-[var(--aston-text)] md:flex">
-            <ShieldCheck className="h-3.5 w-3.5 text-emerald-300" />
-            <span className="font-medium">회장님</span>
-            <span className="text-[var(--aston-muted)]">/ Admin</span>
-          </div>
+          <Button
+            type="button"
+            variant="ghost"
+            onClick={() => navigate("/chat?openApiSettings=1")} // MODIFIED: expose API key management from the top bar.
+            className="hidden h-8 items-center gap-2 rounded-md border border-white/10 bg-white/5 px-3 text-xs text-[var(--aston-text)] hover:bg-white/10 xl:flex"
+          >
+            <KeyRound className="h-3.5 w-3.5 text-cyan-300" />
+            API 키
+          </Button>
 
-          <div className="flex h-8 w-8 items-center justify-center rounded-md border border-white/10 bg-gradient-to-br from-cyan-500/20 to-blue-500/20 text-xs font-semibold text-cyan-200">
+          <Button
+            type="button"
+            variant="ghost"
+            onClick={async () => {
+              const popup = window.open("", "_blank", "width=520,height=680");
+              if (!popup) {
+                navigate("/google");
+                return;
+              }
+
+              popup.document.write("<p style='font-family:sans-serif;padding:16px'>Google 로그인 창을 여는 중...</p>");
+
+              const authUrl = googleAuthUrlData?.authUrl ?? (await refetchGoogleAuthUrl()).data?.authUrl;
+              if (!authUrl) {
+                popup.close();
+                navigate("/google");
+                return;
+              }
+
+              popup.location.href = authUrl;
+              const timer = window.setInterval(() => {
+                if (!popup.closed) return;
+                window.clearInterval(timer);
+                void utils.googleWorkspace.isAuthenticated.invalidate();
+                void utils.auth.me.invalidate();
+              }, 1000);
+            }}
+            className="hidden h-8 items-center gap-2 rounded-md border border-white/10 bg-white/5 px-3 text-xs text-[var(--aston-text)] hover:bg-white/10 md:flex"
+          >
+            <ShieldCheck
+              className={`h-3.5 w-3.5 ${
+                googleAuthStatus?.authenticated ? "text-emerald-300" : "text-cyan-300"
+              }`}
+            />
+            <span className="font-medium">
+              {isGoogleAuthLoading
+                ? "Google 확인 중"
+                : googleAuthStatus?.authenticated
+                  ? "Google 연결됨"
+                  : "Google 로그인"}
+            </span>
+            <LogIn className="h-3.5 w-3.5 text-cyan-300" />
+          </Button>
+
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon-sm"
+            onClick={() => navigate("/chat?source=telegram")} // MODIFIED: Telegram shortcut opens the unified chat filtered entry point.
+            className="hidden rounded-md border border-white/10 bg-white/5 text-cyan-200 hover:bg-white/10 xl:inline-flex"
+            aria-label="Telegram 메시지"
+          >
+            <Send className="h-3.5 w-3.5" />
+          </Button>
+
+          <button
+            type="button"
+            onClick={() => navigate("/settings")} // MODIFIED: sparkle control now opens workspace settings.
+            className="flex h-8 w-8 items-center justify-center rounded-md border border-white/10 bg-gradient-to-br from-cyan-500/20 to-blue-500/20 text-xs font-semibold text-cyan-200 transition hover:border-cyan-500/30 hover:bg-cyan-500/10"
+            aria-label="설정"
+          >
             <Sparkles className="h-3.5 w-3.5" />
-          </div>
+          </button>
         </div>
       </div>
     </header>

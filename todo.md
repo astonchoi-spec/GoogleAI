@@ -582,3 +582,90 @@
   - Left application logic unchanged
 - [x] Session closeout
   - No remaining code changes for this thread
+
+<!-- MODIFIED: 2026-04-26 live stabilization and Google Workspace follow-up -->
+## Work Log - 2026-04-26 (Live Stabilization)
+
+- [x] Google OAuth login flow repaired
+  - Replaced the legacy admin/password login entry with Google OAuth login.
+  - Google callback now creates/updates the app user session from the Google profile.
+  - Google connected state is now separated from non-Google admin/session state.
+
+- [x] Chat duplicate-send and response quality stabilization
+  - Added in-flight send guard and duplicate message merge protection.
+  - Normal chat intents no longer become execute-confirmation responses.
+  - Default Gemini model preference moved to Pro for better workstation responses.
+  - System prompt adjusted to avoid fake realtime claims and to use available tools.
+
+- [x] Gemini Google Search Grounding enabled
+  - Reworked Gemini provider call to REST `generateContent` so `tools: [{ google_search: {} }]` is applied.
+  - Added grounding query/source logging on the server.
+  - Added temporary response citation text with a TODO for a dedicated source UI.
+  - Verified realtime questions for Nasdaq, weather, US market news, and BTC price.
+
+- [x] Chat messenger UX improvements
+  - Fixed chat layout so the message timeline owns the scrollbar.
+  - Header/model controls/composer no longer scroll away with long conversations.
+  - Added durable conversation clear action backed by `chatSync.clearConversation`.
+
+- [x] Dashboard and navigation button wiring
+  - Home KPI cards, recent activity rows, top status chips, and sidebar status chips now navigate to real screens/actions.
+  - API shortcut opens the API key modal directly.
+  - Google Workspace supports tab deep links such as `/google?tab=sheets`.
+
+- [x] Google Sheets connection flow
+  - Added default workspace sheet creation when `WORKSPACE_SPREADSHEET_ID` is absent.
+  - Persisted created sheet metadata in `data/workspace-sheet.json`.
+  - Added friendly Google Sheets/Drive API disabled recovery card with direct Console links.
+  - Removed `Sheet1` range assumptions; SheetsPanel now builds ranges from saved `sheetTitle` and quotes tab names.
+  - New spreadsheet first tab is renamed to `Workspace` before header write.
+
+- [x] React hydration fix
+  - Removed nested `<a>` patterns from `client/src/components/Sidebar.tsx`.
+  - Sidebar links now use the outer `Link` element only, preserving the existing visual design.
+
+- [x] Validation
+  - Re-ran `npm run check` after the latest stabilization changes.
+  - Re-ran `npm run build` after the latest stabilization changes.
+  - Restarted the local dev server and verified `/chat` and `/google?tab=sheets` respond with `200`.
+
+## Remaining Stabilization Plan
+
+- [ ] P0: Google Workspace production readiness
+  - Verify Sheets API and Drive API enablement in the Google Cloud project.
+  - Reconnect Google OAuth after API enablement to ensure fresh scopes and refresh token availability.
+  - Add a visible connection diagnostic panel for Gmail, Calendar, Drive, and Sheets.
+
+- [ ] P0: End-to-end chat execution QA
+  - Test web chat single-send behavior across Enter, send button, quick command, and voice input.
+  - Test conversation clear, edit, delete, search, export, and Telegram sync after clearing.
+  - Add regression tests for duplicate message suppression and chat intent fallback.
+
+- [ ] P1: Source/citation UI for Gemini grounding
+  - Move temporary citation text into structured message metadata.
+  - Render compact source chips/cards below grounded answers.
+  - Keep server-side grounding logs for audit/debug.
+
+- [ ] P1: Dashboard live data accuracy
+  - Replace mock KPI values on Home with live Gmail, Calendar, Telegram, Trading, PF, and Monitoring counts.
+  - Show loading/error/disabled states per service instead of fixed counters.
+
+- [ ] P1: Telegram operational verification
+  - Verify webhook/polling mode in the current environment.
+  - Add a Telegram status endpoint and UI badge showing bot token/webhook/chat link state.
+  - Test web-to-Telegram and Telegram-to-web round trip after the latest chat changes.
+
+- [ ] P1: Google Sheets workspace schema
+  - Define required worksheets for PF deals, trading alerts, workspace notes, and audit logs.
+  - Create missing tabs automatically and store tab names in the local workspace config.
+  - Normalize all Sheets reads/writes to use quoted saved tab names.
+
+- [ ] P2: Error and recovery UX
+  - Consolidate provider errors into action cards instead of generic toasts.
+  - Add retry actions for OAuth refresh, API enablement propagation, and network failures.
+  - Review global toast dedupe rules for query/mutation retries.
+
+- [ ] P2: Test and CI hardening
+  - Isolate external Telegram token tests from default local `npm test`.
+  - Add mock-backed Gemini grounding tests for request payload shape.
+  - Add build smoke checks for `/`, `/chat`, `/google?tab=sheets`, `/trading`, `/real-estate-pf`, `/monitoring`, and `/settings`.

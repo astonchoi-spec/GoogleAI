@@ -27,6 +27,15 @@ function normalizeTrpcErrorMessage(message: string): string {
     return "WORKSPACE_SPREADSHEET_ID 설정이 필요합니다. .env를 확인해 주세요.";
   }
 
+  if (
+    normalized.includes("google sheets api has not been used")
+    || normalized.includes("sheets.googleapis.com")
+    || normalized.includes("google drive api has not been used")
+    || normalized.includes("drive.googleapis.com")
+  ) {
+    return "GOOGLE_WORKSPACE_API_DISABLED"; // MODIFIED: let Sheets UI render a dedicated Korean recovery guide instead of a long provider error.
+  }
+
   if (normalized.includes("redis connection failed")) {
     return "Redis 연결에 실패했습니다. Redis 실행 상태 또는 REDIS_URL 설정을 확인해 주세요.";
   }

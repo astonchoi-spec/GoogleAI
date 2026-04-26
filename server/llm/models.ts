@@ -160,6 +160,9 @@ function resolveDefaultModelKey(engine: LLMEngine): string {
   if (configuredModelKey) {
     console.warn(`[LLM] Unsupported LLM_MODEL_KEY "${configuredModelKey}" for ${engine}, falling back to ${engine}'s first model.`);
   }
+  if (engine === "gemini" && getModel(engine, "pro")) {
+    return "pro"; // MODIFIED: prefer the higher quality Gemini model for workstation chat defaults.
+  }
   return getModelsByEngine(engine)[0]?.key ?? "flash";
 }
 

@@ -46,6 +46,10 @@ export default function AppShell({ children }: AppShellProps) {
   const [location] = useLocation();
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
+  if (location === "/login") {
+    return <>{children}</>; // MODIFIED: render the login page without the dashboard shell so the form stays unobstructed.
+  }
+
   const meta = ROUTE_META[location] ?? ROUTE_META["/"];
 
   return (

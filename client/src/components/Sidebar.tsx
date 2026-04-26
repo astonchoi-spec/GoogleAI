@@ -46,8 +46,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
     <aside className="hidden lg:fixed lg:inset-y-0 lg:left-0 lg:z-50 lg:flex lg:w-[280px] lg:flex-col border-r border-white/10 bg-[var(--aston-panel)] text-[var(--aston-text)]">
       <div className="flex h-full min-h-0 flex-col p-4">
         <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
-          <Link href="/">
-            <a className="flex items-start gap-3">
+          <Link href="/" className="flex items-start gap-3">
               <div className="flex h-11 w-11 items-center justify-center rounded-xl border border-cyan-500/20 bg-cyan-500/10 text-cyan-300">
                 <Bot className="h-5 w-5" />
               </div>
@@ -55,7 +54,6 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
                 <div className="truncate text-lg font-semibold">에스턴 워크스테이션</div>
                 <div className="truncate text-xs text-[var(--aston-muted)]">Aston Workstation</div>
               </div>
-            </a>
           </Link>
 
           <div className="mt-4 grid gap-2 rounded-xl border border-white/10 bg-black/20 p-3">
@@ -67,15 +65,15 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
               </span>
             </div>
             <div className="flex flex-wrap gap-2">
-              <span className="inline-flex items-center rounded-md border border-cyan-500/20 bg-cyan-500/10 px-2.5 py-1 text-[11px] font-medium text-cyan-300">
+              <Link href="/google" onClick={onClose} className="inline-flex items-center rounded-md border border-cyan-500/20 bg-cyan-500/10 px-2.5 py-1 text-[11px] font-medium text-cyan-300 transition hover:border-cyan-400/40 hover:bg-cyan-500/20">
                 Google
-              </span>
-              <span className="inline-flex items-center rounded-md border border-cyan-500/20 bg-cyan-500/10 px-2.5 py-1 text-[11px] font-medium text-cyan-300">
+              </Link>
+              <Link href="/chat?source=telegram" onClick={onClose} className="inline-flex items-center rounded-md border border-cyan-500/20 bg-cyan-500/10 px-2.5 py-1 text-[11px] font-medium text-cyan-300 transition hover:border-cyan-400/40 hover:bg-cyan-500/20">
                 Telegram
-              </span>
-              <span className="inline-flex items-center rounded-md border border-white/10 bg-white/5 px-2.5 py-1 text-[11px] font-medium text-[var(--aston-muted)]">
+              </Link>
+              <Link href="/chat?openApiSettings=1" onClick={onClose} className="inline-flex items-center rounded-md border border-white/10 bg-white/5 px-2.5 py-1 text-[11px] font-medium text-[var(--aston-muted)] transition hover:border-cyan-400/40 hover:bg-white/10 hover:text-cyan-200">
                 API
-              </span>
+              </Link>
             </div>
           </div>
         </div>
@@ -84,19 +82,19 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
           {navItems.map(({ href, label, icon: Icon }) => {
             const active = location === href;
             return (
-              <Link key={href} href={href}>
-                <a
-                  onClick={onClose}
-                  className={[
-                    "flex items-center gap-3 rounded-xl border px-3 py-2.5 text-sm transition",
-                    active
-                      ? "border-cyan-500/30 bg-cyan-500/10 text-cyan-200 shadow-[0_0_0_1px_rgba(34,211,238,0.12)]"
-                      : "border-transparent text-[var(--aston-muted)] hover:border-white/10 hover:bg-white/5 hover:text-[var(--aston-text)]",
-                  ].join(" ")}
-                >
+              <Link
+                key={href}
+                href={href}
+                onClick={onClose}
+                className={[
+                  "flex items-center gap-3 rounded-xl border px-3 py-2.5 text-sm transition",
+                  active
+                    ? "border-cyan-500/30 bg-cyan-500/10 text-cyan-200 shadow-[0_0_0_1px_rgba(34,211,238,0.12)]"
+                    : "border-transparent text-[var(--aston-muted)] hover:border-white/10 hover:bg-white/5 hover:text-[var(--aston-text)]",
+                ].join(" ")}
+              >
                   <Icon className={`h-4 w-4 ${active ? "text-cyan-300" : "text-[var(--aston-muted)]"}`} />
                   <span className="font-medium">{label}</span>
-                </a>
               </Link>
             );
           })}
@@ -108,14 +106,14 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
           </div>
           <div className="mt-2 grid gap-2">
             {quickActions.map(({ label, command, icon: Icon }) => (
-              <Link key={label} href={`/chat?command=${encodeURIComponent(command)}`}>
-                <a
-                  onClick={onClose}
-                  className="flex items-center gap-2 rounded-lg border border-white/10 bg-black/20 px-3 py-2 text-sm text-[var(--aston-text)] transition hover:border-cyan-500/30 hover:bg-white/5 hover:text-cyan-200"
-                >
+              <Link
+                key={label}
+                href={`/chat?command=${encodeURIComponent(command)}`}
+                onClick={onClose}
+                className="flex items-center gap-2 rounded-lg border border-white/10 bg-black/20 px-3 py-2 text-sm text-[var(--aston-text)] transition hover:border-cyan-500/30 hover:bg-white/5 hover:text-cyan-200"
+              >
                   <Icon className="h-4 w-4 text-cyan-300" />
                   <span>{label}</span>
-                </a>
               </Link>
             ))}
           </div>
@@ -156,15 +154,15 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
             </div>
           </div>
           <div className="mt-4 flex flex-wrap gap-2">
-            <span className="inline-flex items-center rounded-md border border-cyan-500/20 bg-cyan-500/10 px-2.5 py-1 text-[11px] font-medium text-cyan-300">
+            <Link href="/google" onClick={onClose} className="inline-flex items-center rounded-md border border-cyan-500/20 bg-cyan-500/10 px-2.5 py-1 text-[11px] font-medium text-cyan-300 transition hover:border-cyan-400/40 hover:bg-cyan-500/20">
               Google
-            </span>
-            <span className="inline-flex items-center rounded-md border border-cyan-500/20 bg-cyan-500/10 px-2.5 py-1 text-[11px] font-medium text-cyan-300">
+            </Link>
+            <Link href="/chat?source=telegram" onClick={onClose} className="inline-flex items-center rounded-md border border-cyan-500/20 bg-cyan-500/10 px-2.5 py-1 text-[11px] font-medium text-cyan-300 transition hover:border-cyan-400/40 hover:bg-cyan-500/20">
               Telegram
-            </span>
-            <span className="inline-flex items-center rounded-md border border-white/10 bg-white/5 px-2.5 py-1 text-[11px] font-medium text-[var(--aston-muted)]">
+            </Link>
+            <Link href="/chat?openApiSettings=1" onClick={onClose} className="inline-flex items-center rounded-md border border-white/10 bg-white/5 px-2.5 py-1 text-[11px] font-medium text-[var(--aston-muted)] transition hover:border-cyan-400/40 hover:bg-white/10 hover:text-cyan-200">
               API
-            </span>
+            </Link>
           </div>
         </div>
 
@@ -172,19 +170,19 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
           {navItems.map(({ href, label, icon: Icon }) => {
             const active = location === href;
             return (
-              <Link key={href} href={href}>
-                <a
-                  onClick={onClose}
-                  className={[
-                    "flex items-center gap-3 rounded-xl border px-3 py-2.5 text-sm transition",
-                    active
-                      ? "border-cyan-500/30 bg-cyan-500/10 text-cyan-200"
-                      : "border-transparent text-[var(--aston-muted)] hover:border-white/10 hover:bg-white/5 hover:text-[var(--aston-text)]",
-                  ].join(" ")}
-                >
+              <Link
+                key={href}
+                href={href}
+                onClick={onClose}
+                className={[
+                  "flex items-center gap-3 rounded-xl border px-3 py-2.5 text-sm transition",
+                  active
+                    ? "border-cyan-500/30 bg-cyan-500/10 text-cyan-200"
+                    : "border-transparent text-[var(--aston-muted)] hover:border-white/10 hover:bg-white/5 hover:text-[var(--aston-text)]",
+                ].join(" ")}
+              >
                   <Icon className={`h-4 w-4 ${active ? "text-cyan-300" : "text-[var(--aston-muted)]"}`} />
                   <span className="font-medium">{label}</span>
-                </a>
               </Link>
             );
           })}
@@ -196,14 +194,14 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
           </div>
           <div className="mt-2 grid gap-2">
             {quickActions.map(({ label, command, icon: Icon }) => (
-              <Link key={label} href={`/chat?command=${encodeURIComponent(command)}`}>
-                <a
-                  onClick={onClose}
-                  className="flex items-center gap-2 rounded-lg border border-white/10 bg-black/20 px-3 py-2 text-sm text-[var(--aston-text)] transition hover:border-cyan-500/30 hover:bg-white/5 hover:text-cyan-200"
-                >
+              <Link
+                key={label}
+                href={`/chat?command=${encodeURIComponent(command)}`}
+                onClick={onClose}
+                className="flex items-center gap-2 rounded-lg border border-white/10 bg-black/20 px-3 py-2 text-sm text-[var(--aston-text)] transition hover:border-cyan-500/30 hover:bg-white/5 hover:text-cyan-200"
+              >
                   <Icon className="h-4 w-4 text-cyan-300" />
                   <span>{label}</span>
-                </a>
               </Link>
             ))}
           </div>

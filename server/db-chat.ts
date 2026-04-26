@@ -101,6 +101,15 @@ export async function deleteMessage(
     .where(and(eq(messages.id, messageId), eq(messages.conversationId, conversationId)));
 }
 
+export async function clearConversationMessages(
+  conversationId: number
+): Promise<void> {
+  const db = getDb();
+  await db
+    .delete(messages)
+    .where(eq(messages.conversationId, conversationId)); // MODIFIED: support clearing the full chat timeline while keeping the conversation link.
+}
+
 export async function getConversationMessages(
   conversationId: number,
   limit: number = 50

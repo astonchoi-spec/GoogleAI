@@ -1,4 +1,4 @@
-import { Fragment, useState } from "react";
+import { Fragment, useEffect, useState } from "react"; // MODIFIED: support deep links such as /google?tab=calendar.
 import { motion } from "framer-motion";
 import { Mail, Calendar, HardDrive, Table2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
@@ -19,6 +19,13 @@ type TabId = (typeof TABS)[number]["id"];
 
 export default function Google() {
   const [activeTab, setActiveTab] = useState<TabId>("gmail");
+
+  useEffect(() => {
+    const tab = new URLSearchParams(window.location.search).get("tab");
+    if (tab && TABS.some((item) => item.id === tab)) {
+      setActiveTab(tab as TabId); // MODIFIED: let dashboard buttons open the requested Google Workspace tab.
+    }
+  }, []);
 
   return (
     <div className="px-4 py-5 sm:px-6 lg:px-8">

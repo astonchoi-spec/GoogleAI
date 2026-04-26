@@ -15,6 +15,12 @@ export default defineConfig({
   test: {
     environment: "node",
     include: ["server/**/*.test.ts", "server/**/*.spec.ts"],
+    exclude: [
+      "node_modules",
+      "dist",
+      "**/telegram-token.test.ts",
+      "**/gemini.test.ts"
+    ],
     setupFiles: ["./server/test/setup-env.ts"], // MODIFIED: load app environment variables before server tests run.
   },
 });

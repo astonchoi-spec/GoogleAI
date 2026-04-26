@@ -153,7 +153,7 @@ export const llmRouter = router({
       const history = await sessionManager.getHistory(userId, 10);
 
       // Prefer user's DB-stored keys; fall back to env vars for anonymous users
-      const { getDecryptedApiSettings } = await import("../db");
+      const { getDecryptedApiSettings } = await import("../db.ts"); // MODIFIED: include the ESM extension so dev runtime can resolve the module.
       const userApiKeys = ctx.user ? await getDecryptedApiSettings(ctx.user.id) : {};
 
       const userLlmCaller = new LLMCaller(

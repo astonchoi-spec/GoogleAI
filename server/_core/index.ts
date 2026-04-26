@@ -12,6 +12,7 @@ import telegramRouter, { initializeTelegramBot } from "../webhooks/telegram.ts";
 import googleCallbackRouter, { initializeGoogleAuth } from "../webhooks/google-callback.ts";
 import { googleAuthManager } from "../routers/google-workspace.ts";
 import { installDeploymentGuards, logStartupSummary } from "./deployment.ts"; // MODIFIED: add production bootstrap checks and persistent error logging.
+import { registerTvWebhookRoutes } from "../alerts/tvWebhookServer.ts"; // MODIFIED: register TradingView webhook endpoint.
 
 function isPortAvailable(port: number): Promise<boolean> {
   return new Promise(resolve => {
@@ -46,6 +47,9 @@ async function startServer() {
   registerStorageProxy(app);
   registerOAuthRoutes(app);
   
+  // TradingView webhook route
+  registerTvWebhookRoutes(app); // MODIFIED: POST /api/tv-webhook handler.
+
   // Telegram webhook routes
   app.use("/api/webhooks", telegramRouter);
 

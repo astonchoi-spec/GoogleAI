@@ -16,6 +16,7 @@ import { intentRouter } from "./routers/intent.ts"; // MODIFIED: Phase 3 intent 
 import { analyticsRouter } from "./routers/analytics.ts"; // MODIFIED: expose analytics dashboard data via appRouter.
 import { telegramRouter } from "./routers/telegram.ts"; // MODIFIED: register Telegram status endpoint in appRouter.
 import { homeRouter } from "./routers/home.ts"; // MODIFIED: register Home dashboard KPI endpoint in appRouter.
+import { alertsRouter } from "./routers/alerts.ts"; // MODIFIED: register alerts (TV webhook history) router.
 
 const ADMIN_USERNAME = "admin";
 const ADMIN_PASSWORD = "admin123";
@@ -71,6 +72,7 @@ export const appRouter = router({
   analytics: analyticsRouter, // MODIFIED: expose monitoring metrics for the dashboard page.
   telegram: telegramRouter, // MODIFIED: expose Telegram status endpoint in appRouter.
   home: homeRouter, // MODIFIED: expose Home dashboard KPI endpoint in appRouter.
+  alerts: alertsRouter, // MODIFIED: expose TV webhook history procedure.
 });
 
 export type AppRouter = typeof appRouter;

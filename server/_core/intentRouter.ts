@@ -19,6 +19,7 @@ import { calculateFuturesRisk, formatRiskReport, type FuturesRiskInput } from ".
 import { taEngine, type OhlcvArray } from "../trading/technicalAnalysis.ts";
 import { TradeJournal, type TradeStatsPeriod } from "../trading/tradeJournal.ts";
 import type { SupportedExchangeId } from "../exchanges/exchangeConnector.ts";
+import { getTvWebhookHistory } from "../alerts/tvWebhookServer.ts"; // MODIFIED: TV webhook history for intent routing.
 
 export type IntentName =
   | "trading.getBalance"
@@ -38,6 +39,7 @@ export type IntentName =
   | "finance.getDisclosures"
   | "finance.getFinancialStatements"
   | "finance.dart"
+  | "alerts.tvWebhookHistory"
   | "general.chat";
 
 export type ParsedIntent = {
@@ -66,10 +68,12 @@ const INTENT_SYSTEM_PROMPT = `너는 사용자의 자연어 명령을 분석해�
 - finance.getDisclosures: { corpCode, startDate, endDate }
 - finance.getFinancialStatements: { corpCode, year, reportCode }
 - finance.dart: { corpCode, startDate, endDate }
+- alerts.tvWebhookHistory: { limit? }
 - general.chat: { message }
 
 규칙:
 - 회사 검색, 공시 조회, 재무제표 조회 문장은 finance.searchCompanyByName, finance.getDisclosures, finance.getFinancialStatements, finance.getCompanyInfo 중 가장 적절한 것으로 분기한다.
+- "TV 알림 내역", "트레이딩뷰 알림", "TradingView 알림", "웹훅 이력" 같은 요청은 alerts.tvWebhookHistory로 분기한다.
 - 파라미터가 부족하면 clarification에 필요한 질문을 담아 반환한다.
 - 반드시 JSON만 응답한다: { intent: string, params: object, clarification: string|null }`;
 
@@ -221,6 +225,13 @@ export async function executeIntent(parsed: ParsedIntent, ctx: TrpcContext): Pro
       );
       return textResult("DART 공시 조회 결과", disclosures);
     }
+    case "alerts.tvWebhookHistory": {
+      // MODIFIED: return recent TradingView webhook alerts from Redis.
+      const limit = optionalNumber(parsed.params.limit) ?? 20;
+      const history = await getTvWebhookHistory(Math.min(100, Math.max(1, limit)));
+      if (history.length === 0) return "저장된 TradingView 알림 내역이 없습니다.";
+      return textResult("TradingView 알림 내역", history);
+    }
     case "general.chat":
       return requiredString(parsed.params.message, "무엇을 도와드릴까요?");
     default:
@@ -288,6 +299,7 @@ function isIntentName(value: string): value is IntentName {
     "finance.getDisclosures",
     "finance.getFinancialStatements",
     "finance.dart",
+    "alerts.tvWebhookHistory",
     "general.chat",
   ].includes(value);
 }

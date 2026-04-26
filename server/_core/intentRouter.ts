@@ -80,12 +80,7 @@ export async function parseIntent(userMessage: string): Promise<ParsedIntent> {
     "gemini",
     "flash",
     [{ role: "user", content: userMessage }],
-    INTENT_SYSTEM_PROMPT,
-    {
-      responseMimeType: "application/json",
-      temperature: 0,
-      maxOutputTokens: 1024,
-    }
+    INTENT_SYSTEM_PROMPT
   );
 
   return normalizeParsedIntent(response.content, userMessage);

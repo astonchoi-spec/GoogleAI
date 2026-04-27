@@ -1,7 +1,7 @@
 import { getDb } from "./db.ts";
-import { conversations, messages } from "../drizzle/schema.ts";
+import { conversations, messages, users } from "../drizzle/schema.ts";
 import type { Conversation, Message } from "../drizzle/schema.ts";
-import { eq, and, desc, gte, lte, like } from "drizzle-orm";
+import { eq, and, desc, gte, lte, like, isNotNull } from "drizzle-orm";
 
 export async function getOrCreateConversation(userId: number): Promise<Conversation> {
   const db = getDb();
@@ -233,4 +233,73 @@ export async function getConversationById(id: number): Promise<Conversation | nu
     .where(eq(conversations.id, id))
     .limit(1);
   return result[0] || null;
+}
+
+export async function mergeTelegramConversationIntoUser(
+  telegramChatId: number,
+  targetUserId: number
+): Promise<boolean> {
+  const db = getDb();
+  const telegramConvs = await db
+    .select()
+    .from(conversations)
+    .where(eq(conversations.telegramChatId, telegramChatId))
+    .limit(1);
+
+  if (!telegramConvs[0] || telegramConvs[0].userId === targetUserId) return false;
+
+  const webConv = await getOrCreateConversation(targetUserId);
+
+  // Move all messages from telegram conv → web conv
+  await db
+    .update(messages)
+    .set({ conversationId: webConv.id })
+    .where(eq(messages.conversationId, telegramConvs[0].id));
+
+  // Link telegramChatId to web conv
+  await db
+    .update(conversations)
+    .set({ telegramChatId, updatedAt: new Date() })
+    .where(eq(conversations.id, webConv.id));
+
+  // Remove the now-empty ghost conversation
+  await db.delete(conversations).where(eq(conversations.id, telegramConvs[0].id));
+
+  console.log(
+    `[DB-CHAT] merged telegramChatId=${telegramChatId} conv(${telegramConvs[0].id}) → user=${targetUserId} conv(${webConv.id})`
+  );
+  return true;
+}
+
+export async function autoMergeTelegramConversations(): Promise<number> {
+  const db = getDb();
+
+  // Find conversations owned by the ghost admin user (id=1) that have a telegramChatId
+  const ghostConvs = await db
+    .select()
+    .from(conversations)
+    .where(and(eq(conversations.userId, 1), isNotNull(conversations.telegramChatId)));
+
+  if (ghostConvs.length === 0) return 0;
+
+  // Find the first real web user (has email, not ghost userId=1)
+  const realUsers = await db
+    .select()
+    .from(users)
+    .where(and(isNotNull(users.email), isNotNull(users.openId)))
+    .limit(1);
+
+  if (!realUsers[0] || realUsers[0].id === 1) return 0;
+
+  let merged = 0;
+  for (const conv of ghostConvs) {
+    if (!conv.telegramChatId) continue;
+    const ok = await mergeTelegramConversationIntoUser(conv.telegramChatId, realUsers[0].id);
+    if (ok) merged++;
+  }
+
+  if (merged > 0) {
+    console.log(`[DB-CHAT] autoMerge: merged ${merged} Telegram conversation(s) into userId=${realUsers[0].id}`);
+  }
+  return merged;
 }

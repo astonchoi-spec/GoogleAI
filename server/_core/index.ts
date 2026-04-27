@@ -87,6 +87,14 @@ async function startServer() {
   // Initialize Telegram bot
   await initializeTelegramBot();
 
+  // Merge ghost Telegram conversations (userId=1) into real web user on startup
+  try {
+    const { autoMergeTelegramConversations } = await import("../db-chat.ts");
+    await autoMergeTelegramConversations();
+  } catch (mergeErr) {
+    console.warn("[STARTUP] autoMergeTelegramConversations failed:", mergeErr);
+  }
+
   // Graceful shutdown
   process.once("SIGINT", () => server.close());
   process.once("SIGTERM", () => server.close());

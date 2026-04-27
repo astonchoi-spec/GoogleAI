@@ -20,6 +20,7 @@ import {
   getPinnedConversations,
   updateConversationTitle,
   updateConversationPinned,
+  mergeTelegramConversationIntoUser,
 } from "../db-chat.ts";
 import { forwardToTelegram } from "../telegram-service.ts";
 
@@ -281,6 +282,16 @@ export const chatSyncRouter = router({
 
       await updateMessage(input.conversationId, input.messageId, input.content);
       return { success: true };
+    }),
+
+  /**
+   * Link a Telegram chat to the current user's conversation (manual merge)
+   */
+  linkTelegramChat: protectedProcedure
+    .input(z.object({ telegramChatId: z.number() }))
+    .mutation(async ({ input, ctx }) => {
+      const ok = await mergeTelegramConversationIntoUser(input.telegramChatId, ctx.user.id);
+      return { success: ok };
     }),
 
   /**

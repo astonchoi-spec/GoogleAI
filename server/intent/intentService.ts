@@ -844,7 +844,7 @@ export function formatIntentRouteMessage(routed: IntentRouteResponse): string {
 
   if (!routed.handled) {
     return [
-      "REQUEST NOT HANDLED",
+      "",
       routed.response,
       `intent=${routed.intent.domain}/${routed.intent.action} confidence=${routed.intent.confidence.toFixed(2)}`,
     ].join("\n");

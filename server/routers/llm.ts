@@ -152,7 +152,6 @@ export const llmRouter = router({
 
       // ── Step 1: Intent routing (Google Drive / Gmail / Calendar / 잔고 / 기술분석 등)
       console.log("[INTENT] llm.chat routing:", input.message.slice(0, 80));
-      console.log("[INTENT] userId:", userId);
       try {
         const routed = await routeIntentMessage({
           userId,

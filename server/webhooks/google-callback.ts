@@ -71,7 +71,6 @@ router.get("/google/callback", async (req: Request, res: Response) => {
 
     const user = await db.getUserByOpenId(openId);
     if (user) {
-      console.log("[GOOGLE-CALLBACK] storing tokens for userId:", String(user.id));
       await googleAuthManager.storeTokensForUser(
         String(user.id),
         exchangeResult.accessToken,

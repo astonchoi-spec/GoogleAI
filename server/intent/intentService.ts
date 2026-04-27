@@ -31,6 +31,10 @@ export type IntentAction =
   | "finance_dart_disclosures"
   | "google_create_event" // MODIFIED: execute action for calendar event creation.
   | "google_write_sheet" // MODIFIED: execute action for sheet write.
+  | "google_drive_search"
+  | "google_get_emails"
+  | "google_list_events"
+  | "google_send_email"
   | "execute_placeholder"
   | "chat";
 
@@ -277,6 +281,41 @@ function fallbackIntent(message: string): IntentResult {
     };
   }
 
+  if (
+    lower.includes("드라이브") ||
+    lower.includes("구글드라이브") ||
+    lower.includes("google drive") ||
+    lower.includes("파일 검색") ||
+    lower.includes("파일 찾")
+  ) {
+    const query = message.replace(/드라이브에서|구글드라이브에서|에서|검색|찾아|줘|해줘|파일/g, "").trim();
+    return {
+      domain: "google",
+      action: "google_drive_search",
+      type: "query",
+      confidence: 0.75,
+      params: { query: query || message, maxResults: 10 },
+    };
+  }
+
+  if (
+    lower.includes("메일 확인") || lower.includes("받은 메일") ||
+    lower.includes("이메일") || lower.includes("gmail")
+  ) {
+    return { domain: "google", action: "google_get_emails", type: "query", confidence: 0.7, params: { maxResults: 5 } };
+  }
+
+  if (
+    lower.includes("일정 확인") || lower.includes("오늘 일정") ||
+    lower.includes("캘린더") || lower.includes("다음 일정") || lower.includes("스케줄")
+  ) {
+    return { domain: "google", action: "google_list_events", type: "query", confidence: 0.7, params: { maxResults: 5 } };
+  }
+
+  if (lower.includes("메일 보내") || lower.includes("이메일 전송")) {
+    return { domain: "google", action: "google_send_email", type: "execute", confidence: 0.7, params: {} };
+  }
+
   return {
     domain: "chat",
     action: "chat",
@@ -343,6 +382,7 @@ export async function classifyIntent(message: string): Promise<IntentResult> {
 
   // Step 1: 키워드 기반 사전 분류 (빠르고 정확)
   const keywordResult = fallbackIntent(message);
+  console.log("[INTENT] fallback result:", keywordResult.action, "confidence:", keywordResult.confidence);
   if (keywordResult.confidence >= 0.5) {
     console.log("[INTENT] keyword match:", keywordResult.action, "confidence:", keywordResult.confidence);
     return keywordResult;
@@ -693,6 +733,70 @@ export async function routeIntentMessage(options: RouteIntentOptions): Promise<I
         response: "시트 쓰기가 완료되었습니다.",
         data: { spreadsheetId, range, rows: normalizedValues.length },
       };
+    }
+
+    if (intent.action === "google_drive_search") {
+      const query = asString(intent.params.query, "");
+      const maxResults = asNumber(intent.params.maxResults, 10);
+      try {
+        const auth = await googleAuthManager.getAuthenticatedClient(options.userId);
+        const { DriveConnector } = await import("../google/drive.ts");
+        const drive = new DriveConnector(auth);
+        const driveQuery = query
+          ? `(name contains '${query.replace(/'/g, "\\'")}' or fullText contains '${query.replace(/'/g, "\\'")}') and trashed = false`
+          : "trashed = false";
+        const files = await drive.searchFiles(driveQuery, maxResults);
+        if (files.length === 0) {
+          return { intent, handled: true, requiresConfirmation: false, response: `Google Drive에서 "${query}" 관련 파일을 찾을 수 없습니다.`, data: { files: [] } };
+        }
+        const fileList = (files as any[]).map((f: any, i: number) => `${i + 1}. ${f.name}`).join("\n");
+        return { intent, handled: true, requiresConfirmation: false, response: `Google Drive 파일 ${files.length}개:\n${fileList}`, data: { files } };
+      } catch (err: any) {
+        if (err.message?.includes("token") || err.message?.includes("auth") || err.message?.includes("인증")) {
+          return { intent, handled: true, requiresConfirmation: false, response: "Google 재인증이 필요합니다. 웹 앱에서 Google 계정을 다시 연결해주세요." };
+        }
+        return { intent, handled: true, requiresConfirmation: false, response: `Drive 검색 오류: ${err.message}` };
+      }
+    }
+
+    if (intent.action === "google_get_emails") {
+      const maxResults = asNumber(intent.params.maxResults, 5);
+      try {
+        const auth = await googleAuthManager.getAuthenticatedClient(options.userId);
+        const { GmailConnector } = await import("../google/gmail.ts");
+        const gmail = new GmailConnector(auth);
+        const emails = await gmail.getEmails(maxResults);
+        if (emails.length === 0) {
+          return { intent, handled: true, requiresConfirmation: false, response: "받은 메일이 없습니다.", data: { emails: [] } };
+        }
+        const emailList = (emails as any[]).map((e: any, i: number) => `${i + 1}. ${e.subject} (${e.from})`).join("\n");
+        return { intent, handled: true, requiresConfirmation: false, response: `최근 이메일 ${emails.length}개:\n${emailList}`, data: { emails } };
+      } catch (err: any) {
+        if (err.message?.includes("token") || err.message?.includes("auth") || err.message?.includes("인증")) {
+          return { intent, handled: true, requiresConfirmation: false, response: "Google 재인증이 필요합니다. 웹 앱에서 Google 계정을 다시 연결해주세요." };
+        }
+        return { intent, handled: true, requiresConfirmation: false, response: `이메일 조회 오류: ${err.message}` };
+      }
+    }
+
+    if (intent.action === "google_list_events") {
+      const maxResults = asNumber(intent.params.maxResults, 5);
+      try {
+        const auth = await googleAuthManager.getAuthenticatedClient(options.userId);
+        const { CalendarConnector } = await import("../google/calendar.ts");
+        const calendar = new CalendarConnector(auth);
+        const events = await calendar.getUpcomingEvents(maxResults);
+        if (events.length === 0) {
+          return { intent, handled: true, requiresConfirmation: false, response: "예정된 일정이 없습니다.", data: { events: [] } };
+        }
+        const eventList = (events as any[]).map((e: any, i: number) => `${i + 1}. ${e.title || e.summary || "(제목 없음)"}`).join("\n");
+        return { intent, handled: true, requiresConfirmation: false, response: `다가오는 일정 ${events.length}개:\n${eventList}`, data: { events } };
+      } catch (err: any) {
+        if (err.message?.includes("token") || err.message?.includes("auth") || err.message?.includes("인증")) {
+          return { intent, handled: true, requiresConfirmation: false, response: "Google 재인증이 필요합니다. 웹 앱에서 Google 계정을 다시 연결해주세요." };
+        }
+        return { intent, handled: true, requiresConfirmation: false, response: `일정 조회 오류: ${err.message}` };
+      }
     }
 
     if (intent.action === "execute_placeholder") {

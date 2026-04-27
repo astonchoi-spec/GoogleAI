@@ -401,11 +401,9 @@ export default function UnifiedChatInterface() {
       let aiResponseText = ""; // MODIFIED: unify downstream persistence/rendering regardless of response source.
       if (isAuthenticated) { // MODIFIED: intent.route is protected, so call only for authenticated users.
         try { // MODIFIED: do not fail entire send flow if intent routing endpoint errors.
-          const routed = await intentRouteMutation.mutateAsync({ message: userMessage }); // MODIFIED: attempt domain action routing first.
-          if ((routed.requiresConfirmation || routed.handled) && typeof (routed as any).formattedMessage === "string" && (routed as any).formattedMessage.trim()) {
-            aiResponseText = (routed as any).formattedMessage; // MODIFIED: consume shared server formatter for consistent intent response structure.
-          } else if (routed.requiresConfirmation || routed.handled) {
-            aiResponseText = routed.response; // MODIFIED: fallback for compatibility if formatter field is absent.
+          const routed = await intentRouteMutation.mutateAsync({ message: userMessage });
+          if (routed.handled || routed.requiresConfirmation) {
+            aiResponseText = (routed as any).formattedMessage || routed.response || "";
           }
         } catch (intentError) {
           console.warn("Intent route failed, fallback to llm.chat:", intentError); // MODIFIED: explicit fallback diagnostics for intent path failures.

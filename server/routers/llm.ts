@@ -170,7 +170,7 @@ export const llmRouter = router({
 
         if (routed.handled) {
           // 실제 API 호출 성공 — 결과를 사용자에게 반환
-          const responseText = formatIntentRouteMessage(routed) || routed.response;
+          const responseText = routed.response || formatIntentRouteMessage(routed) || "처리 완료";
           console.log("[INTENT] handled — returning result, length:", responseText.length);
           await sessionManager.addMessage(userId, "assistant", responseText);
           return { response: responseText, model: "intent-router", engine: "intent-service" };

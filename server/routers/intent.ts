@@ -13,7 +13,7 @@ export const intentRouter = router({
   route: protectedProcedure
     .input(z.object({
       message: z.string().min(1),
-      allowExecute: z.boolean().default(false),
+      allowExecute: z.boolean().default(true),
     }))
     .mutation(async ({ ctx, input }) => {
       const routed = await routeIntentMessage({
@@ -23,7 +23,7 @@ export const intentRouter = router({
       });
       return {
         ...routed,
-        formattedMessage: formatIntentRouteMessage(routed), // MODIFIED: expose server-formatted response for consistent web/telegram presentation.
+        formattedMessage: routed.response || "",
       };
     }),
 });

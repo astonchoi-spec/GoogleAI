@@ -339,6 +339,16 @@ function normalizeIntent(intent: IntentResult): IntentResult {
 }
 
 export async function classifyIntent(message: string): Promise<IntentResult> {
+  console.log("[INTENT] classifyIntent called:", message.slice(0, 80));
+
+  // Step 1: 키워드 기반 사전 분류 (빠르고 정확)
+  const keywordResult = fallbackIntent(message);
+  if (keywordResult.confidence >= 0.5) {
+    console.log("[INTENT] keyword match:", keywordResult.action, "confidence:", keywordResult.confidence);
+    return keywordResult;
+  }
+
+  // Step 2: 키워드 매칭 실패 시에만 LLM 호출
   const now = new Date().toLocaleString("ko-KR", { timeZone: "Asia/Seoul" });
   const prompt = `?ъ슜??硫붿떆吏瑜?遺꾩꽍??JSON留?諛섑솚?섏꽭??
 

@@ -669,3 +669,49 @@
   - Isolate external Telegram token tests from default local `npm test`.
   - Add mock-backed Gemini grounding tests for request payload shape.
   - Add build smoke checks for `/`, `/chat`, `/google?tab=sheets`, `/trading`, `/real-estate-pf`, `/monitoring`, and `/settings`.
+
+## Work Log - 2026-04-28 (Trading Chart Overhaul)
+
+- [x] TradingView Advanced Chart 위젯 교체
+  - `client/src/components/trading/ChartArea.tsx` 전면 리팩터
+  - lightweight-charts + 수동 RSI/MACD/BB 계산 코드 제거
+  - `embed-widget-advanced-chart.js` 스크립트 방식 삽입 (iframe 없음)
+  - 기본 심볼: BINANCE:BTCUSDT, 다크테마, Asia/Seoul, RSI+MACD+BB 지표 내장
+  - `allow_symbol_change: true` — 위젯 내 종목 직접 검색 가능
+  - 시장 빠른 전환 버튼: BTC/USDT, ETH/USDT, 나스닥100, S&P500, 금, 삼성전자, SK하이닉스
+  - `key={tvSymbol}` 으로 심볼 변경 시 위젯 강제 remount
+  - Binance API 현재가 5초 갱신 유지 (Binance 심볼만)
+  - 커밋: `8e879a5 feat: TradingView 위젯 교체 - 실시간 차트, 종목검색, 기술분석 통합`
+
+- [x] 4-탭 멀티 마켓 차트 확장
+  - [코인] [한국주식] [미국주식] [선물/지수] 탭 추가
+  - **코인 탭**: TradingView 위젯 + Binance 현재가 그대로 유지
+    - BTC/ETH/SOL/BNB/XRP/DOGE 프리셋
+  - **한국주식 탭**: lightweight-charts + Yahoo Finance v8 API
+    - 삼성전자/SK하이닉스/NAVER/카카오/현대차/LG에너지솔루션 프리셋
+    - 종목코드 직접 입력 시 `.KS` 자동 추가
+    - KST 시간축 오프셋(+9h) 적용
+  - **미국주식 탭**: lightweight-charts + Yahoo Finance v8 API
+    - AAPL/MSFT/GOOGL/AMZN/NVDA/TSLA/META 프리셋
+    - 아무 티커 직접 검색 가능
+  - **선물/지수 탭**: lightweight-charts + Yahoo Finance v8 API
+    - 나스닥100(^IXIC)/S&P500(^GSPC)/다우존스(^DJI)/금(GC=F)/원유(CL=F)/달러원(KRW=X)
+    - Yahoo Finance 심볼 직접 검색 가능
+  - 공통: 타임프레임 1d/5d/1wk/1mo, RSI·MACD·볼린저밴드 수치 패널, 현재가+변동률 표시
+  - 커밋: `2f41e39 feat: 한국주식/미국주식/선물 차트 - lightweight-charts + Yahoo Finance`
+
+- [x] 검증
+  - `npm run check` 통과 (타입 오류 0)
+  - `npm run build` 통과
+  - `npm test` 통과 (92 passed, 7 skipped)
+  - GitHub push 완료 (branch: codex-google-workspace-expansion)
+
+## Remaining TODO - 2026-04-28
+
+- [ ] Yahoo Finance CORS 이슈 대응
+  - `query1.finance.yahoo.com` 브라우저 직접 호출이 차단될 수 있음
+  - 서버 프록시 엔드포인트 추가 검토 (`/api/yahoo-proxy`)
+- [ ] TradingView 위젯 로딩 속도 개선
+  - 탭 전환 시 위젯 재로드 딜레이 최소화 방안 검토
+- [ ] 코인 탭 확장
+  - SOL/BNB/XRP/DOGE 등 알트코인 추가 프리셋 고려

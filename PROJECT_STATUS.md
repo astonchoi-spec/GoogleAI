@@ -395,6 +395,32 @@ ollama pull gemma4:e4b
 
 ---
 
+## 작업일지 - 2026-04-27 (귀가 세션 — 준비 완료)
+
+### 회사컴 완료 항목 (git pull로 확인)
+
+- ✅ **2-A 기술적 분석 엔진** (커밋: 8e026d7)
+  - `server/trading/technicalAnalysis.ts` — RSI / MACD / Bollinger / EMA / ATR
+  - `server/routers/analysis.ts` — tRPC 프로시저 6종
+  - `gateioConnector.fetchOHLCV` 추가
+  - 인텐트 라우터 분석 액션 등록
+  - 테스트 4개 추가 (전체 92개 통과)
+
+- ✅ **2-B 대시보드 라이브 데이터** (커밋: 0a1ee9a)
+  - `client/src/pages/Home.tsx` KPI 카드를 tRPC 실시간 호출로 교체
+  - Trading / Alert / Telegram / Gmail / Calendar / PF 카드 연결
+  - 로딩 / 에러 / 미연결 상태 처리
+
+- ✅ **allowExecute true** (커밋: c1311de)
+  - `server/routers/llm.ts` — 인텐트 실행 즉시 처리
+
+### 현재 상태
+
+- 브랜치: `codex-google-workspace-expansion` (리모트 동기 완료)
+- 워킹트리: 클린 (TASKS.md / dashboard.html / PROJECT_STATUS.md만 로컬 신규)
+- 다음 목표: **2-C 선물 리스크 계산기**
+- Codex가 회사컴에서 작업 중인 파일(server/finance/, server/realestate/ 등)은 다음 출근 후 통합
+
 ## Session Update - 2026-04-27
 
 ### ✅ 1-C. TradingView 웹훅 서버 완료 (커밋: 82cea91)

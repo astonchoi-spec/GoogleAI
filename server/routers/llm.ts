@@ -9,7 +9,7 @@ import { LLMCaller } from "../llm/caller.ts";
 import { sessionManager } from "../llm/session.ts";
 import { getModel, getModelsByEngine, getAllEngines, getDefaultModel } from "../llm/models.ts";
 import type { LLMEngine } from "../llm/models.ts";
-import { executeIntent, parseIntent } from "../_core/intentRouter.ts";
+import { routeIntentMessage, formatIntentRouteMessage } from "../intent/intentService.ts";
 
 const llmCaller = new LLMCaller();
 
@@ -150,40 +150,62 @@ export const llmRouter = router({
       // Add user message to history
       await sessionManager.addMessage(userId, "user", input.message);
 
+      // ── Step 1: Intent routing (Google Drive / Gmail / Calendar / 잔고 / 기술분석 등)
+      console.log("[INTENT] llm.chat routing:", input.message.slice(0, 80));
       try {
-        const parsedIntent = await parseIntent(input.message);
-        if (parsedIntent.intent !== "general.chat" || parsedIntent.clarification) {
-          const intentResponse = await executeIntent(parsedIntent, ctx);
-          await sessionManager.addMessage(userId, "assistant", intentResponse);
+        const routed = await routeIntentMessage({
+          userId,
+          message: input.message,
+          allowExecute: true, // execute 타입은 확인 단계 요구
+        });
 
-          return {
-            response: intentResponse,
-            model: "intent-router",
-            engine: "gemini",
-          };
-        }
-      } catch (error) {
-        const message = error instanceof Error ? error.message : String(error);
-        const shouldReturnIntentError =
-          message.includes("로그인") ||
-          message.includes("API_KEY") ||
-          message.includes("SPREADSHEET_ID") ||
-          message.includes("거래소") ||
-          message.includes("Redis") ||
-          message.includes("Google");
+        console.log(
+          "[INTENT] result → domain:", routed.intent.domain,
+          "/ action:", routed.intent.action,
+          "/ confidence:", routed.intent.confidence.toFixed(2),
+          "/ handled:", routed.handled,
+          "/ requiresConfirmation:", routed.requiresConfirmation
+        );
 
-        if (shouldReturnIntentError) {
-          const intentErrorResponse = `요청한 기능을 실행하지 못했습니다.\n\n${message}`;
-          await sessionManager.addMessage(userId, "assistant", intentErrorResponse);
-          return {
-            response: intentErrorResponse,
-            model: "intent-router",
-            engine: "gemini",
-          };
+        if (routed.handled) {
+          // 실제 API 호출 성공 — 결과를 사용자에게 반환
+          const responseText = formatIntentRouteMessage(routed) || routed.response;
+          console.log("[INTENT] handled — returning result, length:", responseText.length);
+          await sessionManager.addMessage(userId, "assistant", responseText);
+          return { response: responseText, model: "intent-router", engine: "intent-service" };
         }
 
-        console.warn("[IntentRouter] Falling back to general chat:", message);
+        if (routed.requiresConfirmation) {
+          // execute 타입 인텐트: 확인 메시지 반환
+          const responseText = formatIntentRouteMessage(routed) || routed.response;
+          console.log("[INTENT] requiresConfirmation — returning confirmation");
+          await sessionManager.addMessage(userId, "assistant", responseText);
+          return { response: responseText, model: "intent-router", engine: "intent-service" };
+        }
+
+        // chat 도메인이면 Gemini 일반 대화로 fall-through
+        console.log("[INTENT] no match (chat domain) — falling through to Gemini LLM");
+      } catch (intentErr) {
+        const errMsg = intentErr instanceof Error ? intentErr.message : String(intentErr);
+        console.warn("[INTENT] routing error:", errMsg);
+
+        // 인증 오류는 사용자에게 직접 반환
+        const isAuthError =
+          errMsg.includes("인증") ||
+          errMsg.includes("Google") ||
+          errMsg.includes("authenticate") ||
+          errMsg.includes("token") ||
+          errMsg.includes("OAuth");
+
+        if (isAuthError) {
+          const errorResponse = `요청한 기능을 실행하지 못했습니다.\n\n${errMsg}`;
+          await sessionManager.addMessage(userId, "assistant", errorResponse);
+          return { response: errorResponse, model: "intent-error", engine: "intent-service" };
+        }
+        // 그 외 오류는 Gemini 일반 대화로 fall-through
       }
+
+      // ── Step 2: Gemini 일반 대화 (인텐트 매칭 실패 시 fallback)
 
       // Get conversation history
       const history = await sessionManager.getHistory(userId, 10);

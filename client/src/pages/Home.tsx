@@ -17,6 +17,7 @@ import { Link, useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import WorkspaceWidgets from "@/components/home/WorkspaceWidgets";
+import { trpc } from "@/lib/trpc";
 
 const quickCommands = [
   "오늘 메일 요약",
@@ -26,14 +27,13 @@ const quickCommands = [
   "Telegram 최근 메시지",
 ];
 
-const kpis = [
-  { label: "오늘 일정", value: "6", hint: "Calendar", icon: CalendarDays, href: "/google?tab=calendar" }, // MODIFIED: make dashboard KPI cards navigate to the matching live workspace.
-  { label: "받은 메일", value: "12", hint: "Gmail", icon: Mail, href: "/google?tab=gmail" }, // MODIFIED: make dashboard KPI cards navigate to the matching live workspace.
-  { label: "미확인 Telegram", value: "3", hint: "Telegram", icon: Smartphone, href: "/chat?source=telegram" }, // MODIFIED: make dashboard KPI cards navigate to the matching live workspace.
-  { label: "열린 포지션", value: "4", hint: "Trading", icon: TrendingUp, href: "/trading" }, // MODIFIED: make dashboard KPI cards navigate to the matching live workspace.
-  { label: "PF 딜", value: "8", hint: "Real Estate", icon: Building2, href: "/real-estate-pf" }, // MODIFIED: make dashboard KPI cards navigate to the matching live workspace.
-  { label: "시스템 경고", value: "1", hint: "Monitoring", icon: ShieldAlert, href: "/monitoring" }, // MODIFIED: make dashboard KPI cards navigate to the matching live workspace.
-];
+type KPIConfig = {
+  label: string;
+  hint: string;
+  icon: React.ComponentType<{ className?: string }>;
+  href: string;
+  key: "trading" | "alert" | "telegram" | "gmail" | "calendar" | "pf";
+};
 
 const modules = [
   {
@@ -83,11 +83,208 @@ const activities = [
   { label: "시스템 오류", detail: "최근 알림 없음", time: "현재", href: "/monitoring" }, // MODIFIED: recent activity rows now open the related operational screen.
 ];
 
+function KPICard({ config, navigate }: { config: KPIConfig & { value: string }; navigate: (path: string) => void }) {
+  const Icon = config.icon;
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.25 }}
+      onClick={() => navigate(config.href)}
+      role="button"
+      tabIndex={0}
+      onKeyDown={(event) => {
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          navigate(config.href);
+        }
+      }}
+      className="cursor-pointer rounded-2xl border border-white/10 bg-[var(--aston-panel)] p-4 transition hover:border-cyan-500/30 hover:bg-white/5"
+    >
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <div className="text-sm font-medium text-[var(--aston-muted)]">{config.label}</div>
+          <div className="mt-2 text-3xl font-semibold tracking-tight text-[var(--aston-text)]">
+            {config.value}
+          </div>
+          <div className="mt-1 text-xs text-[var(--aston-muted)]">{config.hint}</div>
+        </div>
+        <div className="flex h-11 w-11 items-center justify-center rounded-xl border border-white/10 bg-white/5 text-cyan-300">
+          <Icon className="h-5 w-5" />
+        </div>
+      </div>
+    </motion.div>
+  );
+}
+
 export default function Home() {
   const [, navigate] = useLocation();
   const [command, setCommand] = useState("");
 
   const trimmedCommand = useMemo(() => command.trim(), [command]);
+
+  // MODIFIED: Fetch KPI data from tRPC endpoints
+  // Trading: Gate.io spot + futures balance
+  const { data: spotBalance, isLoading: loadingSpot, isError: errorSpot } = trpc.trading.gateio.spotBalance.useQuery(undefined, {
+    retry: 1,
+  });
+  const { data: futuresBalance, isLoading: loadingFutures, isError: errorFutures } = trpc.trading.gateio.futuresBalance.useQuery(undefined, {
+    retry: 1,
+  });
+
+  // Alerts: TradingView webhook history (today count)
+  const { data: alerts, isLoading: loadingAlerts, isError: errorAlerts } = trpc.alerts.tvWebhookHistory.useQuery(
+    { limit: 100 },
+    { retry: 1 }
+  );
+
+  // Telegram status
+  const { data: telegramStatus, isLoading: loadingTelegram, isError: errorTelegram } = trpc.telegram.getStatus.useQuery(undefined, {
+    retry: 1,
+  });
+
+  // Gmail: Recent emails
+  const { data: gmailData, isLoading: loadingGmail, isError: errorGmail } = trpc.googleWorkspace.gmail.getEmails.useQuery(
+    { maxResults: 100 },
+    { retry: 1 }
+  );
+
+  // Calendar: Upcoming events
+  const { data: calendarData, isLoading: loadingCalendar, isError: errorCalendar } = trpc.googleWorkspace.calendar.getUpcomingEvents.useQuery(
+    { maxResults: 100 },
+    { retry: 1 }
+  );
+
+  // Real Estate: Get deals
+  const { data: dealsData, isLoading: loadingDeals, isError: errorDeals } = trpc.realestate.getDeals.useQuery(undefined, {
+    retry: 1,
+  });
+
+  // Compute KPI values
+  const tradingValue = useMemo(() => {
+    if (loadingSpot || loadingFutures) return "...";
+    if (errorSpot || errorFutures) return "연결 필요";
+
+    try {
+      const spotTotal = spotBalance?.total ? Object.values(spotBalance.total).reduce((a: number, b: number) => a + b, 0) : 0;
+      const futuresTotal = futuresBalance?.total ? Object.values(futuresBalance.total).reduce((a: number, b: number) => a + b, 0) : 0;
+      const total = Number(spotTotal) + Number(futuresTotal);
+
+      if (total < 1000) return total.toFixed(0);
+      if (total < 1000000) return `${(total / 1000).toFixed(1)}K`;
+      return `${(total / 1000000).toFixed(1)}M`;
+    } catch {
+      return "연결 실패";
+    }
+  }, [spotBalance, futuresBalance, loadingSpot, loadingFutures, errorSpot, errorFutures]);
+
+  const alertValue = useMemo(() => {
+    if (loadingAlerts) return "...";
+    if (errorAlerts) return "연결 실패";
+
+    try {
+      if (!alerts || !Array.isArray(alerts)) return "0";
+
+      const today = new Date().toDateString();
+      const todayAlerts = alerts.filter((a: any) => {
+        if (!a.timestamp) return false;
+        const alertDate = new Date(a.timestamp).toDateString();
+        return alertDate === today;
+      });
+
+      return todayAlerts.length.toString();
+    } catch {
+      return "연결 실패";
+    }
+  }, [alerts, loadingAlerts, errorAlerts]);
+
+  const telegramValue = useMemo(() => {
+    if (loadingTelegram) return "...";
+    if (errorTelegram) return "연결 필요";
+
+    try {
+      if (!telegramStatus) return "오프";
+      return telegramStatus.status === "active" ? "활성" : "오프";
+    } catch {
+      return "연결 실패";
+    }
+  }, [telegramStatus, loadingTelegram, errorTelegram]);
+
+  const gmailValue = useMemo(() => {
+    if (loadingGmail) return "...";
+    if (errorGmail) return "연결 실패";
+
+    try {
+      if (!gmailData?.emails || !Array.isArray(gmailData.emails)) return "0";
+      return gmailData.emails.length.toString();
+    } catch {
+      return "연결 실패";
+    }
+  }, [gmailData, loadingGmail, errorGmail]);
+
+  const calendarValue = useMemo(() => {
+    if (loadingCalendar) return "...";
+    if (errorCalendar) return "연결 실패";
+
+    try {
+      if (!calendarData?.events || !Array.isArray(calendarData.events)) return "0";
+      return calendarData.events.length.toString();
+    } catch {
+      return "연결 실패";
+    }
+  }, [calendarData, loadingCalendar, errorCalendar]);
+
+  const pfValue = useMemo(() => {
+    if (loadingDeals) return "...";
+    // TODO: Implement deal pipeline when Google Sheets integration is ready
+    if (errorDeals) return "0";
+
+    try {
+      if (!Array.isArray(dealsData)) return "0";
+      return dealsData.length.toString();
+    } catch {
+      return "0";
+    }
+  }, [dealsData, loadingDeals, errorDeals]);
+
+  const kpiConfigs: KPIConfig[] = [
+    { label: "오늘 일정", hint: "Calendar", icon: CalendarDays, href: "/google?tab=calendar", key: "calendar" },
+    { label: "받은 메일", hint: "Gmail", icon: Mail, href: "/google?tab=gmail", key: "gmail" },
+    { label: "Telegram 상태", hint: "Telegram", icon: Smartphone, href: "/chat?source=telegram", key: "telegram" },
+    { label: "총 자산 (USDT)", hint: "Trading", icon: TrendingUp, href: "/trading", key: "trading" },
+    { label: "PF 딜", hint: "Real Estate", icon: Building2, href: "/real-estate-pf", key: "pf" },
+    { label: "오늘 알림", hint: "Monitoring", icon: ShieldAlert, href: "/monitoring", key: "alert" },
+  ];
+
+  const kpis = useMemo(() => {
+    return kpiConfigs.map((config) => {
+      let value = "...";
+
+      switch (config.key) {
+        case "trading":
+          value = tradingValue;
+          break;
+        case "alert":
+          value = alertValue;
+          break;
+        case "telegram":
+          value = telegramValue;
+          break;
+        case "gmail":
+          value = gmailValue;
+          break;
+        case "calendar":
+          value = calendarValue;
+          break;
+        case "pf":
+          value = pfValue;
+          break;
+      }
+
+      return { ...config, value };
+    });
+  }, [tradingValue, alertValue, telegramValue, gmailValue, calendarValue, pfValue]);
 
   const submitCommand = () => {
     if (!trimmedCommand) return;
@@ -186,40 +383,9 @@ export default function Home() {
       </section>
 
       <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-        {kpis.map((item, index) => {
-          const Icon = item.icon;
-          return (
-            <motion.div
-              key={item.label}
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.25, delay: index * 0.04 }}
-              onClick={() => navigate(item.href)} // MODIFIED: KPI cards are now action cards instead of static counters.
-              role="button"
-              tabIndex={0}
-              onKeyDown={(event) => {
-                if (event.key === "Enter" || event.key === " ") {
-                  event.preventDefault();
-                  navigate(item.href);
-                }
-              }}
-              className="cursor-pointer rounded-2xl border border-white/10 bg-[var(--aston-panel)] p-4 transition hover:border-cyan-500/30 hover:bg-white/5"
-            >
-              <div className="flex items-start justify-between gap-4">
-                <div>
-                  <div className="text-sm font-medium text-[var(--aston-muted)]">{item.label}</div>
-                  <div className="mt-2 text-3xl font-semibold tracking-tight text-[var(--aston-text)]">
-                    {item.value}
-                  </div>
-                  <div className="mt-1 text-xs text-[var(--aston-muted)]">{item.hint}</div>
-                </div>
-                <div className="flex h-11 w-11 items-center justify-center rounded-xl border border-white/10 bg-white/5 text-cyan-300">
-                  <Icon className="h-5 w-5" />
-                </div>
-              </div>
-            </motion.div>
-          );
-        })}
+        {kpis.map((item) => (
+          <KPICard key={item.key} config={item} navigate={navigate} />
+        ))}
       </section>
 
       <section className="rounded-2xl border border-white/10 bg-[var(--aston-panel)] p-5">

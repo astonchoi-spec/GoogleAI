@@ -8,6 +8,15 @@ import {
   StochasticRSI,
 } from "technicalindicators";
 
+export type OhlcvData = {
+  timestamp?: number;
+  open: number;
+  high: number;
+  low: number;
+  close: number;
+  volume?: number;
+}[];
+
 export type OhlcvArray = [number, number, number, number, number, number];
 
 export type OhlcvObject = {
@@ -237,3 +246,173 @@ export class TechnicalAnalysisEngine {
 }
 
 export const taEngine = new TechnicalAnalysisEngine();
+
+// New functions as requested
+export function calcRSI(data: OhlcvData, period: number = 14): { values: number[]; latest: number | null } {
+  if (data.length < period) {
+    return { values: [], latest: null };
+  }
+  const closes = data.map((candle) => candle.close);
+  try {
+    const values = RSI.calculate({ values: closes, period });
+    const latest = values.length > 0 ? values[values.length - 1] : null;
+    return { values, latest: typeof latest === "number" ? latest : null };
+  } catch {
+    return { values: [], latest: null };
+  }
+}
+
+export function calcMACD(
+  data: OhlcvData,
+  fast: number = 12,
+  slow: number = 26,
+  signal: number = 9
+): {
+  macd: number[];
+  signal: number[];
+  histogram: number[];
+  latest: { macd: number | null; signal: number | null; histogram: number | null };
+} {
+  if (data.length < slow) {
+    return {
+      macd: [],
+      signal: [],
+      histogram: [],
+      latest: { macd: null, signal: null, histogram: null },
+    };
+  }
+  const closes = data.map((candle) => candle.close);
+  try {
+    const macdValues = MACD.calculate({
+      values: closes,
+      fastPeriod: fast,
+      slowPeriod: slow,
+      signalPeriod: signal,
+      SimpleMAOscillator: false,
+      SimpleMASignal: false,
+    });
+    const macdArray = macdValues.map((v) => (typeof v.MACD === "number" ? v.MACD : 0));
+    const signalArray = macdValues.map((v) => (typeof v.signal === "number" ? v.signal : 0));
+    const histogramArray = macdValues.map((v) => (typeof v.histogram === "number" ? v.histogram : 0));
+
+    const latest = macdValues.length > 0 ? macdValues[macdValues.length - 1] : null;
+    return {
+      macd: macdArray,
+      signal: signalArray,
+      histogram: histogramArray,
+      latest: {
+        macd: latest && typeof latest.MACD === "number" ? latest.MACD : null,
+        signal: latest && typeof latest.signal === "number" ? latest.signal : null,
+        histogram: latest && typeof latest.histogram === "number" ? latest.histogram : null,
+      },
+    };
+  } catch {
+    return {
+      macd: [],
+      signal: [],
+      histogram: [],
+      latest: { macd: null, signal: null, histogram: null },
+    };
+  }
+}
+
+export function calcBollingerBands(
+  data: OhlcvData,
+  period: number = 20,
+  stdDev: number = 2
+): {
+  upper: number[];
+  middle: number[];
+  lower: number[];
+  latest: { upper: number | null; middle: number | null; lower: number | null };
+} {
+  if (data.length < period) {
+    return {
+      upper: [],
+      middle: [],
+      lower: [],
+      latest: { upper: null, middle: null, lower: null },
+    };
+  }
+  const closes = data.map((candle) => candle.close);
+  try {
+    const bandsValues = BollingerBands.calculate({
+      values: closes,
+      period,
+      stdDev,
+    });
+    const upperArray = bandsValues.map((v) => (typeof v.upper === "number" ? v.upper : 0));
+    const middleArray = bandsValues.map((v) => (typeof v.middle === "number" ? v.middle : 0));
+    const lowerArray = bandsValues.map((v) => (typeof v.lower === "number" ? v.lower : 0));
+
+    const latest = bandsValues.length > 0 ? bandsValues[bandsValues.length - 1] : null;
+    return {
+      upper: upperArray,
+      middle: middleArray,
+      lower: lowerArray,
+      latest: {
+        upper: latest && typeof latest.upper === "number" ? latest.upper : null,
+        middle: latest && typeof latest.middle === "number" ? latest.middle : null,
+        lower: latest && typeof latest.lower === "number" ? latest.lower : null,
+      },
+    };
+  } catch {
+    return {
+      upper: [],
+      middle: [],
+      lower: [],
+      latest: { upper: null, middle: null, lower: null },
+    };
+  }
+}
+
+export function calcEMA(
+  data: OhlcvData,
+  period: number
+): { values: number[]; latest: number | null } {
+  if (data.length < period) {
+    return { values: [], latest: null };
+  }
+  const closes = data.map((candle) => candle.close);
+  try {
+    const values = EMA.calculate({ values: closes, period });
+    const latest = values.length > 0 ? values[values.length - 1] : null;
+    return { values, latest: typeof latest === "number" ? latest : null };
+  } catch {
+    return { values: [], latest: null };
+  }
+}
+
+export function calcATR(
+  data: OhlcvData,
+  period: number = 14
+): { values: number[]; latest: number | null } {
+  if (data.length < period) {
+    return { values: [], latest: null };
+  }
+  const highs = data.map((candle) => candle.high);
+  const lows = data.map((candle) => candle.low);
+  const closes = data.map((candle) => candle.close);
+  try {
+    const values = ATR.calculate({
+      high: highs,
+      low: lows,
+      close: closes,
+      period,
+    });
+    const latest = values.length > 0 ? values[values.length - 1] : null;
+    return { values, latest: typeof latest === "number" ? latest : null };
+  } catch {
+    return { values: [], latest: null };
+  }
+}
+
+export function getFullAnalysis(data: OhlcvData) {
+  return {
+    rsi: calcRSI(data),
+    macd: calcMACD(data),
+    bollingerBands: calcBollingerBands(data),
+    ema: calcEMA(data, 50),
+    atr: calcATR(data),
+  };
+}

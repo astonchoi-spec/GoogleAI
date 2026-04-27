@@ -196,6 +196,20 @@ export class GateioConnector {
     }
   }
 
+  async fetchOHLCV(
+    symbol: string,
+    timeframe: string = "1h",
+    limit: number = 100
+  ): Promise<[number, number, number, number, number, number][]> {
+    try {
+      const exchange = this.getExchange();
+      const ohlcv = await exchange.fetchOHLCV(symbol, timeframe, undefined, limit);
+      return ohlcv;
+    } catch (error) {
+      throw this.handleError(`${symbol} ${timeframe} OHLCV 조회`, error);
+    }
+  }
+
   private normalizeBalanceMap(balanceMap: Record<string, any>): Record<string, number> {
     const result: Record<string, number> = {};
     for (const [key, value] of Object.entries(balanceMap)) {

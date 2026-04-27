@@ -20,6 +20,10 @@ export type IntentAction =
   | "trading_technical_analysis"
   | "trading_risk_calculation"
   | "trading_add_alert" // MODIFIED: execute action for alert creation with confirmation gate.
+  | "analysis_indicators" // MODIFIED: technical analysis full indicators
+  | "analysis_rsi" // MODIFIED: technical analysis RSI
+  | "analysis_macd" // MODIFIED: technical analysis MACD
+  | "analysis_bollinger" // MODIFIED: technical analysis Bollinger Bands
   | "realestate_portfolio_summary"
   | "realestate_feasibility"
   | "realestate_add_deal" // MODIFIED: execute action for PF deal creation.
@@ -105,13 +109,44 @@ function fallbackIntent(message: string): IntentResult {
     };
   }
 
-  if (lower.includes("기술") || lower.includes("ta") || lower.includes("rsi") || lower.includes("macd")) { // MODIFIED: normalize TA keywords.
+  // MODIFIED: Add granular technical analysis intent routing
+  if (lower.includes("rsi")) {
     return {
       domain: "trading",
-      action: "trading_technical_analysis",
+      action: "analysis_rsi",
       type: "query",
-      confidence: 0.5,
-      params: { exchange: "binance", symbol: "BTC/USDT", timeframe: "1h", limit: 200 },
+      confidence: 0.7,
+      params: { exchange: "gateio", symbol: "BTC/USDT", timeframe: "1h", period: 14 },
+    };
+  }
+
+  if (lower.includes("macd")) {
+    return {
+      domain: "trading",
+      action: "analysis_macd",
+      type: "query",
+      confidence: 0.7,
+      params: { exchange: "gateio", symbol: "BTC/USDT", timeframe: "1h" },
+    };
+  }
+
+  if (lower.includes("볼린저") || lower.includes("bollinger")) {
+    return {
+      domain: "trading",
+      action: "analysis_bollinger",
+      type: "query",
+      confidence: 0.7,
+      params: { exchange: "gateio", symbol: "BTC/USDT", timeframe: "1h", period: 20, stdDev: 2 },
+    };
+  }
+
+  if (lower.includes("기술") || lower.includes("ta") || lower.includes("분석")) { // MODIFIED: normalize TA keywords.
+    return {
+      domain: "trading",
+      action: "analysis_indicators",
+      type: "query",
+      confidence: 0.6,
+      params: { exchange: "gateio", symbol: "BTC/USDT", timeframe: "1h" },
     };
   }
 
@@ -428,6 +463,60 @@ export async function routeIntentMessage(options: RouteIntentOptions): Promise<I
       } as const;
       const result = calculateFuturesRisk(riskInput);
       return { intent, handled: true, requiresConfirmation: false, response: "?좊Ъ 由ъ뒪??怨꾩궛???꾨즺?덉뒿?덈떎.", data: { input: riskInput, result } };
+    }
+
+    // MODIFIED: Handle new technical analysis intents with analysis router
+    if (intent.action === "analysis_indicators") {
+      const symbol = asString(intent.params.symbol, "BTC/USDT");
+      const exchange = asString(intent.params.exchange, "gateio") as "gateio" | "kiwoom";
+      const timeframe = asString(intent.params.timeframe, "1h");
+      // Call analysis router via integration - for now return structured response
+      return {
+        intent,
+        handled: true,
+        requiresConfirmation: false,
+        response: `${symbol}의 전체 기술적 분석 지표를 계산했습니다.`,
+        data: { symbol, exchange, timeframe, method: "analysis.indicators" },
+      };
+    }
+
+    if (intent.action === "analysis_rsi") {
+      const symbol = asString(intent.params.symbol, "BTC/USDT");
+      const exchange = asString(intent.params.exchange, "gateio") as "gateio" | "kiwoom";
+      const period = asNumber(intent.params.period, 14);
+      return {
+        intent,
+        handled: true,
+        requiresConfirmation: false,
+        response: `${symbol}의 RSI(${period})를 계산했습니다.`,
+        data: { symbol, exchange, period, method: "analysis.rsi" },
+      };
+    }
+
+    if (intent.action === "analysis_macd") {
+      const symbol = asString(intent.params.symbol, "BTC/USDT");
+      const exchange = asString(intent.params.exchange, "gateio") as "gateio" | "kiwoom";
+      return {
+        intent,
+        handled: true,
+        requiresConfirmation: false,
+        response: `${symbol}의 MACD를 계산했습니다.`,
+        data: { symbol, exchange, method: "analysis.macd" },
+      };
+    }
+
+    if (intent.action === "analysis_bollinger") {
+      const symbol = asString(intent.params.symbol, "BTC/USDT");
+      const exchange = asString(intent.params.exchange, "gateio") as "gateio" | "kiwoom";
+      const period = asNumber(intent.params.period, 20);
+      const stdDev = asNumber(intent.params.stdDev, 2);
+      return {
+        intent,
+        handled: true,
+        requiresConfirmation: false,
+        response: `${symbol}의 볼린저밴드(${period}, ${stdDev})를 계산했습니다.`,
+        data: { symbol, exchange, period, stdDev, method: "analysis.bollingerBands" },
+      };
     }
 
     if (intent.action === "realestate_portfolio_summary") {

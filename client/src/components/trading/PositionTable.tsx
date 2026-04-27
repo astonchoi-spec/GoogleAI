@@ -33,13 +33,13 @@ export default function PositionTable() {
           <tbody>
             {positionsQuery.isLoading && (
               <tr>
-                <td colSpan={7} className="px-3 py-6 text-center text-slate-400">Loading positions...</td>
+                <td colSpan={7} className="px-3 py-6 text-center text-slate-400">API 키를 설정하면 잔고/포지션을 확인할 수 있습니다</td>
               </tr>
             )}
             {!positionsQuery.isLoading && positionsQuery.error && (
               <tr>
                 <td colSpan={7} className="px-3 py-6 text-center text-red-300">
-                  Failed to load positions. Check exchange API credentials.
+                  API 키를 설정하면 잔고/포지션을 확인할 수 있습니다
                 </td>
               </tr>
             )}

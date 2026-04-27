@@ -20,8 +20,7 @@ function BalanceCard({ exchange }: { exchange: ExchangeKey }) {
     return (
       <div className="rounded-xl border border-slate-700 bg-slate-900/50 p-4">
         <p className="text-sm font-semibold text-slate-300">{exchange}</p>
-        <p className="mt-3 text-lg font-semibold text-slate-400">Loading...</p>
-        <p className="mt-1 text-xs text-slate-500">Exchange balance</p>
+        <p className="mt-3 text-sm font-semibold text-slate-400">API 키를 설정하면 잔고/포지션을 확인할 수 있습니다</p>
       </div>
     );
   }
@@ -30,8 +29,7 @@ function BalanceCard({ exchange }: { exchange: ExchangeKey }) {
     return (
       <div className="rounded-xl border border-slate-700 bg-slate-900/50 p-4">
         <p className="text-sm font-semibold text-slate-300">{exchange}</p>
-        <p className="mt-3 text-lg font-semibold text-red-300">Unavailable</p>
-        <p className="mt-1 text-xs text-slate-500">API key or exchange connection required</p>
+        <p className="mt-3 text-sm font-semibold text-yellow-400">공개 데이터만 사용 중 (API 키 미설정)</p>
       </div>
     );
   }

@@ -4,12 +4,14 @@ import {
   getCompanyInfo,
   getDisclosures,
   getFinancialStatements,
+  getRecentDisclosures,
   searchCompanyByName,
 } from "../finance/dartAPI.ts";
 
 const reportCodeSchema = z.enum(["11013", "11012", "11011", "11014"]).default("11011");
 
 export const financeRouter = router({
+  // ─── 기존 프로시저 (수정 금지) ────────────────────────────────────────────
   getDisclosures: protectedProcedure
     .input(z.object({
       corpCode: z.string().min(1),
@@ -41,5 +43,34 @@ export const financeRouter = router({
     .query(async ({ input }) => {
       return searchCompanyByName(input.name);
     }),
+
+  // ─── DART 신규 프로시저 ────────────────────────────────────────────────────
+  dart: router({
+    recent: protectedProcedure
+      .input(z.object({
+        corpCode: z.string().optional(),
+        beginDate: z.string().optional(),
+        endDate: z.string().optional(),
+      }))
+      .query(async ({ input }) => {
+        return getRecentDisclosures(input.corpCode, input.beginDate, input.endDate);
+      }),
+
+    company: protectedProcedure
+      .input(z.object({ corpCode: z.string().min(1) }))
+      .query(async ({ input }) => {
+        return getCompanyInfo(input.corpCode);
+      }),
+
+    financial: protectedProcedure
+      .input(z.object({
+        corpCode: z.string().min(1),
+        year: z.string().min(4),
+        reportCode: z.string().default("11011"),
+      }))
+      .query(async ({ input }) => {
+        return getFinancialStatements(input.corpCode, input.year, input.reportCode);
+      }),
+  }),
 });
 

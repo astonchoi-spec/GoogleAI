@@ -1,3 +1,16 @@
+export type SimpleFeasibilityInput = {
+  projectName: string;
+  landCost: number;
+  constructionCost: number;
+  designFee: number;
+  financeCost: number;
+  taxAndFee: number;
+  otherCost: number;
+  totalUnits: number;
+  avgSalePrice: number;
+  projectMonths: number;
+};
+
 export type FeasibilityInput = {
   projectName: string;
   landCost: number;
@@ -12,6 +25,23 @@ export type FeasibilityInput = {
   loanLTV?: number;
   projectDurationMonths?: number;
   equityRatio?: number;
+};
+
+export type SimpleFeasibilityResult = {
+  totalCost: number;
+  totalRevenue: number;
+  grossProfit: number;
+  profitRate: number;
+  breakEvenRate: number;
+  monthlyCashFlow: number;
+  costBreakdown: {
+    land: number;
+    construction: number;
+    design: number;
+    finance: number;
+    tax: number;
+    other: number;
+  };
 };
 
 export type FeasibilityResult = {
@@ -45,6 +75,68 @@ const DEFAULT_EQUITY_RATIO = 30;
 const INDIRECT_COST_RATE = 0.15;
 const LAND_TAX_RATE = 0.046;
 const CONSTRUCTION_FEE_RATE = 0.01;
+
+export function calculateFeasibility(input: SimpleFeasibilityInput): SimpleFeasibilityResult {
+  validateSimpleInput(input);
+
+  const totalCost =
+    input.landCost +
+    input.constructionCost +
+    input.designFee +
+    input.financeCost +
+    input.taxAndFee +
+    input.otherCost;
+
+  const totalRevenue = input.totalUnits * input.avgSalePrice;
+  const grossProfit = totalRevenue - totalCost;
+  const profitRate = (grossProfit / totalCost) * 100;
+  const breakEvenRate = (totalCost / totalRevenue) * 100;
+  const monthlyCashFlow = grossProfit / input.projectMonths;
+
+  return {
+    totalCost,
+    totalRevenue,
+    grossProfit,
+    profitRate,
+    breakEvenRate,
+    monthlyCashFlow,
+    costBreakdown: {
+      land: input.landCost,
+      construction: input.constructionCost,
+      design: input.designFee,
+      finance: input.financeCost,
+      tax: input.taxAndFee,
+      other: input.otherCost,
+    },
+  };
+}
+
+export function formatSimpleFeasibilityReport(
+  result: SimpleFeasibilityResult,
+  input: SimpleFeasibilityInput
+): string {
+  return [
+    `🏗️ 사업성 분석: ${input.projectName}`,
+    ``,
+    `💰 비용 항목`,
+    `토지매입비: ${formatOkWon(result.costBreakdown.land)}`,
+    `건축비: ${formatOkWon(result.costBreakdown.construction)}`,
+    `설계·감리비: ${formatOkWon(result.costBreakdown.design)}`,
+    `금융비용: ${formatOkWon(result.costBreakdown.finance)}`,
+    `제세공과금: ${formatOkWon(result.costBreakdown.tax)}`,
+    `기타비용: ${formatOkWon(result.costBreakdown.other)}`,
+    ``,
+    `📊 사업성 지표`,
+    `총사업비: ${formatOkWon(result.totalCost)}`,
+    `총분양수입: ${formatOkWon(result.totalRevenue)}`,
+    `사업이익: ${formatOkWon(result.grossProfit)}`,
+    `이익률: ${result.profitRate.toFixed(1)}%`,
+    `손익분기 분양률: ${result.breakEvenRate.toFixed(1)}%`,
+    ``,
+    `⏱️ 현금흐름`,
+    `월평균 현금흐름: ${formatOkWon(result.monthlyCashFlow)}`,
+  ].join("\n");
+}
 
 export function runFeasibility(input: FeasibilityInput): FeasibilityResult {
   validateInput(input);
@@ -142,6 +234,22 @@ export function formatFeasibilityReport(input: FeasibilityInput, result: Feasibi
   ].join("\n");
 }
 
+function validateSimpleInput(input: SimpleFeasibilityInput): void {
+  if (!input.projectName || input.projectName.trim().length === 0) {
+    throw new Error("projectName must not be empty");
+  }
+
+  assertPositive(input.landCost, "landCost");
+  assertPositive(input.constructionCost, "constructionCost");
+  assertPositive(input.designFee, "designFee");
+  assertPositive(input.financeCost, "financeCost");
+  assertPositive(input.taxAndFee, "taxAndFee");
+  assertPositive(input.otherCost, "otherCost");
+  assertPositive(input.totalUnits, "totalUnits");
+  assertPositive(input.avgSalePrice, "avgSalePrice");
+  assertPositive(input.projectMonths, "projectMonths");
+}
+
 function validateInput(input: FeasibilityInput): void {
   if (!input.projectName.trim()) {
     throw new Error("projectName is required");
@@ -216,4 +324,12 @@ function formatNumber(value: number): string {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   });
+}
+
+function formatOkWon(value: number): string {
+  const okWon = value / 100_000_000;
+  return `${okWon.toLocaleString("en-US", {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 1,
+  })}억`;
 }

@@ -96,7 +96,7 @@ type YahooResponse = {
 };
 
 async function fetchYahooChart(symbol: string, interval: string, range: string): Promise<YahooResponse> {
-  const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?interval=${interval}&range=${range}&includePrePost=false`;
+  const url = `/api/yahoo-chart?symbol=${encodeURIComponent(symbol)}&interval=${interval}&range=${range}`;
   const res = await fetch(url);
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
   return res.json() as Promise<YahooResponse>;
@@ -166,7 +166,7 @@ function TradingViewWidget({ tvSymbol }: { tvSymbol: string }) {
     script.type  = "text/javascript";
     script.async = true;
     script.innerHTML = JSON.stringify({
-      autosize: true, symbol: tvSymbol, interval: "60",
+      autosize: false, height: 700, symbol: tvSymbol, interval: "60",
       timezone: "Asia/Seoul", theme: "dark", style: "1", locale: "kr",
       allow_symbol_change: true, calendar: false,
       studies: ["RSI@tv-basicstudies", "MACD@tv-basicstudies", "BB@tv-basicstudies"],
@@ -177,8 +177,8 @@ function TradingViewWidget({ tvSymbol }: { tvSymbol: string }) {
   }, [tvSymbol]);
 
   return (
-    <div ref={ref} className="tradingview-widget-container" style={{ height: 500, width: "100%" }}>
-      <div className="tradingview-widget-container__widget" style={{ height: "calc(100% - 32px)", width: "100%" }} />
+    <div ref={ref} className="tradingview-widget-container" style={{ height: 700, width: "100%" }}>
+      <div className="tradingview-widget-container__widget" style={{ height: "100%", width: "100%" }} />
     </div>
   );
 }
@@ -256,7 +256,7 @@ function YahooChart({ presets, symbolSuffix = "", useKst = false }: YahooChartPr
       rightPriceScale: { borderColor: "rgba(255,255,255,0.08)" },
       timeScale: { borderColor: "rgba(255,255,255,0.08)", timeVisible: true, secondsVisible: false },
       width: chartContainerRef.current.clientWidth,
-      height: 500,
+      height: 700,
     });
     const series = chart.addSeries(CandlestickSeries, {
       upColor: "#00c853", downColor: "#ff1744",
@@ -399,7 +399,7 @@ function YahooChart({ presets, symbolSuffix = "", useKst = false }: YahooChartPr
             </button>
           </div>
         )}
-        <div ref={chartContainerRef} className="w-full" style={{ height: 500 }} />
+        <div ref={chartContainerRef} className="w-full" style={{ height: 700 }} />
       </div>
 
       {/* Indicator tiles */}
@@ -495,7 +495,7 @@ export default function ChartArea() {
             ))}
           </div>
           <BinancePriceBar sym={coin.binanceSymbol} />
-          <div className="overflow-hidden rounded-lg border border-white/10">
+          <div className="overflow-hidden rounded-lg border border-white/10" style={{ height: 700 }}>
             <TradingViewWidget key={coin.tvSymbol} tvSymbol={coin.tvSymbol} />
           </div>
         </div>

@@ -3,7 +3,7 @@ import { z } from "zod";
 import { protectedProcedure, router } from "../../_core/trpc.ts";
 import { getDisclosures } from "../../finance/dartAPI.ts";
 import { googleAuthManager } from "../../routers/google-workspace.ts";
-import { DealPipeline, type DealStage, type NewPFDeal } from "../../realestate/dealPipeline.ts";
+import { DealPipeline, type KoreanDealStage, type NewPFDeal } from "../../realestate/dealPipeline.ts";
 import { runFeasibility, formatFeasibilityReport } from "../../realestate/feasibilityEngine.ts";
 import { getLandRegulation, getRealTransactionPrice } from "../../realestate/publicDataAPI.ts";
 
@@ -103,7 +103,7 @@ export const realestateRouter = router({
     )
     .mutation(async ({ ctx, input }) => {
       const pipeline = await createDealPipeline(ctx.user.id);
-      return pipeline.updateDealStage(input.id, input.stage as DealStage);
+      return pipeline.updateDealStage(input.id, input.stage as KoreanDealStage);
     }),
 
   portfolioSummary: protectedProcedure.query(async ({ ctx }) => {

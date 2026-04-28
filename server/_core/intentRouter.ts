@@ -11,7 +11,7 @@ import {
 } from "../finance/dartAPI.ts";
 import { googleAuthManager } from "../routers/google-workspace.ts";
 import { getOrCreateConversation } from "../db-chat.ts";
-import { DealPipeline, type DealStage, type NewPFDeal } from "../realestate/dealPipeline.ts";
+import { DealPipeline, type KoreanDealStage, type NewPFDeal } from "../realestate/dealPipeline.ts";
 import { runFeasibility, formatFeasibilityReport, type FeasibilityInput } from "../realestate/feasibilityEngine.ts";
 import { getLandRegulation } from "../realestate/publicDataAPI.ts";
 import { LLMCaller } from "../llm/caller.ts";
@@ -21,6 +21,10 @@ import { TradeJournal, type TradeStatsPeriod } from "../trading/tradeJournal.ts"
 import type { SupportedExchangeId } from "../exchanges/exchangeConnector.ts";
 import { getTvWebhookHistory } from "../alerts/tvWebhookServer.ts"; // MODIFIED: TV webhook history for intent routing.
 import { TradeJournalKorean } from "../trading/tradeJournal.ts"; // MODIFIED: 1-D 매매일지 인텐트 라우팅.
+import { queryNotebookLm } from "../integrations/notebookLmMcp.ts"; // MODIFIED: NotebookLM MCP 인텐트 라우팅.
+import DriveConnector from "../google/drive.ts";
+import GmailConnector from "../google/gmail.ts";
+import CalendarConnector from "../google/calendar.ts";
 
 export type IntentName =
   | "trading.getBalance"
@@ -44,6 +48,12 @@ export type IntentName =
   | "journal.list"
   | "journal.addManual"
   | "journal.syncGateio"
+  | "notebooklm.query"
+  | "google.driveSearch"
+  | "google.getEmails"
+  | "google.sendEmail"
+  | "google.listEvents"
+  | "google.createEvent"
   | "general.chat";
 
 export type ParsedIntent = {
@@ -76,6 +86,12 @@ const INTENT_SYSTEM_PROMPT = `너는 사용자의 자연어 명령을 분석해�
 - journal.list: { limit? }
 - journal.addManual: { date, time, exchange, symbol, side, qty, price, fee, pnl?, memo? }
 - journal.syncGateio: { symbol }
+- notebooklm.query: { question }
+- google.driveSearch: { query, maxResults? }
+- google.getEmails: { maxResults?, searchQuery? }
+- google.sendEmail: { to, subject, body }
+- google.listEvents: { maxResults? }
+- google.createEvent: { title, startTime?, endTime?, description?, isAllDay? }
 - general.chat: { message }
 
 규칙:
@@ -84,12 +100,27 @@ const INTENT_SYSTEM_PROMPT = `너는 사용자의 자연어 명령을 분석해�
 - "매매일지", "오늘 거래 내역", "매매 기록", "체결 내역" 같은 조회 요청은 journal.list로 분기한다.
 - "수동 기록", "매매 입력", "거래 추가" 같은 요청은 journal.addManual로 분기한다.
 - "게이트 동기화", "체결 동기화", "Gate.io 동기화" 같은 요청은 journal.syncGateio로 분기한다.
+- "노트북에서 찾아봐", "NotebookLM", "문서에서 검색", "자료 찾아줘" 같은 요청은 notebooklm.query로 분기한다.
+- "구글드라이브", "Drive", "드라이브에서", "파일 검색", "파일 찾아" 같은 요청은 google.driveSearch로 분기한다. query 파라미터에 검색 키워드를 추출한다.
+- "메일 확인", "받은 메일", "이메일 목록", "Gmail", "받은 편지함" 같은 요청은 google.getEmails로 분기한다.
+- "메일 보내", "이메일 전송", "send email", "이메일 발송" 같은 요청은 google.sendEmail로 분기한다.
+- "일정 확인", "오늘 일정", "캘린더 목록", "다음 일정" 같은 조회 요청은 google.listEvents로 분기한다.
+- "일정 추가", "일정 잡아", "캘린더에 추가", "미팅 생성" 같은 생성 요청은 google.createEvent로 분기한다.
 - 파라미터가 부족하면 clarification에 필요한 질문을 담아 반환한다.
 - 반드시 JSON만 응답한다: { intent: string, params: object, clarification: string|null }`;
 
 const intentCaller = new LLMCaller();
 
 export async function parseIntent(userMessage: string): Promise<ParsedIntent> {
+  console.log("[INTENT ROUTER] parseIntent:", userMessage.slice(0, 80));
+
+  // Keyword pre-check: deterministic routing before LLM call
+  const preChecked = preCheckKeywords(userMessage);
+  if (preChecked) {
+    console.log("[INTENT ROUTER] keyword pre-check matched:", preChecked.intent, "params:", JSON.stringify(preChecked.params).slice(0, 80));
+    return preChecked;
+  }
+
   const response = await intentCaller.call(
     "gemini",
     "flash",
@@ -97,10 +128,13 @@ export async function parseIntent(userMessage: string): Promise<ParsedIntent> {
     INTENT_SYSTEM_PROMPT
   );
 
-  return normalizeParsedIntent(response.content, userMessage);
+  const result = normalizeParsedIntent(response.content, userMessage);
+  console.log("[INTENT ROUTER] LLM parsed intent:", result.intent, "params:", JSON.stringify(result.params).slice(0, 80));
+  return result;
 }
 
 export async function executeIntent(parsed: ParsedIntent, ctx: TrpcContext): Promise<string> {
+  console.log("[INTENT ROUTER] executeIntent:", parsed.intent, "params:", JSON.stringify(parsed.params).slice(0, 80));
   if (parsed.clarification) {
     return parsed.clarification;
   }
@@ -278,10 +312,119 @@ export async function executeIntent(parsed: ParsedIntent, ctx: TrpcContext): Pro
       if (history.length === 0) return "저장된 TradingView 알림 내역이 없습니다.";
       return textResult("TradingView 알림 내역", history);
     }
+    case "notebooklm.query": {
+      // MODIFIED: NotebookLM MCP 문서 검색.
+      const question = requiredString(parsed.params.question, "검색할 질문을 알려주세요.");
+      const result = await queryNotebookLm(question);
+      const sourcesText = result.sources.length > 0 ? `\n\n참조 문서:\n${result.sources.join("\n")}` : "";
+      return `${result.answer}${sourcesText}`;
+    }
+    case "google.driveSearch": {
+      const query = requiredString(parsed.params.query, "검색할 파일명이나 키워드를 알려주세요.");
+      const maxResults = optionalNumber(parsed.params.maxResults) ?? 10;
+      const googleUserId = await resolveGoogleUserId(ctx);
+      try {
+        const auth = await googleAuthManager.getAuthenticatedClient(googleUserId);
+        const drive = new DriveConnector(auth);
+        const driveQuery = `name contains '${query.replace(/'/g, "\\'")}' and trashed = false`;
+        const files = await drive.searchFiles(driveQuery, maxResults);
+        if (files.length === 0) return `Google Drive에서 "${query}" 파일을 찾을 수 없습니다.`;
+        const list = files.map((f: any, i: number) => `${i + 1}. 📄 ${f.name}`).join("\n");
+        return `📁 Google Drive 검색 결과 "${query}" (${files.length}개):\n\n${list}`;
+      } catch (err) {
+        if (isGoogleAuthError(err)) return GOOGLE_REAUTH_MSG;
+        throw err;
+      }
+    }
+    case "google.getEmails": {
+      const maxResults = optionalNumber(parsed.params.maxResults) ?? 5;
+      const searchQuery = optionalString(parsed.params.searchQuery);
+      const googleUserId = await resolveGoogleUserId(ctx);
+      try {
+        const auth = await googleAuthManager.getAuthenticatedClient(googleUserId);
+        const gmail = new GmailConnector(auth);
+        const emails = await gmail.getEmails(maxResults, searchQuery);
+        if (emails.length === 0) return "📭 받은 메일이 없습니다.";
+        const list = emails.map((e: any, i: number) =>
+          `${i + 1}. ${e.isRead ? "" : "🔵"} ${e.subject}\n   발신: ${e.from}`
+        ).join("\n\n");
+        return `📬 최근 이메일 ${emails.length}개:\n\n${list}`;
+      } catch (err) {
+        if (isGoogleAuthError(err)) return GOOGLE_REAUTH_MSG;
+        throw err;
+      }
+    }
+    case "google.sendEmail": {
+      const to = requiredString(parsed.params.to, "받는 사람 이메일 주소를 알려주세요.");
+      const subject = requiredString(parsed.params.subject, "이메일 제목을 알려주세요.");
+      const body = requiredString(parsed.params.body, "이메일 본문을 알려주세요.");
+      const googleUserId = await resolveGoogleUserId(ctx);
+      try {
+        const auth = await googleAuthManager.getAuthenticatedClient(googleUserId);
+        const gmail = new GmailConnector(auth);
+        await gmail.sendEmail({ to, subject, body });
+        return `✅ 이메일 전송 완료!\n📧 받는 사람: ${to}\n📋 제목: ${subject}`;
+      } catch (err) {
+        if (isGoogleAuthError(err)) return GOOGLE_REAUTH_MSG;
+        throw err;
+      }
+    }
+    case "google.listEvents": {
+      const maxResults = optionalNumber(parsed.params.maxResults) ?? 5;
+      const googleUserId = await resolveGoogleUserId(ctx);
+      try {
+        const auth = await googleAuthManager.getAuthenticatedClient(googleUserId);
+        const calendar = new CalendarConnector(auth);
+        const events = await calendar.getUpcomingEvents(maxResults);
+        if (events.length === 0) return "📅 예정된 일정이 없습니다.";
+        const list = events.map((ev: any, i: number) =>
+          `${i + 1}. 📅 ${ev.title || ev.summary}\n   ${ev.start?.dateTime || ev.start?.date || ""}`
+        ).join("\n\n");
+        return `📅 다가오는 일정 ${events.length}개:\n\n${list}`;
+      } catch (err) {
+        if (isGoogleAuthError(err)) return GOOGLE_REAUTH_MSG;
+        throw err;
+      }
+    }
+    case "google.createEvent": {
+      const title = requiredString(parsed.params.title, "일정 제목을 알려주세요.");
+      const googleUserId = await resolveGoogleUserId(ctx);
+      try {
+        const auth = await googleAuthManager.getAuthenticatedClient(googleUserId);
+        const calendar = new CalendarConnector(auth);
+        const now = new Date();
+        const startTime = parsed.params.startTime
+          ? new Date(String(parsed.params.startTime))
+          : new Date(now.getTime() + 60 * 60 * 1000);
+        const endTime = parsed.params.endTime
+          ? new Date(String(parsed.params.endTime))
+          : new Date(startTime.getTime() + 60 * 60 * 1000);
+        if (isNaN(startTime.getTime()) || isNaN(endTime.getTime())) {
+          return "일정 날짜를 정확히 해석하지 못했습니다. 예: 내일 오후 3시 팀 미팅";
+        }
+        const event = await calendar.createEvent({
+          title,
+          startTime,
+          endTime,
+          description: optionalString(parsed.params.description) ?? "",
+          isAllDay: !!(parsed.params.isAllDay),
+        });
+        return [
+          "✅ 캘린더 일정 생성 완료!",
+          `📅 제목: ${title}`,
+          `⏰ 시작: ${startTime.toLocaleString("ko-KR", { timeZone: "Asia/Seoul" })}`,
+          event.htmlLink ? `🔗 확인: ${event.htmlLink}` : "",
+        ].filter(Boolean).join("\n");
+      } catch (err) {
+        if (isGoogleAuthError(err)) return GOOGLE_REAUTH_MSG;
+        throw err;
+      }
+    }
     case "general.chat":
       return requiredString(parsed.params.message, "무엇을 도와드릴까요?");
     default:
-      return "처리할 수 없는 기능입니다. 일반 문장으로 다시 입력해주세요.";
+      // Never show raw unhandled message — fallback to Gemini general chat
+      return "";
   }
 }
 
@@ -349,8 +492,83 @@ function isIntentName(value: string): value is IntentName {
     "journal.list",
     "journal.addManual",
     "journal.syncGateio",
+    "notebooklm.query",
+    "google.driveSearch",
+    "google.getEmails",
+    "google.sendEmail",
+    "google.listEvents",
+    "google.createEvent",
     "general.chat",
   ].includes(value);
+}
+
+function preCheckKeywords(message: string): ParsedIntent | null {
+  const lower = message.toLowerCase();
+
+  // Google Drive search
+  if (
+    lower.includes("드라이브") ||
+    lower.includes("구글드라이브") ||
+    lower.includes("google drive") ||
+    (lower.includes("drive") && (lower.includes("파일") || lower.includes("검색") || lower.includes("찾")))
+  ) {
+    const query = extractDriveKeyword(message);
+    return { intent: "google.driveSearch", params: { query, maxResults: 10 }, clarification: null };
+  }
+
+  // Gmail
+  if (lower.includes("메일 확인") || lower.includes("받은 메일") || lower.includes("이메일 목록") || lower.includes("받은편지함")) {
+    return { intent: "google.getEmails", params: { maxResults: 5 }, clarification: null };
+  }
+  if (lower.includes("메일 보내") || lower.includes("이메일 전송") || lower.includes("이메일 발송")) {
+    return { intent: "google.sendEmail", params: {}, clarification: null };
+  }
+
+  // Calendar
+  if (lower.includes("오늘 일정") || lower.includes("일정 확인") || lower.includes("캘린더 목록") || lower.includes("다음 일정")) {
+    return { intent: "google.listEvents", params: { maxResults: 5 }, clarification: null };
+  }
+
+  return null;
+}
+
+function extractDriveKeyword(message: string): string {
+  const cleaned = message
+    .replace(/구글?드라이브[에서]?\s*/gi, "")
+    .replace(/google\s*drive[에서]?\s*/gi, "")
+    .replace(/파일\s*(검색|찾[아기]|리스트|목록)[해줘주세요]?/gi, "")
+    .replace(/\s*(검색|찾[아기])[줘주세요해줘]?/gi, "")
+    .replace(/텔레그램(으로|에서)?\s*(보내|전송)[줘주세요]?/gi, "")
+    .replace(/\s*(보내줘|전송해줘|보내주세요)/gi, "")
+    .trim();
+  return cleaned || message;
+}
+
+const GOOGLE_REAUTH_MSG = "Google 재인증이 필요합니다. 웹 앱에서 Google 계정을 다시 연결해주세요.";
+
+function isGoogleAuthError(err: unknown): boolean {
+  if (!(err instanceof Error)) return false;
+  const msg = err.message.toLowerCase();
+  return (
+    msg.includes("no tokens") ||
+    msg.includes("authenticate first") ||
+    msg.includes("token expired") ||
+    msg.includes("no refresh token") ||
+    msg.includes("failed to get authenticated") ||
+    msg.includes("failed to refresh")
+  );
+}
+
+async function resolveGoogleUserId(ctx: TrpcContext): Promise<string> {
+  if (ctx.user) return String(ctx.user.id);
+  // Single-user fallback: try known admin user IDs
+  for (const uid of ["1", "anonymous"]) {
+    try {
+      const tokens = await (await import("../llm/session.ts")).sessionManager.getGoogleTokens(uid);
+      if (tokens?.accessToken) return uid;
+    } catch {}
+  }
+  return "1";
 }
 
 function assertAuthenticated(ctx: TrpcContext): asserts ctx is TrpcContext & { user: NonNullable<TrpcContext["user"]> } {
@@ -471,7 +689,7 @@ function requiredNewDeal(params: Record<string, unknown>): NewPFDeal {
   return {
     projectName: requiredString(params.projectName, "프로젝트명을 알려주세요."),
     location: optionalString(params.location) ?? "",
-    stage: requiredString(params.stage, "PF 진행 단계를 알려주세요.") as DealStage,
+    stage: requiredString(params.stage, "PF 진행 단계를 알려주세요.") as KoreanDealStage,
     totalProjectCost: requiredNumber(params.totalProjectCost, "총사업비를 알려주세요."),
     loanAmount: requiredNumber(params.loanAmount, "대출금액을 알려주세요."),
     ltv: requiredNumber(params.ltv, "LTV를 알려주세요."),

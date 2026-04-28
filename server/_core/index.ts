@@ -5,6 +5,8 @@ import net from "net";
 import { createExpressMiddleware } from "@trpc/server/adapters/express";
 import { registerOAuthRoutes } from "./oauth.ts";
 import { registerStorageProxy } from "./storageProxy.ts";
+import { registerProxyRoutes } from "../routers/proxy.ts";
+import { registerTradingRiskRoutes } from "../routers/tradingRisk.ts"; // MODIFIED: Trading Risk Guard endpoints.
 import { appRouter } from "../routers.ts";
 import { createContext } from "./context.ts";
 import { serveStatic, setupVite } from "./vite.ts";
@@ -46,7 +48,9 @@ async function startServer() {
   app.use(express.urlencoded({ limit: "50mb", extended: true }));
   registerStorageProxy(app);
   registerOAuthRoutes(app);
-  
+  registerProxyRoutes(app);
+  registerTradingRiskRoutes(app); // MODIFIED: register Trading Risk Guard /api/trading/risk/* routes.
+
   // TradingView webhook route
   registerTvWebhookRoutes(app); // MODIFIED: POST /api/tv-webhook handler.
 

@@ -5,7 +5,7 @@
 
 import { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Send, Loader2, Settings2, MessageCircle, Sliders } from "lucide-react";
+import { Send, Loader2, Settings2, MessageCircle, Sliders, Bot } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
@@ -24,6 +24,7 @@ interface Message {
   role: "user" | "assistant";
   content: string;
   timestamp: Date;
+  source?: "web" | "telegram";
 }
 
 export default function ChatInterface() {
@@ -35,6 +36,10 @@ export default function ChatInterface() {
   const [showSettings, setShowSettings] = useState(false);
   const [showApiSettings, setShowApiSettings] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const [conversationId, setConversationId] = useState<number | null>(null);
+  // Track DB message IDs we've already displayed (to avoid duplicates)
+  const shownDbIds = useRef(new Set<number>());
+  const dbInitialized = useRef(false);
 
   // tRPC queries and mutations
   const { data: engines } = trpc.llm.getEngines.useQuery();
@@ -45,37 +50,76 @@ export default function ChatInterface() {
   const { data: status } = trpc.llm.getStatus.useQuery();
   const chatMutation = trpc.llm.chat.useMutation();
   const switchEngineMutation = trpc.llm.switchEngineAndModel.useMutation();
-  const historyQuery = trpc.llm.getHistory.useQuery({ limit: 50 });
+
+  // Get DB conversation (requires auth — silent fail for anonymous users)
+  const { data: conversation } = trpc.chatSync.getConversation.useQuery(undefined, {
+    retry: false,
+  });
+
+  useEffect(() => {
+    if (conversation) setConversationId(conversation.id);
+  }, [conversation]);
+
+  // Poll DB messages every 5 seconds (for Telegram sync)
+  const { data: dbMessages, refetch: refetchDb } = trpc.chatSync.getMessages.useQuery(
+    { conversationId: conversationId ?? 0, limit: 50 },
+    { enabled: !!conversationId, refetchInterval: 5000 }
+  );
+
+  // Initialize messages from DB on first load
+  useEffect(() => {
+    if (!dbMessages || dbInitialized.current) return;
+    dbInitialized.current = true;
+    shownDbIds.current.clear();
+    const loaded: Message[] = dbMessages.map((m: any) => {
+      shownDbIds.current.add(m.id as number);
+      return {
+        id: `db-${m.id}`,
+        role: m.role as "user" | "assistant",
+        content: m.content,
+        timestamp: new Date(m.createdAt),
+        source: m.source as "web" | "telegram",
+      };
+    });
+    setMessages(loaded);
+  }, [dbMessages]);
+
+  // Merge new messages from DB polling (only unseen ones — catches Telegram messages)
+  useEffect(() => {
+    if (!dbMessages || !dbInitialized.current) return;
+    const unseen = (dbMessages as any[]).filter((m: any) => !shownDbIds.current.has(m.id as number));
+    if (unseen.length === 0) return;
+    unseen.forEach((m: any) => shownDbIds.current.add(m.id as number));
+    const toAdd: Message[] = unseen.map((m: any) => ({
+      id: `db-${m.id}`,
+      role: m.role as "user" | "assistant",
+      content: m.content,
+      timestamp: new Date(m.createdAt),
+      source: m.source as "web" | "telegram",
+    }));
+    setMessages((prev) =>
+      [...prev, ...toAdd].sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime())
+    );
+  }, [dbMessages]);
 
   // Auto-scroll to bottom
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  // Load chat history on mount
-  useEffect(() => {
-    if (historyQuery.data) {
-      const loadedMessages: Message[] = historyQuery.data.map((msg: any, idx: number) => ({
-        id: `${msg.timestamp}-${idx}`,
-        role: msg.role as "user" | "assistant",
-        content: msg.content,
-        timestamp: new Date(msg.timestamp),
-      }));
-      setMessages(loadedMessages);
-    }
-  }, [historyQuery.data]);
-
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
 
     if (!input.trim() || isLoading) return;
+    const trimmedInput = input.trim();
 
-    // Add user message
+    // Add user message to local state immediately (optimistic)
     const userMessage: Message = {
-      id: Date.now().toString(),
+      id: `local-u-${Date.now()}`,
       role: "user",
-      content: input,
+      content: trimmedInput,
       timestamp: new Date(),
+      source: "web",
     };
 
     setMessages((prev) => [...prev, userMessage]);
@@ -83,22 +127,29 @@ export default function ChatInterface() {
     setIsLoading(true);
 
     try {
-      const response = await chatMutation.mutateAsync({ message: input });
+      const response = await chatMutation.mutateAsync({ message: trimmedInput });
 
       const assistantMessage: Message = {
-        id: (Date.now() + 1).toString(),
+        id: `local-a-${Date.now()}`,
         role: "assistant",
         content: response.response,
         timestamp: new Date(),
+        source: "web",
       };
 
       setMessages((prev) => [...prev, assistantMessage]);
+
+      // Immediately sync DB (messages were saved server-side in llm.chat)
+      if (conversationId) {
+        refetchDb();
+      }
     } catch (error) {
       const errorMessage: Message = {
-        id: (Date.now() + 2).toString(),
+        id: `local-e-${Date.now()}`,
         role: "assistant",
         content: `오류가 발생했습니다: ${error instanceof Error ? error.message : "알 수 없는 오류"}`,
         timestamp: new Date(),
+        source: "web",
       };
 
       setMessages((prev) => [...prev, errorMessage]);
@@ -256,9 +307,15 @@ export default function ChatInterface() {
                   }`}
                 >
                   <p className="text-sm break-words">{message.content}</p>
-                  <p className="text-xs mt-1 opacity-70">
-                    {message.timestamp.toLocaleTimeString("ko-KR")}
-                  </p>
+                  <div className="flex items-center gap-1 mt-1 opacity-70">
+                    {message.source === "telegram" && (
+                      <Bot className="w-3 h-3 text-blue-400" />
+                    )}
+                    <p className="text-xs">
+                      {message.timestamp.toLocaleTimeString("ko-KR")}
+                      {message.source === "telegram" && " · Telegram"}
+                    </p>
+                  </div>
                 </Card>
               </motion.div>
             ))}

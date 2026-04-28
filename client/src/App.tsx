@@ -16,6 +16,8 @@ const Settings = lazy(() => import("./pages/Settings")); // MODIFIED: code-split
 const TradingPage = lazy(() => import("./pages/TradingPage")); // MODIFIED: code-split the trading page bundle.
 const RealEstatePage = lazy(() => import("./pages/RealEstatePage")); // MODIFIED: code-split the real estate PF bundle.
 const Monitoring = lazy(() => import("./pages/Monitoring")); // MODIFIED: code-split the monitoring dashboard bundle.
+const NotebookLMPage = lazy(() => import("./pages/NotebookLMPage"));
+const WikiPage = lazy(() => import("./pages/WikiPage"));
 
 function Router() {
   return (
@@ -34,6 +36,8 @@ function Router() {
           <Route path={"/real-estate-pf"} component={RealEstatePage} /> {/* MODIFIED: route for the new real estate PF tab. */}
           <Route path={"/google"} component={Google} />
           <Route path={"/settings"} component={Settings} />
+          <Route path={"/notebook-lm"} component={NotebookLMPage} />
+          <Route path={"/wiki"} component={WikiPage} />
           <Route path={"/monitoring"} component={Monitoring} /> {/* MODIFIED: expose analytics dashboard route. */}
           <Route path={"/login"} component={Login} />
           <Route path={"/404"} component={NotFound} />

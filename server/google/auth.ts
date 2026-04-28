@@ -42,8 +42,9 @@ export class GoogleAuthManager {
   getAuthUrl(userId: string, scopes: string[] = this.getDefaultScopes()): string {
     return this.oauth2Client.generateAuthUrl({
       access_type: "offline",
+      prompt: "consent", // Force consent screen so Google always returns a refresh_token
       scope: scopes,
-      state: userId, // Pass userId in state for verification
+      state: userId,
     });
   }
 
@@ -226,7 +227,11 @@ export class GoogleAuthManager {
   async isAuthenticated(userId: string): Promise<boolean> {
     try {
       const tokens = await this.sessionManager.getGoogleTokens(userId);
-      return !!tokens?.accessToken;
+      if (!tokens?.accessToken) return false;
+      // Token is valid if not expired, or if we have a refresh token to renew it
+      const isExpired = tokens.expiresAt < Date.now();
+      if (!isExpired) return true;
+      return !!tokens.refreshToken;
     } catch {
       return false;
     }

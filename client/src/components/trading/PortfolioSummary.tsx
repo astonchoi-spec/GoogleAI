@@ -23,6 +23,16 @@ export default function PortfolioSummary() {
   const loading = binanceBalance.isLoading || positions.isLoading;
   const hasError = !!binanceBalance.error || !!positions.error;
 
+  // API 키 미설정 시 한 줄 축소 표시
+  if (!loading && hasError) {
+    return (
+      <div className="rounded-2xl border border-white/10 bg-[var(--aston-panel)] flex items-center gap-2 px-4 py-3 text-sm text-[var(--aston-muted)]">
+        <Wallet className="h-4 w-4 text-slate-500 shrink-0" />
+        <span>Portfolio Summary — 거래소 API 키 미설정</span>
+      </div>
+    );
+  }
+
   return (
     <div className="rounded-2xl border border-white/10 bg-[var(--aston-panel)] p-4">
       <div className="mb-4 flex items-center gap-2">
@@ -33,19 +43,19 @@ export default function PortfolioSummary() {
         <div className="rounded-xl border border-white/10 bg-black/15 p-3">
           <p className="text-xs text-[var(--aston-muted)]">Total Asset (Binance)</p>
           <p className="mt-1 text-lg font-semibold text-[var(--aston-text)]">
-            {loading ? "Loading..." : hasError ? "Unavailable" : `${formatNumber(totalAsset)} USDT`}
+            {loading ? "Loading..." : `${formatNumber(totalAsset)} USDT`}
           </p>
         </div>
         <div className="rounded-xl border border-white/10 bg-black/15 p-3">
           <p className="text-xs text-[var(--aston-muted)]">Unrealized PnL</p>
           <p className={`mt-1 text-lg font-semibold ${totalPnl >= 0 ? "text-[#00c853]" : "text-[#ff1744]"}`}>
-            {loading ? "Loading..." : hasError ? "Unavailable" : `${totalPnl >= 0 ? "+" : ""}${formatNumber(totalPnl)} USDT`}
+            {loading ? "Loading..." : `${totalPnl >= 0 ? "+" : ""}${formatNumber(totalPnl)} USDT`}
           </p>
         </div>
         <div className="rounded-xl border border-white/10 bg-black/15 p-3">
           <p className="text-xs text-[var(--aston-muted)]">Open Positions</p>
           <p className="mt-1 text-lg font-semibold text-cyan-300">
-            {loading ? "Loading..." : hasError ? "Unavailable" : `${activePositions}`}
+            {loading ? "Loading..." : `${activePositions}`}
           </p>
         </div>
       </div>

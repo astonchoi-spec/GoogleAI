@@ -1,0 +1,91 @@
+# HANDOFF.md — 에스턴 워크스테이션
+> 업데이트: 2026-04-28 | 브랜치: codex-google-workspace-expansion
+
+---
+
+## 현재 상태
+
+| 항목 | 상태 |
+|------|------|
+| 서버 | 정상 기동 (포트 4000) |
+| 빌드 | `npm run check` ✅ / `npm run build` ✅ |
+| 테스트 | 92 passed, 7 skipped |
+| 브랜치 | `codex-google-workspace-expansion` |
+| Redis | 선택적 (없어도 부팅됨, BullMQ lazy init) |
+| Google OAuth | 정상 연결 시 작동 |
+| Upbit | ccxt 인스턴스 정상, KRW 잔고 조회 확인됨 |
+| Gate.io | 400 에러 반복 중 (API 키 문제 또는 미지원 엔드포인트) |
+
+---
+
+## 마지막 완료 작업
+
+**2026-04-28 | Claude Code (Telegram trading_ 인텐트 Google 인증 우회 버그 수정)**
+- `server/llm/telegram-bot.ts`: `classifyIntent()` 선행 호출 추가
+- `trading_*` / `analysis_*` 인텐트는 `handleWorkspaceCommand()` 건너뜀 → Google 인증 체크 없이 직접 처리
+- 검증: check/build 모두 통과
+
+**2026-04-28 | Claude Code (Trading Risk Guard Phase 1)**
+- 신규: `server/trading/riskGuard.ts`, `server/trading/riskStore.ts`, `server/routers/tradingRisk.ts`, `client/src/components/trading/RiskGuardCard.tsx`, `server/__tests__/riskGuard.test.ts`
+- 수정: `server/_core/index.ts` (라우트 등록), `server/intent/intentService.ts` (텔레그램 명령 4종), `client/src/pages/TradingPage.tsx` (카드 배치)
+- 검증: check/build/risk tests 모두 통과
+- 데이터: `data/risk-state.json` (자동 생성)
+
+**2026-04-28 | Claude Code**
+- `server/exchanges/exchangeConnector.ts`: `addExchangeFromEnv` try-catch 추가 (서버 종료 방지), 거래소 등록 성공 로그 추가
+- `server/intent/intentService.ts`: `trading_balance` 핸들러에 upbit 잔고 시도 로그 + try-catch + 실제 에러 메시지 반환
+
+**2026-04-28 | Codex**
+- `client/src/components/trading/ChartArea.tsx`: 4-탭 멀티마켓 차트 (TradingView + Yahoo Finance)
+- 커밋: `2f41e39`, `8e879a5`
+
+---
+
+## 현재 진행 작업
+
+| 도구 | 작업 중인 파일 | 내용 |
+|------|----------------|------|
+| 없음 | — | 현재 진행 중인 작업 없음 |
+
+> **Codex가 작업을 시작하려면**: 위 표에 파일명과 작업 내용을 추가한 후 시작한다.
+> **Claude Code가 작업을 시작하려면**: 위 표에 파일명과 작업 내용을 추가한 후 시작한다.
+
+---
+
+## 건드리지 말아야 할 영역
+
+| 영역 | 이유 |
+|------|------|
+| `client/src/components/UnifiedChatInterface.tsx` | 핵심 채팅 UI — 구조 변경 시 동기화/편집/검색 기능 깨짐 |
+| `server/_core/trpc.ts` | tRPC core — 인증/에러 정규화 로직, 잘못 건드리면 전체 API 무너짐 |
+| `server/_core/redis.ts` | Redis 싱글턴 — 새 인스턴스 생성 금지 |
+| `drizzle/schema.ts` + `server/db.ts` | SQLite 스키마 — 마이그레이션 없이 수정 금지 |
+| `.env` | 비밀키 — 코드에 하드코딩 금지, 커밋 금지 |
+| `server/google/auth.ts` | OAuth 플로우 — 새 인증 로직 만들지 않는다 |
+| `client/src/App.tsx` (라우팅) | 기존 라우트 삭제 금지 |
+
+---
+
+## 다음 추천 작업
+
+### 즉시 (P0)
+1. **Yahoo Finance CORS 프록시** — `server/routers/proxy.ts` 생성, `/api/yahoo-proxy` 엔드포인트 추가
+   - 수정 파일: `server/routers/proxy.ts`, `server/routers.ts`
+2. **Upbit 잔고 Telegram 검증** — 텔레그램에서 "업비트 잔고" 메시지 전송 후 응답 확인
+   - 코드 수정 없음, 운영 테스트만 필요
+
+### 이번 주 (P1)
+3. **Telegram 운영 검증** — webhook 상태 엔드포인트 + UI 뱃지
+4. **대시보드 실시간 KPI** — mock 값 → 실제 서비스 카운트
+
+---
+
+## 알려진 이슈
+
+| 이슈 | 심각도 | 상태 |
+|------|--------|------|
+| Yahoo Finance 브라우저 CORS 차단 가능성 | P0 | 미해결 |
+| Gate.io `trading.getBalance` 400 에러 | P1 | 미해결 (API 키 확인 필요) |
+| Gemini Grounding 소스 UI 미구현 | P1 | 미해결 |
+| 홈 KPI 카드 mock 데이터 | P1 | 미해결 |
+| Telegram webhook/polling 상태 불명확 | P1 | 미해결 |

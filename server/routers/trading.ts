@@ -4,7 +4,7 @@ import { exchangeConnector, type SupportedExchangeId } from "../exchanges/exchan
 import { gateioConnector } from "../exchanges/gateioConnector.ts"; // MODIFIED: add Gate.io connector.
 import { kiwoomConnector } from "../exchanges/kiwoomConnector.ts"; // MODIFIED: add Kiwoom connector.
 import { taEngine } from "../trading/technicalAnalysis.ts";
-import { calculateFuturesRisk } from "../trading/riskCalculator.ts";
+import { calculateFuturesRisk, calculateRisk, formatRiskReport, formatRiskReportFromResult, type RiskInput } from "../trading/riskCalculator.ts";
 import { TradeJournal } from "../trading/tradeJournal.ts";
 import { addAlert, getAlerts, removeAlert, startAlertScheduler } from "../alerts/alertEngine.ts";
 import { googleAuthManager } from "./google-workspace.ts";
@@ -236,6 +236,37 @@ export const tradingRouter = router({
       }))
       .query(async ({ input }) => {
         return kiwoomConnector.getExecutions(input.startDate, input.endDate);
+      }),
+  }),
+
+  // MODIFIED: Risk calculator namespace added.
+  risk: router({
+    calculate: protectedProcedure
+      .input(z.object({
+        entryPrice: z.number().positive(),
+        accountBalance: z.number().positive(),
+        riskPercent: z.number().positive().max(100),
+        leverage: z.number().positive(),
+        stopLossPrice: z.number().positive(),
+        side: z.enum(["long", "short"]),
+      }))
+      .query(async ({ input }) => {
+        return calculateRisk(input as RiskInput);
+      }),
+
+    report: protectedProcedure
+      .input(z.object({
+        entryPrice: z.number().positive(),
+        accountBalance: z.number().positive(),
+        riskPercent: z.number().positive().max(100),
+        leverage: z.number().positive(),
+        stopLossPrice: z.number().positive(),
+        side: z.enum(["long", "short"]),
+      }))
+      .query(async ({ input }) => {
+        const result = calculateRisk(input as RiskInput);
+        const report = formatRiskReportFromResult(result, input as RiskInput);
+        return report;
       }),
   }),
 });

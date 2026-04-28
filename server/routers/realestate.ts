@@ -1,9 +1,22 @@
 import { z } from "zod";
 import { protectedProcedure, router } from "../_core/trpc.ts";
 import { googleAuthManager } from "./google-workspace.ts";
-import { DealPipeline } from "../realestate/dealPipeline.ts";
-import { formatFeasibilityReport, runFeasibility } from "../realestate/feasibilityEngine.ts";
-import { getBuildingInfo, getLandRegulation, getRealTransactionPrice } from "../realestate/publicDataAPI.ts";
+import { DealPipeline, listDeals, getDeal, createDeal, updateDeal, deleteDeal } from "../realestate/dealPipeline.ts";
+import {
+  calculateFeasibility,
+  formatSimpleFeasibilityReport,
+  formatFeasibilityReport,
+  runFeasibility,
+  type SimpleFeasibilityInput,
+} from "../realestate/feasibilityEngine.ts";
+import {
+  getBuildingInfo,
+  getLandRegulation,
+  getRealTransactionPrice,
+  getLandUseRegulation,
+  getLandPrice,
+  getRealTransaction,
+} from "../realestate/publicDataAPI.ts";
 
 const dealStageSchema = z.string().min(1);
 
@@ -61,6 +74,45 @@ export const realestateRouter = router({
     return { summary };
   }),
 
+  feasibility: protectedProcedure
+    .input(
+      z.object({
+        projectName: z.string().min(1),
+        landCost: z.number().positive(),
+        constructionCost: z.number().positive(),
+        designFee: z.number().positive(),
+        financeCost: z.number().positive(),
+        taxAndFee: z.number().positive(),
+        otherCost: z.number().positive(),
+        totalUnits: z.number().positive(),
+        avgSalePrice: z.number().positive(),
+        projectMonths: z.number().positive(),
+      })
+    )
+    .query(async ({ input }) => {
+      return calculateFeasibility(input as SimpleFeasibilityInput);
+    }),
+
+  feasibilityReport: protectedProcedure
+    .input(
+      z.object({
+        projectName: z.string().min(1),
+        landCost: z.number().positive(),
+        constructionCost: z.number().positive(),
+        designFee: z.number().positive(),
+        financeCost: z.number().positive(),
+        taxAndFee: z.number().positive(),
+        otherCost: z.number().positive(),
+        totalUnits: z.number().positive(),
+        avgSalePrice: z.number().positive(),
+        projectMonths: z.number().positive(),
+      })
+    )
+    .query(async ({ input }) => {
+      const result = calculateFeasibility(input as SimpleFeasibilityInput);
+      return formatSimpleFeasibilityReport(result, input as SimpleFeasibilityInput);
+    }),
+
   runFeasibility: protectedProcedure
     .input(z.object({
       projectName: z.string().min(1),
@@ -108,5 +160,76 @@ export const realestateRouter = router({
     }))
     .query(async ({ input }) => {
       return getRealTransactionPrice(input.lawdCd, input.dealYmd, input.type);
+    }),
+
+  deals: router({
+    list: protectedProcedure.query(async ({ ctx }) => {
+      const auth = await googleAuthManager.getAuthenticatedClient(String(ctx.user.id));
+      return listDeals(auth, spreadsheetIdFromEnv());
+    }),
+
+    get: protectedProcedure
+      .input(z.object({ id: z.string().min(1) }))
+      .query(async ({ ctx, input }) => {
+        const auth = await googleAuthManager.getAuthenticatedClient(String(ctx.user.id));
+        return getDeal(auth, spreadsheetIdFromEnv(), input.id);
+      }),
+
+    create: protectedProcedure
+      .input(z.object({
+        projectName: z.string().min(1),
+        location: z.string().default(""),
+        stage: z.enum(["discovery", "review", "dueDiligence", "contract", "construction", "completion"]),
+        amount: z.number().default(0),
+        manager: z.string().default(""),
+        memo: z.string().default(""),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        const auth = await googleAuthManager.getAuthenticatedClient(String(ctx.user.id));
+        return createDeal(auth, spreadsheetIdFromEnv(), input);
+      }),
+
+    update: protectedProcedure
+      .input(z.object({
+        id: z.string().min(1),
+        updates: z.object({
+          projectName: z.string().optional(),
+          location: z.string().optional(),
+          stage: z.enum(["discovery", "review", "dueDiligence", "contract", "construction", "completion"]).optional(),
+          amount: z.number().optional(),
+          manager: z.string().optional(),
+          memo: z.string().optional(),
+        }),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        const auth = await googleAuthManager.getAuthenticatedClient(String(ctx.user.id));
+        return updateDeal(auth, spreadsheetIdFromEnv(), input.id, input.updates);
+      }),
+
+    delete: protectedProcedure
+      .input(z.object({ id: z.string().min(1) }))
+      .mutation(async ({ ctx, input }) => {
+        const auth = await googleAuthManager.getAuthenticatedClient(String(ctx.user.id));
+        return deleteDeal(auth, spreadsheetIdFromEnv(), input.id);
+      }),
+  }),
+
+  // MODIFIED: Add simplified public data API procedures
+  landUse: protectedProcedure
+    .input(z.object({ pnu: z.string().min(1) }))
+    .query(async ({ input }) => {
+      return getLandUseRegulation(input.pnu);
+    }),
+
+  landPrice: protectedProcedure
+    .input(z.object({ pnu: z.string().min(1), year: z.string().optional() }))
+    .query(async ({ input }) => {
+      return getLandPrice(input.pnu, input.year);
+    }),
+
+  realTransaction: protectedProcedure
+    .input(z.object({ regionCode: z.string().min(1), yearMonth: z.string().regex(/^\d{6}$/) }))
+    .query(async ({ input }) => {
+      return getRealTransaction(input.regionCode, input.yearMonth);
     }),
 });

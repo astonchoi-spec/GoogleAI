@@ -1,12 +1,13 @@
 import { google, type Auth, type calendar_v3, type sheets_v4 } from "googleapis";
+import { nanoid } from "nanoid";
 
-export type DealStage = "소싱" | "심사" | "약정" | "실행" | "회수" | "완료";
+export type KoreanDealStage = "소싱" | "심사" | "약정" | "실행" | "회수" | "완료";
 
 export type PFDeal = {
   id: string;
   projectName: string;
   location: string;
-  stage: DealStage;
+  stage: KoreanDealStage;
   totalProjectCost: number;
   loanAmount: number;
   ltv: number;
@@ -36,7 +37,7 @@ const HEADERS = [
   "마일스톤일",
   "메모",
 ];
-const STAGES: DealStage[] = ["소싱", "심사", "약정", "실행", "회수", "완료"];
+const STAGES: KoreanDealStage[] = ["소싱", "심사", "약정", "실행", "회수", "완료"];
 
 export class DealPipeline {
   private readonly sheets: sheets_v4.Sheets;
@@ -86,7 +87,7 @@ export class DealPipeline {
     return newDeal;
   }
 
-  async updateDealStage(id: string, newStage: DealStage): Promise<PFDeal> {
+  async updateDealStage(id: string, newStage: KoreanDealStage): Promise<PFDeal> {
     if (!STAGES.includes(newStage)) {
       throw new Error(`Invalid deal stage: ${newStage}`);
     }
@@ -256,13 +257,13 @@ export class DealPipeline {
     ];
   }
 
-  private normalizeStage(value: unknown): DealStage {
+  private normalizeStage(value: unknown): KoreanDealStage {
     const stage = String(value ?? "");
-    return STAGES.includes(stage as DealStage) ? (stage as DealStage) : "소싱";
+    return STAGES.includes(stage as KoreanDealStage) ? (stage as KoreanDealStage) : "소싱";
   }
 
-  private groupByStage(deals: PFDeal[]): Map<DealStage, PFDeal[]> {
-    const grouped = new Map<DealStage, PFDeal[]>();
+  private groupByStage(deals: PFDeal[]): Map<KoreanDealStage, PFDeal[]> {
+    const grouped = new Map<KoreanDealStage, PFDeal[]>();
     for (const stage of STAGES) {
       grouped.set(stage, []);
     }
@@ -303,4 +304,162 @@ export class DealPipeline {
   private formatPercent(value: number): string {
     return `${value.toLocaleString("ko-KR", { maximumFractionDigits: 2 })}%`;
   }
+}
+
+// ─────────────────────────────────────────────
+// New PF 딜 CRUD module (sheet: "PF딜")
+// ─────────────────────────────────────────────
+
+export type DealStage = "discovery" | "review" | "dueDiligence" | "contract" | "construction" | "completion";
+
+export interface Deal {
+  id: string;
+  projectName: string;
+  location: string;
+  stage: DealStage;
+  amount: number;
+  manager: string;
+  memo: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+const PF_SHEET = "PF딜";
+const PF_HEADERS = ["id", "projectName", "location", "stage", "amount", "manager", "memo", "createdAt", "updatedAt"];
+const VALID_STAGES: DealStage[] = ["discovery", "review", "dueDiligence", "contract", "construction", "completion"];
+
+async function ensurePFSheet(sheets: sheets_v4.Sheets, spreadsheetId: string): Promise<number> {
+  const meta = await sheets.spreadsheets.get({ spreadsheetId });
+  const existing = meta.data.sheets?.find((s) => s.properties?.title === PF_SHEET);
+
+  let sheetId: number;
+  if (!existing) {
+    const res = await sheets.spreadsheets.batchUpdate({
+      spreadsheetId,
+      requestBody: { requests: [{ addSheet: { properties: { title: PF_SHEET } } }] },
+    });
+    sheetId = res.data.replies?.[0]?.addSheet?.properties?.sheetId ?? 0;
+  } else {
+    sheetId = existing.properties?.sheetId ?? 0;
+  }
+
+  const headerRes = await sheets.spreadsheets.values.get({
+    spreadsheetId,
+    range: `${PF_SHEET}!A1:I1`,
+  });
+  if ((headerRes.data.values ?? []).length === 0) {
+    await sheets.spreadsheets.values.update({
+      spreadsheetId,
+      range: `${PF_SHEET}!A1:I1`,
+      valueInputOption: "USER_ENTERED",
+      requestBody: { values: [PF_HEADERS] },
+    });
+  }
+
+  return sheetId;
+}
+
+function rowToDeal(row: unknown[]): Deal | null {
+  const id = String(row[0] ?? "").trim();
+  const projectName = String(row[1] ?? "").trim();
+  if (!id || !projectName) return null;
+
+  const stageRaw = String(row[3] ?? "");
+  const stage: DealStage = VALID_STAGES.includes(stageRaw as DealStage) ? (stageRaw as DealStage) : "discovery";
+
+  return {
+    id,
+    projectName,
+    location: String(row[2] ?? ""),
+    stage,
+    amount: pfToNum(row[4]),
+    manager: String(row[5] ?? ""),
+    memo: String(row[6] ?? ""),
+    createdAt: String(row[7] ?? ""),
+    updatedAt: String(row[8] ?? ""),
+  };
+}
+
+function dealToRow(deal: Deal): unknown[] {
+  return [deal.id, deal.projectName, deal.location, deal.stage, deal.amount, deal.manager, deal.memo, deal.createdAt, deal.updatedAt];
+}
+
+function pfToNum(value: unknown): number {
+  const n = typeof value === "string" ? Number(value.replaceAll(",", "")) : Number(value);
+  return Number.isFinite(n) ? n : 0;
+}
+
+export async function listDeals(auth: Auth.OAuth2Client, spreadsheetId: string): Promise<Deal[]> {
+  const sheets = google.sheets({ version: "v4", auth });
+  await ensurePFSheet(sheets, spreadsheetId);
+  const res = await sheets.spreadsheets.values.get({ spreadsheetId, range: `${PF_SHEET}!A2:I` });
+  return (res.data.values ?? []).map(rowToDeal).filter((d): d is Deal => d !== null);
+}
+
+export async function getDeal(auth: Auth.OAuth2Client, spreadsheetId: string, id: string): Promise<Deal | null> {
+  const deals = await listDeals(auth, spreadsheetId);
+  return deals.find((d) => d.id === id) ?? null;
+}
+
+export async function createDeal(
+  auth: Auth.OAuth2Client,
+  spreadsheetId: string,
+  data: Omit<Deal, "id" | "createdAt" | "updatedAt">,
+): Promise<Deal> {
+  const sheets = google.sheets({ version: "v4", auth });
+  await ensurePFSheet(sheets, spreadsheetId);
+  const now = new Date().toISOString();
+  const deal: Deal = { ...data, id: nanoid(), createdAt: now, updatedAt: now };
+  await sheets.spreadsheets.values.append({
+    spreadsheetId,
+    range: `${PF_SHEET}!A:I`,
+    valueInputOption: "USER_ENTERED",
+    requestBody: { values: [dealToRow(deal)] },
+  });
+  return deal;
+}
+
+export async function updateDeal(
+  auth: Auth.OAuth2Client,
+  spreadsheetId: string,
+  id: string,
+  updates: Partial<Omit<Deal, "id" | "createdAt">>,
+): Promise<Deal> {
+  const sheets = google.sheets({ version: "v4", auth });
+  await ensurePFSheet(sheets, spreadsheetId);
+  const rowsRes = await sheets.spreadsheets.values.get({ spreadsheetId, range: `${PF_SHEET}!A2:I` });
+  const rows = rowsRes.data.values ?? [];
+  const rowIdx = rows.findIndex((row) => String(row[0] ?? "") === id);
+  if (rowIdx === -1) throw new Error(`Deal not found: ${id}`);
+  const existing = rowToDeal(rows[rowIdx]);
+  if (!existing) throw new Error(`Failed to parse deal: ${id}`);
+  const updated: Deal = { ...existing, ...updates, id: existing.id, createdAt: existing.createdAt, updatedAt: new Date().toISOString() };
+  const sheetRow = rowIdx + 2;
+  await sheets.spreadsheets.values.update({
+    spreadsheetId,
+    range: `${PF_SHEET}!A${sheetRow}:I${sheetRow}`,
+    valueInputOption: "USER_ENTERED",
+    requestBody: { values: [dealToRow(updated)] },
+  });
+  return updated;
+}
+
+export async function deleteDeal(auth: Auth.OAuth2Client, spreadsheetId: string, id: string): Promise<boolean> {
+  const sheets = google.sheets({ version: "v4", auth });
+  const sheetId = await ensurePFSheet(sheets, spreadsheetId);
+  const rowsRes = await sheets.spreadsheets.values.get({ spreadsheetId, range: `${PF_SHEET}!A2:A` });
+  const rows = rowsRes.data.values ?? [];
+  const rowIdx = rows.findIndex((row) => String(row[0] ?? "") === id);
+  if (rowIdx === -1) return false;
+  await sheets.spreadsheets.batchUpdate({
+    spreadsheetId,
+    requestBody: {
+      requests: [{
+        deleteDimension: {
+          range: { sheetId, dimension: "ROWS", startIndex: rowIdx + 1, endIndex: rowIdx + 2 },
+        },
+      }],
+    },
+  });
+  return true;
 }

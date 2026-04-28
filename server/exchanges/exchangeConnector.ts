@@ -61,7 +61,7 @@ export class ExchangeConnector {
         secret: config.secret,
         password: config.password,
         enableRateLimit: true,
-        options: ["binance", "gate"].includes(config.id) ? { defaultType: "future" } : undefined,
+        ...(["binance", "gate"].includes(config.id) ? { options: { defaultType: "future" } } : {}),
       };
 
       const exchange = new ExchangeClass(exchangeConfig);
@@ -70,6 +70,7 @@ export class ExchangeConnector {
       }
 
       this.exchanges.set(config.id, exchange);
+      console.log(`${config.id} exchange added successfully`);
       return exchange;
     } catch (error) {
       throw new Error(`Failed to add exchange "${config.id}": ${this.getErrorMessage(error)}`);
@@ -167,7 +168,11 @@ export class ExchangeConnector {
     const secret = process.env[secretName];
     if (!apiKey || !secret) return;
 
-    this.addExchange({ id, apiKey, secret });
+    try {
+      this.addExchange({ id, apiKey, secret });
+    } catch (error) {
+      console.error(`Failed to add exchange "${id}":`, this.getErrorMessage(error));
+    }
   }
 
   private getRequiredExchange(exchangeId: SupportedExchangeId): ExchangeInstance {

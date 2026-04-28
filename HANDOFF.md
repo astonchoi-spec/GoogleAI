@@ -20,6 +20,10 @@
 
 ## 마지막 완료 작업
 
+**2026-04-28 | Claude Code (CLAUDE.md 자동 명령어 추가)**
+- `CLAUDE.md`: "작업준비" / "작업정리" / "커밋" 자동 명령어 섹션 추가
+- 커밋 예정 (문서 변경만)
+
 **2026-04-28 | Claude Code (Telegram trading_ 인텐트 Google 인증 우회 버그 수정)**
 - `server/llm/telegram-bot.ts`: `classifyIntent()` 선행 호출 추가
 - `trading_*` / `analysis_*` 인텐트는 `handleWorkspaceCommand()` 건너뜀 → Google 인증 체크 없이 직접 처리

@@ -5,6 +5,12 @@
 
 ## 2026-04-28
 
+### [Claude Code] CLAUDE.md 자동 명령어 섹션 추가
+- **작업**: "작업준비" / "작업정리" / "커밋" 자동 명령어 규칙 문서화
+- **수정 파일**: `CLAUDE.md`
+- **검증**: 문서 변경만, 빌드 불필요
+- **잔여이슈**: 없음
+
 ### [Claude Code] 텔레그램 trading_ 인텐트 Google 인증 체크 우회 버그 수정
 - **작업**: "리스크 상태" 등 trading_ 계열 명령이 Google 계정 미연결 에러로 차단되는 버그 수정
 - **원인**: `handleWorkspaceCommand()`가 항상 먼저 실행되어 LLM이 trading 명령을 Workspace 명령으로 오분류할 경우 Google 인증 체크에서 차단됨

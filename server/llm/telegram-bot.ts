@@ -13,7 +13,7 @@ import { getCommandArgs, normalizeEngineArg, normalizeModelArg } from "./telegra
 import { getOrCreateConversation, getOrCreateTelegramConversation, getConversationByTelegramChatId, saveMessage } from "../db-chat.ts";
 import { registerTelegramBot } from "../telegram-service.ts";
 import { googleAuthManager } from "../routers/google-workspace.ts";
-import { formatIntentRouteMessage, routeIntentMessage } from "../intent/intentService.ts"; // MODIFIED: reuse shared formatter to keep Telegram output aligned with web intent responses.
+import { classifyIntent, formatIntentRouteMessage, routeIntentMessage } from "../intent/intentService.ts"; // MODIFIED: reuse shared formatter to keep Telegram output aligned with web intent responses.
 import { llmAdapter } from "../_core/llmAdapter.ts"; // MODIFIED: use central LLM adapter for command parsing instead of hardcoded Gemini Flash.
 import GmailConnector from "../google/gmail.ts";
 import CalendarConnector from "../google/calendar.ts";
@@ -219,6 +219,7 @@ export class TelegramBot {
    * chatId: Telegram chat ID for file sending
    */
   private async handleWorkspaceCommand(message: string, chatId: number): Promise<string | null> {
+    console.log("[TG WORKSPACE] handleWorkspaceCommand:", message.slice(0, 80));
     const now = new Date().toLocaleString("ko-KR", { timeZone: "Asia/Seoul" });
     const intentPrompt = `You are a Google Workspace command parser. Analyze the user's message and return ONLY a valid JSON object.
 
@@ -248,12 +249,16 @@ For date-only events with no explicit time, set isAllDay to true and set endTime
 Return ONLY the JSON object, no other text.`;
 
     try {
-      const intent = await llmAdapter.parseJson<any>(message, intentPrompt); // MODIFIED: adapter extracts JSON and honors LLM_PROVIDER/LLM_MODEL_KEY config.
-      console.log("[Workspace] Detected intent:", intent.action);
+      const intent = await llmAdapter.parseJson<any>(message, intentPrompt);
+      console.log("[TG WORKSPACE] Detected intent:", intent?.action, "params:", JSON.stringify(intent).slice(0, 120));
 
-      if (!intent || intent.action === "none") return null;
+      if (!intent || intent.action === "none") {
+        console.log("[TG WORKSPACE] intent=none, skipping workspace handler");
+        return null;
+      }
 
       const googleUserId = await this.getConnectedGoogleUserId();
+      console.log("[TG WORKSPACE] googleUserId:", googleUserId);
       if (!googleUserId) {
         return "❌ Google 계정이 연결되어 있지 않습니다. 웹 앱에서 먼저 Google 계정을 연결해주세요.";
       }
@@ -342,7 +347,15 @@ Return ONLY the JSON object, no other text.`;
 
       return null;
     } catch (error) {
-      console.error("[Workspace Command] Error:", error);
+      console.error("[TG WORKSPACE] Error:", error);
+      // Return error message instead of null so it's visible (not swallowed by LLM fallback)
+      if (error instanceof Error && (
+        error.message.toLowerCase().includes("no tokens") ||
+        error.message.toLowerCase().includes("authenticate first") ||
+        error.message.toLowerCase().includes("failed to get authenticated")
+      )) {
+        return "Google 재인증이 필요합니다. 웹 앱에서 Google 계정을 다시 연결해주세요.";
+      }
       return null;
     }
   }
@@ -391,8 +404,15 @@ Return ONLY the JSON object, no other text.`;
           console.warn("[Telegram] DB unavailable, skipping message persistence:", (dbErr as Error).message);
         }
 
-        // Check for Google Workspace command first
-        const workspaceResult = await this.handleWorkspaceCommand(userMessage, ctx.chat?.id ?? 0);
+        // 인텐트를 먼저 분류해서 trading_* / analysis_* 계열은 Google 인증 체크를 건너뜀
+        const preIntent = await classifyIntent(userMessage);
+        const isTradingIntent =
+          preIntent.action.startsWith("trading_") || preIntent.action.startsWith("analysis_");
+
+        // Google Workspace 명령은 google_ 계열이거나 분류 실패(chat) 일 때만 체크
+        const workspaceResult = isTradingIntent
+          ? null
+          : await this.handleWorkspaceCommand(userMessage, ctx.chat?.id ?? 0);
         if (workspaceResult !== null) {
           const sentMessage = await ctx.reply(workspaceResult, {
             reply_parameters: { message_id: ctx.message.message_id },
@@ -405,23 +425,28 @@ Return ONLY the JSON object, no other text.`;
           return;
         }
 
-        const routingUserId = (await this.getConnectedGoogleUserId()) ?? ctx.session.userId; // MODIFIED: align intent routing auth context with available Google auth linkage.
-        const routed = await routeIntentMessage({ // MODIFIED: apply same intent-query routing path used by web chat before generic LLM fallback.
+        const routingUserId = (await this.getConnectedGoogleUserId()) ?? ctx.session.userId;
+        console.log("[TG INTENT] routeIntentMessage userId:", routingUserId, "msg:", userMessage.slice(0, 60));
+        const routed = await routeIntentMessage({
           userId: routingUserId,
           message: userMessage,
-          allowExecute: false,
+          allowExecute: true, // Telegram: 직접 실행 (확인 없음)
         });
-        const routedText = formatIntentRouteMessage(routed); // MODIFIED: render the same server formatter output used by web clients.
-        if (routedText) {
-          const sentMessage = await ctx.reply(routedText, {
-            reply_parameters: { message_id: ctx.message.message_id },
-          });
-          if (conversationId !== null) {
-            try {
-              await saveMessage(conversationId, "assistant", routedText, "telegram", sentMessage.message_id); // MODIFIED: persist routed assistant output in unified conversation history.
-            } catch {}
+        console.log("[TG INTENT] result: domain=", routed.intent.domain, "action=", routed.intent.action, "handled=", routed.handled);
+        if (routed.handled || (routed.requiresConfirmation && routed.response)) {
+          const routedText = formatIntentRouteMessage(routed) || routed.response;
+          console.log("[TG INTENT] returning result, length:", routedText.length);
+          if (routedText && routed.intent.domain !== "chat") {
+            const sentMessage = await ctx.reply(routedText, {
+              reply_parameters: { message_id: ctx.message.message_id },
+            });
+            if (conversationId !== null) {
+              try {
+                await saveMessage(conversationId, "assistant", routedText, "telegram", sentMessage.message_id); // MODIFIED: persist routed assistant output in unified conversation history.
+              } catch {}
+            }
+            return;
           }
-          return;
         }
 
         // Get user session

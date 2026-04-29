@@ -20,6 +20,11 @@
 
 ## 마지막 완료 작업
 
+**2026-04-29 | Claude Code (Portfolio Summary Loading... 수정)**
+- `client/src/components/trading/PortfolioSummary.tsx`: retry:false 적용, Binance 키 없으면 Binance 카드 숨김, Upbit 키 있으면 KRW잔고+보유코인 표시, 둘 다 없으면 한 줄 안내
+- `client/src/components/trading/PositionTable.tsx`: retry:false 적용, Binance 에러 시 테이블 대신 한 줄 안내
+- 검증: check ✅ / build ✅
+
 **2026-04-29 | Claude Code (텔레그램 Google 미연결 근본 수정)**
 - **원인**: 웹 로그인 시 토큰이 DB userId(`"4"`) 키로 저장, 텔레그램은 `"1"`/`"anonymous"` 만 체크 → 항상 미연결
 - `server/llm/session.ts`: `getAnyAuthenticatedGoogleUserId()` 추가 (디스크 전수 스캔)

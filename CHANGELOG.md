@@ -5,6 +5,22 @@
 
 ## 2026-04-29
 
+### [Claude Code] Portfolio Summary Loading... 무한 표시 수정
+- **작업**: Binance API 키 없을 때 "Loading..." 무한 표시 → 거래소별 조건부 렌더링으로 교체
+- **원인**: retry 미설정(기본 3회 재시도) + `isError` 미활용으로 Binance 에러 시 UI가 로딩 상태 지속
+- **수정 파일**:
+  - `client/src/components/trading/PortfolioSummary.tsx`
+    - Binance/Upbit 각각 `retry: false` 적용
+    - Binance 키 없으면 Total Asset / Unrealized PnL / Open Positions 카드 숨김
+    - Upbit 키 있으면 "총 자산 (Upbit)" / KRW 잔고 / 보유 코인 목록 표시 (`sm:col-span-3`)
+    - 두 거래소 다 미설정 시 "거래소 API 키를 설정해주세요" 한 줄 표시
+  - `client/src/components/trading/PositionTable.tsx`
+    - `retry: false` 적용
+    - Binance 에러 시 테이블 대신 "API 키를 설정하면 잔고/포지션을 확인할 수 있습니다" 한 줄로 대체
+    - `{false ? ...}` 하드코딩 제거 → 정상 조건 분기로 교체
+- **검증**: `npm run check` ✅ / `npm run build` ✅
+- **잔여이슈**: 없음
+
 ### [Claude Code] CLAUDE.md "커밋" 명령어 규칙 수정
 - **작업**: "커밋" 자동 명령어에서 "푸시는 하지 않음" → "커밋 후 반드시 git push origin 현재브랜치 실행"으로 교체
 - **수정 파일**: `CLAUDE.md`

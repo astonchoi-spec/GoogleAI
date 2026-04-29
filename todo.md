@@ -1,5 +1,5 @@
 # TODO.md — 에스턴 워크스테이션
-> 업데이트: 2026-04-28 | 브랜치: codex-google-workspace-expansion
+> 업데이트: 2026-04-30 | 브랜치: codex-google-workspace-expansion
 
 ---
 

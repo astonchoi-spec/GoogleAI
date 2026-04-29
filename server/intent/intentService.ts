@@ -4,6 +4,7 @@ import { kiwoomConnector } from "../exchanges/kiwoomConnector.ts";
 import { taEngine } from "../trading/technicalAnalysis.ts";
 import { calculateFuturesRisk } from "../trading/riskCalculator.ts";
 import { riskGuard } from "../trading/riskGuard.ts"; // MODIFIED: Risk Guard 룰 엔진 연결
+import { parsePreCheckMessage, runPreCheck, formatPreCheck } from "../trading/preCheckEngine.ts"; // MODIFIED: AI 진입 전 점검 어시스턴트
 import { DealPipeline } from "../realestate/dealPipeline.ts";
 import {
   calculateFeasibility,
@@ -35,6 +36,7 @@ export type IntentAction =
   | "trading_risk_lock" // MODIFIED: Risk Guard 수동 잠금
   | "trading_risk_unlock" // MODIFIED: Risk Guard 수동 잠금 해제
   | "trading_risk_settings_update" // MODIFIED: Risk Guard 한도 변경
+  | "trading_pre_check" // MODIFIED: 진입 전 점검 어시스턴트
   | "analysis_indicators" // MODIFIED: technical analysis full indicators
   | "analysis_rsi" // MODIFIED: technical analysis RSI
   | "analysis_macd" // MODIFIED: technical analysis MACD
@@ -97,6 +99,24 @@ function spreadsheetIdFromEnv(): string {
 
 function fallbackIntent(message: string): IntentResult {
   const lower = message.toLowerCase();
+
+  // MODIFIED: trading_pre_check — "BTC 숏 77000 손절 78500 목표 74000" 형태 매칭
+  const parsedPreCheck = parsePreCheckMessage(message);
+  if (parsedPreCheck) {
+    return {
+      domain: "trading",
+      action: "trading_pre_check",
+      type: "query",
+      confidence: 0.95,
+      params: {
+        symbol: parsedPreCheck.symbol,
+        side: parsedPreCheck.side,
+        entryPrice: parsedPreCheck.entryPrice,
+        stopLoss: parsedPreCheck.stopLoss,
+        takeProfit: parsedPreCheck.takeProfit,
+      },
+    };
+  }
 
   if (lower.includes("잔고") || lower.includes("balance")) { // MODIFIED: repair broken string literals and keep deterministic balance fallback.
     return {
@@ -855,6 +875,44 @@ export async function routeIntentMessage(options: RouteIntentOptions): Promise<I
         requiresConfirmation: false,
         response: `🛡 리스크 한도 갱신: 일일 손실 한도 -${state.settings.dailyLossLimitPercent}%`,
       };
+    }
+
+    // MODIFIED: AI 진입 전 점검 어시스턴트
+    if (intent.action === "trading_pre_check") {
+      const symbol = asString(intent.params.symbol, "BTC");
+      const side = asString(intent.params.side, "long") === "short" ? "short" : "long";
+      const entryPrice = asNumber(intent.params.entryPrice, 0);
+      if (entryPrice <= 0) {
+        return {
+          intent,
+          handled: true,
+          requiresConfirmation: false,
+          response: "진입 점검을 위해 진입가가 필요합니다. 예: 'BTC 숏 77000 손절 78500 목표 74000'",
+        };
+      }
+      const stopLossRaw = intent.params.stopLoss;
+      const takeProfitRaw = intent.params.takeProfit;
+      const stopLoss = typeof stopLossRaw === "number" && Number.isFinite(stopLossRaw) ? stopLossRaw : undefined;
+      const takeProfit = typeof takeProfitRaw === "number" && Number.isFinite(takeProfitRaw) ? takeProfitRaw : undefined;
+      try {
+        const result = await runPreCheck({ symbol, side, entryPrice, stopLoss, takeProfit });
+        const formatted = formatPreCheck(result);
+        // data를 생략하여 formatIntentRouteMessage가 JSON preview를 추가하지 않도록 함
+        return {
+          intent,
+          handled: true,
+          requiresConfirmation: false,
+          response: formatted,
+        };
+      } catch (err) {
+        const errMsg = err instanceof Error ? err.message : String(err);
+        return {
+          intent,
+          handled: true,
+          requiresConfirmation: false,
+          response: `진입 점검 실패: ${errMsg}`,
+        };
+      }
     }
 
     if (intent.action === "analysis_indicators" || intent.action === "analysis_rsi" || intent.action === "analysis_macd" || intent.action === "analysis_bollinger") {

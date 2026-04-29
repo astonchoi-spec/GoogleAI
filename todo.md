@@ -83,6 +83,10 @@
 
 | 날짜 | 작업 | 도구 |
 |------|------|------|
+| 2026-04-29 | AI 진입 전 점검 어시스턴트 trading_pre_check (preCheckEngine + intentService) | Claude Code |
+| 2026-04-29 | Portfolio Summary Loading... 무한 표시 수정 (PortfolioSummary + PositionTable) | Claude Code |
+| 2026-04-29 | CLAUDE.md "커밋" 명령어 push 포함으로 수정 | Claude Code |
+| 2026-04-29 | 텔레그램 Google 계정 미연결 근본 원인 수정 (session.ts + telegram-bot.ts) | Claude Code |
 | 2026-04-28 | CLAUDE.md 자동 명령어 섹션 추가 (작업준비/작업정리/커밋) | Claude Code |
 | 2026-04-28 | 텔레그램 trading_ 인텐트 Google 인증 우회 버그 수정 (telegram-bot.ts) | Claude Code |
 | 2026-04-28 | Trading Risk Guard Phase 1 (riskGuard, riskStore, RiskGuardCard, 테스트 11개) | Claude Code |

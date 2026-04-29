@@ -20,6 +20,14 @@
 
 ## 마지막 완료 작업
 
+**2026-04-29 | Claude Code (AI 진입 전 점검 어시스턴트)**
+- 신규: `server/trading/preCheckEngine.ts` — `runPreCheck()`/`formatPreCheck()`/`parsePreCheckMessage()`
+- 수정: `server/intent/intentService.ts` — `trading_pre_check` 인텐트 매칭(confidence 0.95) + 핸들러 추가
+- 입력 패턴: "BTC 숏 77000 손절 78500 목표 74000" → 손익비/포지션 사이즈/RSI 1h·4h/BB/펀딩비/거래량/김프/Risk Guard 한 장 응답
+- 응답: 한국어 텍스트 포맷(JSON 미반환), 판정 ✅/⚠️/🚫
+- 검증: check ✅ / build ✅
+- 잔여: 실제 텔레그램 메시지 운영 검증 필요
+
 **2026-04-29 | Claude Code (Portfolio Summary Loading... 수정)**
 - `client/src/components/trading/PortfolioSummary.tsx`: retry:false 적용, Binance 키 없으면 Binance 카드 숨김, Upbit 키 있으면 KRW잔고+보유코인 표시, 둘 다 없으면 한 줄 안내
 - `client/src/components/trading/PositionTable.tsx`: retry:false 적용, Binance 에러 시 테이블 대신 한 줄 안내

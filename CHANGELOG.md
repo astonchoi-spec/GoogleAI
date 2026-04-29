@@ -5,6 +5,25 @@
 
 ## 2026-04-29
 
+### [Claude Code] AI 진입 전 점검 어시스턴트 (trading_pre_check)
+- **작업**: 텔레그램에서 "BTC 숏 77000 손절 78500 목표 74000" 입력 시 30초 안에 진입 판단에 필요한 정보를 한 장으로 반환
+- **추가 파일**:
+  - `server/trading/preCheckEngine.ts` — `runPreCheck()`, `formatPreCheck()`, `parsePreCheckMessage()`
+    - 손익비, 포지션 사이즈(계좌 2% 리스크), 진입가-현재가 괴리율
+    - RSI 1h/4h, 볼린저밴드 위치 (taEngine 재사용)
+    - Binance 펀딩비, 24h 거래량 변화율(1d 캔들 비교)
+    - 김치프리미엄 (Upbit KRW-XXX vs Binance USDT × 1380)
+    - Risk Guard 상태(오늘 손익, 연속 손실, 잠금)
+    - 최종 판정: ✅ 진입 가능 / ⚠️ 주의(사유) / 🚫 진입 차단(사유)
+    - SL/TP 미지정 시 ±2%/±4% 자동 제안
+- **수정 파일**: `server/intent/intentService.ts`
+  - `IntentAction`에 `trading_pre_check` 추가
+  - `fallbackIntent()` 최상단에 `parsePreCheckMessage()` 매칭 추가 (confidence 0.95)
+  - 핸들러 추가: `runPreCheck()` → `formatPreCheck()` 텍스트 응답, JSON 미반환
+- **데이터 소스**: Binance 공개 API(현재가/펀딩비/거래량/캔들), Upbit 공개 ccxt fetchTicker, 기존 taEngine, riskGuard
+- **검증**: `npm run check` ✅ / `npm run build` ✅
+- **잔여이슈**: 텔레그램 실제 메시지 응답 운영 검증 필요. AI(Gemini) 최종 문구 생성은 미연결(룰 기반 판정만 사용)
+
 ### [Claude Code] Portfolio Summary Loading... 무한 표시 수정
 - **작업**: Binance API 키 없을 때 "Loading..." 무한 표시 → 거래소별 조건부 렌더링으로 교체
 - **원인**: retry 미설정(기본 3회 재시도) + `isError` 미활용으로 Binance 에러 시 UI가 로딩 상태 지속

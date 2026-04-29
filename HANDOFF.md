@@ -20,6 +20,11 @@
 
 ## 마지막 완료 작업
 
+**2026-04-29 | Claude Code (trading_pre_check 라우팅 버그 수정)**
+- `server/intent/intentService.ts`: pre_check confidence 0.95 → 0.98 상향, risk_calculate 트리거에서 "손절" 제거
+- `server/trading/preCheckEngine.ts`: 한글 코인명 → 영문 티커 매핑 추가(비트코인/이더/솔라나/리플/도지/에이다/BNB)
+- 검증: check ✅ / build ✅
+
 **2026-04-29 | Claude Code (AI 진입 전 점검 어시스턴트)**
 - 신규: `server/trading/preCheckEngine.ts` — `runPreCheck()`/`formatPreCheck()`/`parsePreCheckMessage()`
 - 수정: `server/intent/intentService.ts` — `trading_pre_check` 인텐트 매칭(confidence 0.95) + 핸들러 추가

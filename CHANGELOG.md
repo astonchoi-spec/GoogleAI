@@ -5,6 +5,27 @@
 
 ## 2026-04-29
 
+### [Claude Code] trading_pre_check 라우팅 버그 수정
+- **문제**: "BTC 숏 77000 손절 78500 목표 74000" 메시지가 `trading_risk_calculate`로 잘못 라우팅
+- **원인**:
+  1. `trading_risk_calculate` 트리거에 "손절" 키워드가 포함돼 있어, 파서 실패 시 fallback으로 잡힘
+  2. `parsePreCheckMessage()`가 한글 코인명("비트코인" 등)을 인식하지 못함
+  3. `trading_pre_check` confidence 0.95가 동률 경쟁에서 우선순위 명확하지 않음
+- **수정 파일**:
+  - `server/intent/intentService.ts`
+    - `trading_pre_check` 매칭 블록 confidence 0.95 → 0.98로 상향 (파서 매칭 시 무조건 우선)
+    - 매칭 블록 위치는 변경 없음(이미 `fallbackIntent` 최상단), NOTE 주석 추가로 순서 의도 명시
+    - `trading_risk_calculate` 트리거에서 "손절" 키워드 제거 → 이제 "포지션사이징"/"청산가"/"리스크계산"만 매칭
+  - `server/trading/preCheckEngine.ts`
+    - `KOREAN_TICKER_MAP` 추가: 비트코인/이더/솔라나/리플/도지/에이다/BNB 한글명 → 영문 티커
+    - 영문 티커 미발견 시 한글 키워드로 폴백 매칭
+- **매칭 동작**:
+  - "숏/롱/매수/매도 + 숫자 + (손절|목표)" → `trading_pre_check` (confidence 0.98)
+  - "숏/롱 + 숫자만" → `trading_pre_check` (SL/TP 자동 제안)
+  - "포지션사이징"/"청산가"/"리스크계산" 키워드만 → `trading_risk_calculate`
+- **응답**: `formatPreCheck()` 결과 텍스트만 반환, `data` 필드 미포함 → JSON preview 노출 없음
+- **검증**: `npm run check` ✅ / `npm run build` ✅
+
 ### [Claude Code] AI 진입 전 점검 어시스턴트 (trading_pre_check)
 - **작업**: 텔레그램에서 "BTC 숏 77000 손절 78500 목표 74000" 입력 시 30초 안에 진입 판단에 필요한 정보를 한 장으로 반환
 - **추가 파일**:

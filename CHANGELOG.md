@@ -5,6 +5,19 @@
 
 ## 2026-04-29
 
+### [Claude Code] preCheckEngine 시장 데이터 N/A 수정
+- **문제**: 현재가/펀딩비/거래량/김프가 모두 N/A로 표시됨
+- **원인**: `exchangeConnector.getExchange("binance")` 경유 → Binance API 키 미설정 시 전부 실패
+- **수정 파일**: `server/trading/preCheckEngine.ts`
+  - `exchangeConnector` import 제거
+  - `fetchBinanceCandles()`: ccxt → Binance 공개 klines API (`/api/v3/klines`) 직접 fetch로 교체
+  - 현재가/거래량: `/api/v3/ticker/24hr` 직접 fetch
+  - 펀딩비: `/fapi/v1/fundingRate` 직접 fetch
+  - 김프(Upbit): `/v1/ticker` 직접 fetch
+  - 에러 발생 시 영문 스택 대신 "일부 데이터를 가져오지 못했습니다" 한 줄 표시
+- **검증**: `npm run check` ✅ / `npm run build` ✅
+- **잔여이슈**: 없음
+
 ### [Claude Code] trading_pre_check 라우팅 버그 수정
 - **문제**: "BTC 숏 77000 손절 78500 목표 74000" 메시지가 `trading_risk_calculate`로 잘못 라우팅
 - **원인**:

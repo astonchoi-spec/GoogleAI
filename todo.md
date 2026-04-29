@@ -83,6 +83,7 @@
 
 | 날짜 | 작업 | 도구 |
 |------|------|------|
+| 2026-04-29 | preCheckEngine 시장 데이터 N/A 수정 (Binance/Upbit 공개 API 직접 fetch, 에러 메시지 한국어화) | Claude Code |
 | 2026-04-29 | trading_pre_check 라우팅 버그 수정 (손절 키워드 충돌 해소 + 한글 티커 매핑 + confidence 0.98) | Claude Code |
 | 2026-04-29 | AI 진입 전 점검 어시스턴트 trading_pre_check (preCheckEngine + intentService) | Claude Code |
 | 2026-04-29 | Portfolio Summary Loading... 무한 표시 수정 (PortfolioSummary + PositionTable) | Claude Code |

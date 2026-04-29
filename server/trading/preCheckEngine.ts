@@ -1,4 +1,3 @@
-import { exchangeConnector } from "../exchanges/exchangeConnector.ts";
 import { taEngine, type OhlcvCandle } from "./technicalAnalysis.ts";
 import { riskGuard } from "./riskGuard.ts";
 
@@ -65,17 +64,20 @@ function safeNumber(value: unknown): number | null {
 }
 
 async function fetchBinanceCandles(
-  symbol: string,
-  timeframe: string,
+  baseAsset: string,
+  interval: string,
   limit: number,
 ): Promise<OhlcvCandle[]> {
   try {
-    const candles = await exchangeConnector.getCandles("binance", symbol, timeframe, limit);
-    return candles
-      .filter((c): c is [number, number, number, number, number, number] =>
-        Array.isArray(c) && c.length >= 6 && c.slice(0, 6).every((v) => typeof v === "number"),
-      )
-      .map((c) => c.slice(0, 6) as [number, number, number, number, number, number]);
+    const res = await fetch(
+      `https://api.binance.com/api/v3/klines?symbol=${baseAsset}USDT&interval=${interval}&limit=${limit}`,
+    );
+    if (!res.ok) return [];
+    const data = (await res.json()) as unknown[][];
+    return data.map(
+      (c) =>
+        [Number(c[0]), Number(c[1]), Number(c[2]), Number(c[3]), Number(c[4]), Number(c[5])] as OhlcvCandle,
+    );
   } catch {
     return [];
   }
@@ -105,28 +107,39 @@ export async function runPreCheck(input: PreCheckInput): Promise<PreCheckResult>
   const warnings: string[] = [];
   const notes: string[] = [];
 
-  // 1. Binance 현재가/펀딩비/24h 거래량
+  // 1. Binance 현재가/24h 거래량 (공개 API, API 키 불필요)
   let currentPrice: number | null = null;
   let fundingRatePercent: number | null = null;
   let quoteVolume24h: number | null = null;
+  let marketDataError = false;
   try {
-    const ticker = await exchangeConnector.getExchange("binance").fetchTicker(binanceSymbol);
-    currentPrice = safeNumber(ticker.last ?? ticker.close);
-    quoteVolume24h = safeNumber(ticker.quoteVolume ?? ticker.baseVolume);
-  } catch (err) {
-    notes.push(`현재가 조회 실패: ${(err as Error).message}`);
+    const res = await fetch(`https://api.binance.com/api/v3/ticker/24hr?symbol=${baseAsset}USDT`);
+    if (res.ok) {
+      const data = (await res.json()) as Record<string, unknown>;
+      currentPrice = safeNumber(data.lastPrice);
+      quoteVolume24h = safeNumber(data.quoteVolume);
+    } else {
+      marketDataError = true;
+    }
+  } catch {
+    marketDataError = true;
   }
   try {
-    const funding = await exchangeConnector.getFundingRate("binance", binanceSymbol);
-    const rate = safeNumber((funding as { fundingRate?: unknown }).fundingRate);
-    if (rate !== null) fundingRatePercent = rate * 100;
+    const res = await fetch(`https://fapi.binance.com/fapi/v1/fundingRate?symbol=${baseAsset}USDT&limit=1`);
+    if (res.ok) {
+      const data = (await res.json()) as unknown[];
+      if (Array.isArray(data) && data.length > 0) {
+        const rate = safeNumber((data[0] as Record<string, unknown>).fundingRate);
+        if (rate !== null) fundingRatePercent = rate * 100;
+      }
+    }
   } catch {
     // 일부 심볼은 funding 미지원 — 무시
   }
 
   // 2. 1d 캔들로 거래량 변화율
   let volumeChangePercent: number | null = null;
-  const dailyCandles = await fetchBinanceCandles(binanceSymbol, "1d", 3);
+  const dailyCandles = await fetchBinanceCandles(baseAsset, "1d", 3);
   if (dailyCandles.length >= 2) {
     const prev = dailyCandles[dailyCandles.length - 2];
     const today = dailyCandles[dailyCandles.length - 1];
@@ -138,8 +151,8 @@ export async function runPreCheck(input: PreCheckInput): Promise<PreCheckResult>
   }
 
   // 3. RSI 1h / 4h, 볼린저 (1h 기준)
-  const candles1h = await fetchBinanceCandles(binanceSymbol, "1h", 200);
-  const candles4h = await fetchBinanceCandles(binanceSymbol, "4h", 200);
+  const candles1h = await fetchBinanceCandles(baseAsset, "1h", 200);
+  const candles4h = await fetchBinanceCandles(baseAsset, "4h", 200);
   let rsi1h: number | null = null;
   let rsi4h: number | null = null;
   let bbUpper: number | null = null;
@@ -160,18 +173,25 @@ export async function runPreCheck(input: PreCheckInput): Promise<PreCheckResult>
     ? classifyBbPosition(currentPrice, bbUpper, bbLower, bbMiddle)
     : null;
 
-  // 4. 김치프리미엄 (Upbit KRW-BASE)
+  // 4. 김치프리미엄 (Upbit 공개 API)
   let kimchiPremiumPercent: number | null = null;
   try {
-    const upbitTicker = await exchangeConnector.getExchange("upbit").fetchTicker(upbitSymbol);
-    const upbitPrice = safeNumber(upbitTicker.last ?? upbitTicker.close);
-    if (upbitPrice !== null && currentPrice !== null && currentPrice > 0) {
-      const binanceKrw = currentPrice * KIMCHI_FX_RATE;
-      kimchiPremiumPercent = ((upbitPrice - binanceKrw) / binanceKrw) * 100;
+    const res = await fetch(`https://api.upbit.com/v1/ticker?markets=${upbitSymbol}`);
+    if (res.ok) {
+      const data = (await res.json()) as unknown[];
+      if (Array.isArray(data) && data.length > 0) {
+        const upbitPrice = safeNumber((data[0] as Record<string, unknown>).trade_price);
+        if (upbitPrice !== null && currentPrice !== null && currentPrice > 0) {
+          const binanceKrw = currentPrice * KIMCHI_FX_RATE;
+          kimchiPremiumPercent = ((upbitPrice - binanceKrw) / binanceKrw) * 100;
+        }
+      }
     }
   } catch {
     // 무시 — 김프 조회 실패는 차단 사유 아님
   }
+
+  if (marketDataError) notes.push("일부 데이터를 가져오지 못했습니다");
 
   // 5. Risk Guard 상태
   const guard = await riskGuard.getStatus();

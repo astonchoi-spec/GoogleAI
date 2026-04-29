@@ -8,7 +8,7 @@
 | 항목 | 상태 |
 |------|------|
 | 서버 | 정상 기동 (포트 4000) |
-| 빌드 | `npm run check` ✅ / `npm run build` ✅ |
+| 빌드 | `npm run check` ✅ / `npm run build` ✅ (2026-04-29) |
 | 테스트 | 92 passed, 7 skipped |
 | 브랜치 | `codex-google-workspace-expansion` |
 | Redis | 선택적 (없어도 부팅됨, BullMQ lazy init) |
@@ -19,6 +19,12 @@
 ---
 
 ## 마지막 완료 작업
+
+**2026-04-29 | Claude Code (preCheckEngine 시장 데이터 N/A 수정)**
+- `server/trading/preCheckEngine.ts`: Binance/Upbit ccxt 의존 제거 → 공개 REST API 직접 fetch로 교체
+- 현재가(`/api/v3/ticker/24hr`), 펀딩비(`fapi/v1/fundingRate`), 캔들(`/api/v3/klines`), 김프(`upbit /v1/ticker`)
+- 에러 시 에러 메시지 대신 "일부 데이터를 가져오지 못했습니다" 한 줄 표시
+- 검증: check ✅ / build ✅
 
 **2026-04-29 | Claude Code (trading_pre_check 라우팅 버그 수정)**
 - `server/intent/intentService.ts`: pre_check confidence 0.95 → 0.98 상향, risk_calculate 트리거에서 "손절" 제거

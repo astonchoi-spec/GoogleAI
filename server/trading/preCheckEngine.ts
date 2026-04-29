@@ -406,6 +406,21 @@ const TICKER_RE = /\b([A-Z]{2,10})\b/;
 const SIDE_LONG_RE = /(롱|매수|long|buy)/i;
 const SIDE_SHORT_RE = /(숏|매도|short|sell)/i;
 
+// 한글 코인명 → 영문 티커
+const KOREAN_TICKER_MAP: Record<string, string> = {
+  "비트코인": "BTC",
+  "비트": "BTC",
+  "이더리움": "ETH",
+  "이더": "ETH",
+  "솔라나": "SOL",
+  "리플": "XRP",
+  "도지코인": "DOGE",
+  "도지": "DOGE",
+  "에이다": "ADA",
+  "바이낸스코인": "BNB",
+  "비엔비": "BNB",
+};
+
 export type ParsedPreCheck = {
   symbol: string;
   side: PreCheckSide;
@@ -416,11 +431,20 @@ export type ParsedPreCheck = {
 
 export function parsePreCheckMessage(message: string): ParsedPreCheck {
   const upper = message.toUpperCase();
+  let ticker: string | null = null;
   const tickerMatch = upper.match(TICKER_RE);
-  if (!tickerMatch) return null;
-  const ticker = tickerMatch[1];
-  // 흔한 noise 제외
-  if (["RSI", "MACD", "BB", "ATR", "PF", "TA", "LG", "SK"].includes(ticker)) return null;
+  if (tickerMatch && !["RSI", "MACD", "BB", "ATR", "PF", "TA", "LG", "SK"].includes(tickerMatch[1])) {
+    ticker = tickerMatch[1];
+  }
+  if (!ticker) {
+    for (const [kor, eng] of Object.entries(KOREAN_TICKER_MAP)) {
+      if (message.includes(kor)) {
+        ticker = eng;
+        break;
+      }
+    }
+  }
+  if (!ticker) return null;
 
   let side: PreCheckSide | null = null;
   if (SIDE_SHORT_RE.test(message)) side = "short";

@@ -101,13 +101,14 @@ function fallbackIntent(message: string): IntentResult {
   const lower = message.toLowerCase();
 
   // MODIFIED: trading_pre_check — "BTC 숏 77000 손절 78500 목표 74000" 형태 매칭
+  // NOTE: 이 블록은 반드시 trading_risk_calculate("손절" 트리거)보다 먼저 실행되어야 한다.
   const parsedPreCheck = parsePreCheckMessage(message);
   if (parsedPreCheck) {
     return {
       domain: "trading",
       action: "trading_pre_check",
       type: "query",
-      confidence: 0.95,
+      confidence: 0.98,
       params: {
         symbol: parsedPreCheck.symbol,
         side: parsedPreCheck.side,
@@ -250,9 +251,10 @@ function fallbackIntent(message: string): IntentResult {
   // MODIFIED: 리스크 계산 인텐트는 명시적 키워드(포지션 사이징/손절/청산가)가 있을 때만 매칭.
   // 단순 "리스크"만 포함된 메시지는 위의 trading_risk_status 등에서 이미 처리되었거나,
   // 그렇지 않다면 fallback으로 trading_risk_status를 반환해 의도치 않은 계산기를 막는다.
+  // MODIFIED: "손절"은 trading_pre_check 키워드이므로 risk_calculate 트리거에서 제거.
+  // risk_calculate는 명시적 키워드("포지션사이징"/"청산가"/"리스크계산")가 있을 때만 매칭.
   if (
     compact.includes("포지션사이징") ||
-    lower.includes("손절") ||
     lower.includes("청산가") ||
     compact.includes("리스크계산")
   ) {

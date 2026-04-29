@@ -3,6 +3,24 @@
 
 ---
 
+## 2026-04-29
+
+### [Claude Code] CLAUDE.md "커밋" 명령어 규칙 수정
+- **작업**: "커밋" 자동 명령어에서 "푸시는 하지 않음" → "커밋 후 반드시 git push origin 현재브랜치 실행"으로 교체
+- **수정 파일**: `CLAUDE.md`
+- **검증**: 문서 변경만, 빌드 불필요
+- **잔여이슈**: 없음
+
+### [Claude Code] 텔레그램 Google 계정 미연결 에러 근본 수정
+- **작업**: 웹에서는 Google 연결되어 있으나 텔레그램에서만 미연결로 판단되는 버그 수정
+- **원인**: 웹 로그인 시 토큰이 DB userId(`"4"`) 키로 저장되는데, 텔레그램은 고정값 `"1"`, `"anonymous"` 만 체크하여 항상 미연결 판단
+- **수정 파일**:
+  - `server/llm/session.ts` — `getAnyAuthenticatedGoogleUserId()` 공개 메서드 추가: `google-tokens.json`에 저장된 모든 userId 스캔, 유효한 토큰을 가진 첫 번째 userId 반환
+  - `server/llm/telegram-bot.ts` — `getConnectedGoogleUserId()`: 디스크 스캔 우선, 고정 userId는 폴백으로 변경
+  - `server/llm/telegram-bot.ts` — `setupMessageHandler()`: `isTradingIntent` 조건 → `isGoogleIntent` 조건으로 교체. `google_` 인텐트만 `handleWorkspaceCommand()` 호출, 나머지(trading_/analysis_/chat)는 Google 인증 체크 없이 `routeIntentMessage`로 직행
+- **검증**: `npm run check` ✅ / `npm run build` ✅
+- **잔여이슈**: 텔레그램에서 Google 명령("메일 확인", "캘린더 일정 추가") 실제 응답 운영 검증 필요
+
 ## 2026-04-28
 
 ### [Claude Code] CLAUDE.md 자동 명령어 섹션 추가

@@ -1,5 +1,5 @@
 # HANDOFF.md — 에스턴 워크스테이션
-> 업데이트: 2026-04-28 | 브랜치: codex-google-workspace-expansion
+> 업데이트: 2026-04-29 | 브랜치: codex-google-workspace-expansion
 
 ---
 
@@ -20,13 +20,21 @@
 
 ## 마지막 완료 작업
 
+**2026-04-29 | Claude Code (텔레그램 Google 미연결 근본 수정)**
+- **원인**: 웹 로그인 시 토큰이 DB userId(`"4"`) 키로 저장, 텔레그램은 `"1"`/`"anonymous"` 만 체크 → 항상 미연결
+- `server/llm/session.ts`: `getAnyAuthenticatedGoogleUserId()` 추가 (디스크 전수 스캔)
+- `server/llm/telegram-bot.ts`: `getConnectedGoogleUserId()` — 디스크 스캔 우선, 고정 ID는 폴백
+- `server/llm/telegram-bot.ts`: `setupMessageHandler()` — `google_` 인텐트만 `handleWorkspaceCommand()` 호출, 나머지는 직행
+- 검증: check ✅ / build ✅
+
+**2026-04-29 | Claude Code (CLAUDE.md "커밋" 명령어 수정)**
+- "커밋" 자동 명령어에 git push 포함으로 수정
+
 **2026-04-28 | Claude Code (CLAUDE.md 자동 명령어 추가)**
 - `CLAUDE.md`: "작업준비" / "작업정리" / "커밋" 자동 명령어 섹션 추가
-- 커밋 예정 (문서 변경만)
 
 **2026-04-28 | Claude Code (Telegram trading_ 인텐트 Google 인증 우회 버그 수정)**
 - `server/llm/telegram-bot.ts`: `classifyIntent()` 선행 호출 추가
-- `trading_*` / `analysis_*` 인텐트는 `handleWorkspaceCommand()` 건너뜀 → Google 인증 체크 없이 직접 처리
 - 검증: check/build 모두 통과
 
 **2026-04-28 | Claude Code (Trading Risk Guard Phase 1)**
@@ -89,6 +97,7 @@
 | 이슈 | 심각도 | 상태 |
 |------|--------|------|
 | Yahoo Finance 브라우저 CORS 차단 가능성 | P0 | 미해결 |
+| 텔레그램 Google 명령 실제 응답 운영 검증 필요 | P0 | 코드 수정 완료, 검증 대기 |
 | Gate.io `trading.getBalance` 400 에러 | P1 | 미해결 (API 키 확인 필요) |
 | Gemini Grounding 소스 UI 미구현 | P1 | 미해결 |
 | 홈 KPI 카드 mock 데이터 | P1 | 미해결 |

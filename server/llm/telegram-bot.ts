@@ -361,6 +361,11 @@ Return ONLY the JSON object, no other text.`;
   }
 
   private async getConnectedGoogleUserId(): Promise<string | null> {
+    // First: scan disk store for any userId that has valid tokens (covers web-login with any DB userId)
+    const diskUserId = await sessionManager.getAnyAuthenticatedGoogleUserId();
+    if (diskUserId) return diskUserId;
+
+    // Fallback: check well-known fixed IDs
     for (const userId of [GOOGLE_USER_ID, FALLBACK_GOOGLE_USER_ID]) {
       if (await googleAuthManager.isAuthenticated(userId)) {
         return userId;
@@ -404,15 +409,14 @@ Return ONLY the JSON object, no other text.`;
           console.warn("[Telegram] DB unavailable, skipping message persistence:", (dbErr as Error).message);
         }
 
-        // 인텐트를 먼저 분류해서 trading_* / analysis_* 계열은 Google 인증 체크를 건너뜀
+        // 인텐트를 먼저 분류해서 google_ 계열만 Workspace 핸들러(Google 인증 체크 포함)로 라우팅
+        // trading_* / analysis_* / chat 등은 Google 인증 없이 바로 routeIntentMessage로 처리
         const preIntent = await classifyIntent(userMessage);
-        const isTradingIntent =
-          preIntent.action.startsWith("trading_") || preIntent.action.startsWith("analysis_");
+        const isGoogleIntent = preIntent.action.startsWith("google_");
 
-        // Google Workspace 명령은 google_ 계열이거나 분류 실패(chat) 일 때만 체크
-        const workspaceResult = isTradingIntent
-          ? null
-          : await this.handleWorkspaceCommand(userMessage, ctx.chat?.id ?? 0);
+        const workspaceResult = isGoogleIntent
+          ? await this.handleWorkspaceCommand(userMessage, ctx.chat?.id ?? 0)
+          : null;
         if (workspaceResult !== null) {
           const sentMessage = await ctx.reply(workspaceResult, {
             reply_parameters: { message_id: ctx.message.message_id },

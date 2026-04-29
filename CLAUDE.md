@@ -28,7 +28,7 @@ TODO.md, CHANGELOG.md, HANDOFF.md, CLAUDE.md를 읽고 현재 상태 요약.
 5. 결과 요약 출력
 
 ### "커밋"
-작업정리 수행 후, 변경분을 논리적 단위로 나눠 커밋 (feat/fix/docs 프리픽스 사용). 푸시는 하지 않음.
+작업정리 수행 후, 변경분을 논리적 단위로 나눠 커밋 (feat/fix/docs 프리픽스 사용). 커밋 후 반드시 git push origin 현재브랜치 실행.
 
 ---
 

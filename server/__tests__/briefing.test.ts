@@ -220,6 +220,56 @@ describe("morning briefing", () => {
     expect(text).toContain("더보기는 웹 대시보드에서 확인할 수 있습니다.");
   });
 
+  it("formats wiki digest once per memo with inline categories", () => {
+    const text = formatMorningBriefing({
+      dateKey: "2026-05-01",
+      market: {
+        symbol: "BTC",
+        currentPrice: 100000,
+        priceChangePercent: 1.23,
+        rsi1h: 55.5,
+        rsi4h: 61.2,
+        fundingRatePercent: 0.012,
+        kimchiPremiumPercent: 2.5,
+        volume24h: 123456789,
+        notes: [],
+      },
+      dart: {
+        startDate: "2026-04-30",
+        endDate: "2026-05-01",
+        items: [],
+      },
+      wiki: {
+        items: [
+          {
+            title: "신논현 매물 검토",
+            bodyPreview: "동일 메모가 카테고리별로 중복되면 안 됩니다.",
+            categories: ["realestate", "seoul"],
+            date: "2026-04-30T08:00:00.000Z",
+          },
+          {
+            title: "2026-04-30 briefing",
+            bodyPreview: "이전 브리핑 본문",
+            categories: ["briefing"],
+            date: "2026-04-30T09:00:00.000Z",
+          },
+        ],
+      },
+      risk: {
+        dailyPnlPercent: -1.2,
+        dailyLossLimitPercent: 3,
+        consecutiveLosses: 1,
+        consecutiveLossBlock: 3,
+        locked: false,
+      },
+    });
+
+    expect(text).toContain("- 신논현 매물 검토 #realestate #seoul");
+    expect(text.match(/신논현 매물 검토/g)).toHaveLength(1);
+    expect(text).not.toContain("#briefing");
+    expect(text).not.toContain("이전 브리핑 본문");
+  });
+
   it("builds and archives a briefing without network side effects", async () => {
     const data = await buildMorningBriefingData(new Date("2026-04-30T00:00:00+09:00"));
     expect(data.market.symbol).toBe("BTC");

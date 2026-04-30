@@ -35,6 +35,49 @@ function parseFrontmatter(content: string): { meta: Record<string, unknown>; bod
   return { meta, body: match[2].trim() };
 }
 
+function parseStringArray(value: unknown): string[] {
+  if (Array.isArray(value)) {
+    return value.filter((item): item is string => typeof item === "string");
+  }
+
+  if (typeof value !== "string") {
+    return [];
+  }
+
+  return value
+    .replace(/^\[/, "")
+    .replace(/\]$/, "")
+    .split(",")
+    .map((item) => item.trim())
+    .filter(Boolean);
+}
+
+function getCategories(meta: Record<string, unknown>): string[] {
+  const categories = parseStringArray(meta.categories);
+  if (categories.length > 0) {
+    return categories;
+  }
+
+  // Backward compatibility for older briefing archives written with `category`.
+  return parseStringArray(meta.category);
+}
+
+async function collectMarkdownFiles(dirPath: string, files: string[]): Promise<void> {
+  try {
+    const entries = await fs.readdir(dirPath, { withFileTypes: true });
+    for (const entry of entries) {
+      const entryPath = path.join(dirPath, entry.name);
+      if (entry.isDirectory()) {
+        await collectMarkdownFiles(entryPath, files);
+      } else if (entry.isFile() && entry.name.endsWith(".md")) {
+        files.push(entryPath);
+      }
+    }
+  } catch (e) {
+    console.error("[wikiStore] recursive readdir error:", dirPath, e);
+  }
+}
+
 // 윈도우 파일명 금지문자 제거 + 공백→언더스코어 + 30자 컷
 function toSlug(title: string): string {
   return title
@@ -147,24 +190,7 @@ export async function searchWiki(
   const limit = options.limit ?? 10;
   const allFiles: string[] = [];
 
-  try {
-    const dayDirs = await fs.readdir(root, { withFileTypes: true });
-    for (const d of dayDirs) {
-      if (!d.isDirectory()) continue;
-      const dayPath = path.join(root, d.name);
-      try {
-        const files = await fs.readdir(dayPath);
-        for (const f of files) {
-          if (f.endsWith(".md")) allFiles.push(path.join(dayPath, f));
-        }
-      } catch (e) {
-        console.error("[wikiStore] readdir day error:", e);
-      }
-    }
-  } catch (e) {
-    console.error("[wikiStore] readdir root error:", e);
-    return { results: [], total: 0 };
-  }
+  await collectMarkdownFiles(root, allFiles);
 
   const total = allFiles.length;
   const matches: WikiSearchResult[] = [];
@@ -174,9 +200,7 @@ export async function searchWiki(
       const content = await fs.readFile(filePath, "utf-8");
       const { meta, body } = parseFrontmatter(content);
 
-      const categories = Array.isArray(meta.categories)
-        ? (meta.categories as string[])
-        : [];
+      const categories = getCategories(meta);
 
       if (options.categoryFilter) {
         const cf = options.categoryFilter.toLowerCase();
@@ -186,7 +210,9 @@ export async function searchWiki(
       const title = typeof meta.title === "string" ? meta.title : "";
       const titleLower = title.toLowerCase();
       const bodyLower = body.toLowerCase();
-      if (!titleLower.includes(q) && !bodyLower.includes(q)) continue;
+      const source = typeof meta.source === "string" ? meta.source : "";
+      const searchableMeta = [categories.join(" "), source].join(" ").toLowerCase();
+      if (!titleLower.includes(q) && !bodyLower.includes(q) && !searchableMeta.includes(q)) continue;
 
       matches.push({
         entry: {
@@ -194,7 +220,7 @@ export async function searchWiki(
           date: typeof meta.date === "string" ? meta.date : "",
           title,
           categories,
-          source: typeof meta.source === "string" ? meta.source : "",
+          source,
           body: body.slice(0, 200),
           filePath,
         },

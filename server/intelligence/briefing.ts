@@ -9,7 +9,6 @@ import {
   type MarketSnapshot,
   type RiskGuardSnapshot,
   type WikiDigest,
-  type WikiDigestItem,
 } from "../_core/briefingSources.ts";
 
 const TELEGRAM_MESSAGE_LIMIT = 4096;
@@ -71,33 +70,6 @@ function formatNumber(value: number | null, digits = 1): string {
   return value.toFixed(digits);
 }
 
-function trimPreview(text: string, maxLength = 84): string {
-  const normalized = text.replace(/\s+/g, " ").trim();
-  if (normalized.length <= maxLength) {
-    return normalized;
-  }
-  return `${normalized.slice(0, maxLength - 1)}…`;
-}
-
-function groupWikiItems(items: WikiDigestItem[]): Array<{ category: string; items: WikiDigestItem[] }> {
-  const grouped = new Map<string, WikiDigestItem[]>();
-  for (const item of items) {
-    const categories = item.categories.length > 0 ? item.categories : ["uncategorized"];
-    for (const category of categories) {
-      const list = grouped.get(category) ?? [];
-      list.push(item);
-      grouped.set(category, list);
-    }
-  }
-
-  return [...grouped.entries()]
-    .map(([category, groupedItems]) => ({
-      category,
-      items: groupedItems.sort((a, b) => b.date.localeCompare(a.date)).slice(0, 2),
-    }))
-    .sort((a, b) => b.items.length - a.items.length || a.category.localeCompare(b.category));
-}
-
 function formatMarketSection(market: MarketSnapshot): string[] {
   const lines = [
     "## 📈 시장 현황",
@@ -117,7 +89,7 @@ function formatMarketSection(market: MarketSnapshot): string[] {
 }
 
 function formatDartSection(dart: DartDigest): string[] {
-  const lines = ["## 📢 DART 공시"];
+  const lines = ["## 🏢 DART 공시"];
   if (dart.items.length === 0) {
     lines.push("- 선별된 공시가 없습니다.");
     return lines;
@@ -131,31 +103,32 @@ function formatDartSection(dart: DartDigest): string[] {
   return lines;
 }
 
+function isBriefingCategory(category: string): boolean {
+  return category.toLowerCase() === "briefing";
+}
+
 function formatWikiSection(wiki: WikiDigest): string[] | null {
-  if (wiki.items.length === 0) {
+  const items = wiki.items
+    .filter((item) => !item.categories.some(isBriefingCategory))
+    .sort((a, b) => b.date.localeCompare(a.date));
+
+  if (items.length === 0) {
     return null;
   }
 
   const lines = ["## 🗂️ 어제 저장된 위키 메모"];
-  const groups = groupWikiItems(wiki.items).slice(0, 4);
-  let rendered = 0;
+  const renderedItems = items.slice(0, 5);
 
-  for (const group of groups) {
-    lines.push(`#${group.category}`);
-    for (const item of group.items) {
-      if (rendered >= 5) {
-        break;
-      }
-      lines.push(`- ${item.title} / ${trimPreview(item.bodyPreview)}`);
-      rendered += 1;
-    }
-    if (rendered >= 5) {
-      break;
-    }
+  for (const item of renderedItems) {
+    const categoryTags = item.categories
+      .filter((category) => !isBriefingCategory(category))
+      .map((category) => `#${category}`)
+      .join(" ");
+    lines.push(`- ${item.title}${categoryTags ? ` ${categoryTags}` : ""}`);
   }
 
-  if (wiki.items.length > rendered) {
-    lines.push(`- 외 ${wiki.items.length - rendered}건`);
+  if (items.length > renderedItems.length) {
+    lines.push(`- 외 ${items.length - renderedItems.length}건`);
   }
 
   return lines;
@@ -255,11 +228,13 @@ async function sendTelegramBriefing(text: string): Promise<void> {
   }
 }
 
-export async function executeMorningBriefing(options: {
-  now?: Date;
-  trigger?: "cron" | "manual";
-  deliver?: boolean;
-} = {}): Promise<MorningBriefingRunResult> {
+export async function executeMorningBriefing(
+  options: {
+    now?: Date;
+    trigger?: "cron" | "manual";
+    deliver?: boolean;
+  } = {}
+): Promise<MorningBriefingRunResult> {
   const now = options.now ?? new Date();
   const trigger = options.trigger ?? "cron";
   const deliver = options.deliver ?? true;

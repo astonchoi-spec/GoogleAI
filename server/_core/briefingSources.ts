@@ -261,6 +261,10 @@ export async function collectWikiDigest(now: Date = new Date()): Promise<WikiDig
     const items = allEntries.results
       .filter((result) => {
         if (!result.entry.date) return false;
+        const categories = result.entry.categories.map((category) => category.toLowerCase());
+        if (categories.includes("briefing") || result.entry.source === "morning-briefing") {
+          return false;
+        }
         return formatKstDateKey(new Date(result.entry.date)) === targetDate;
       })
       .map((result) => ({
@@ -357,7 +361,7 @@ export async function saveBriefingArchive(input: BriefingArchiveInput): Promise<
     await fs.mkdir(dailyDir, { recursive: true });
 
     const filePath = path.join(dailyDir, `${input.dateKey}-briefing.md`);
-    const content = `---\ndate: ${input.dateKey}\ncategory: [briefing]\nsource: morning-briefing\ntrigger: ${input.trigger}\n---\n\n${input.text}\n`;
+    const content = `---\nid: ${input.dateKey}-briefing\ndate: ${input.dateKey}\ntitle: ${input.dateKey} briefing\ncategories: [briefing]\nsource: morning-briefing\ntrigger: ${input.trigger}\n---\n\n${input.text}\n`;
     await fs.writeFile(filePath, content, "utf-8");
     return filePath;
   } catch (error) {

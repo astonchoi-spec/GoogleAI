@@ -155,6 +155,33 @@ describe("searchWiki", () => {
   });
 });
 
+describe("searchWiki daily archive regression", () => {
+  it("finds briefing files under daily subdirectories", async () => {
+    const dailyDir = path.join(tmpDir, "daily");
+    await fs.mkdir(dailyDir, { recursive: true });
+    await fs.writeFile(
+      path.join(dailyDir, "2026-04-30-briefing.md"),
+      [
+        "---",
+        "date: 2026-04-30",
+        "title: 2026-04-30 briefing",
+        "category: [briefing]",
+        "source: morning-briefing",
+        "trigger: manual",
+        "---",
+        "",
+        "모닝 브리핑 본문",
+      ].join("\n"),
+      "utf-8"
+    );
+
+    const { results } = await searchWiki({ query: "briefing" });
+
+    expect(results.some((result) => result.entry.filePath.includes(`${path.sep}daily${path.sep}`))).toBe(true);
+    expect(results.some((result) => result.entry.categories.includes("briefing"))).toBe(true);
+  });
+});
+
 // ---------------------------------------------------------------------------
 // intent/wiki: matchWikiSave / matchWikiSearch
 // ---------------------------------------------------------------------------

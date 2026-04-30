@@ -55,7 +55,7 @@ export function matchWikiSave(message: string): IntentResult | null {
   const m = message.match(/^위키\s*저장\s+([\s\S]+)/);
   if (!m) return null;
   return {
-    domain: "chat",
+    domain: "wiki",
     action: "wiki_save" as IntentResult["action"],
     type: "query",
     confidence: 0.95,
@@ -67,7 +67,7 @@ export function matchWikiSearch(message: string): IntentResult | null {
   const m = message.match(/^위키\s*검색\s+([\s\S]+)/);
   if (!m) return null;
   return {
-    domain: "chat",
+    domain: "wiki",
     action: "wiki_search" as IntentResult["action"],
     type: "query",
     confidence: 0.95,

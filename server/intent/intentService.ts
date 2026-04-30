@@ -24,7 +24,7 @@ import SheetsConnector from "../google/sheets.ts";
 import DriveConnector from "../google/drive.ts";
 import GmailConnector from "../google/gmail.ts";
 
-export type IntentDomain = "trading" | "realestate" | "finance" | "google" | "chat";
+export type IntentDomain = "trading" | "realestate" | "finance" | "google" | "wiki" | "chat";
 export type IntentType = "query" | "execute";
 export type IntentAction =
   | "trading_balance"

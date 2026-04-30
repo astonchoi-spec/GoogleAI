@@ -132,6 +132,30 @@ client/src/components/UnifiedChatInterface.tsx  → 메인 AI 채팅 UI
 
 ## 5. Codex-specific Rules
 
+### "현재작업"
+1. git fetch origin 실행
+2. git log HEAD..origin/현재브랜치 --oneline 으로 원격 변경 확인. 변경 있으면 git pull --rebase 실행.
+3. AGENTS.md, TODO.md, CHANGELOG.md, HANDOFF.md, docs/PROJECT_BRIEFING.md를 읽어 현재 상태 파악.
+4. CURRENT_TASK.md 읽기. 상태가 "없음"이면 "CURRENT_TASK.md에 작업 지시 없음" 보고하고 종료.
+5. CURRENT_TASK.md 지시서대로만 작업. 범위 밖 작업 절대 금지.
+6. 자율 결정 원칙 적용 (아래 섹션 참조).
+7. 완료 후 npm run check && npm run build 실행.
+8. 완료된 지시서를 docs/tasks/YYYY-MM-DD-{slug}.md 로 아카이브.
+9. CURRENT_TASK.md를 빈 템플릿으로 초기화 (상태: 없음).
+10. TODO.md, CHANGELOG.md, HANDOFF.md 갱신.
+11. 논리 단위로 커밋 + git push origin 현재브랜치.
+12. 결과 요약 보고.
+
+### "커밋"
+작업정리 수행 후, 변경분을 논리 단위(feat/fix/docs)로 커밋. 커밋 후 반드시 git push origin 현재브랜치 실행.
+
+## 자율 결정 원칙
+구현 디테일(슬러그 규칙, 정규식, 변수명, 에러 문구, 정렬 순서, 파일 포맷 세부사항, frontmatter 필드, 충돌 처리 방식, 카테고리 매핑 초기 테이블 등)은 AI가 자율 결정한다. 회장에게 묻지 않는다.
+
+회장에게 묻는 것은 전략 방향(저장 위치, 인터페이스, 작업 범위, 우선순위)뿐이다. 회장 시간을 디테일에 쓰지 않는다.
+
+판단이 갈리는 디테일은 일반적인 베스트 프랙티스를 따른다. 결정 근거를 작업 보고서에 짧게 남긴다.
+
 ### 작업 시작 전 (충돌 방지 의무)
 
 1. `git fetch origin` 실행

@@ -28,6 +28,12 @@
 
 ## P1 Core Modules (이번 주 처리)
 
+- [ ] **intentService.ts 도메인별 분리** (CLAUDE.md §9)
+  - 현재 900줄+ — 단일 파일 500줄 상한 위반
+  - 분리 대상: `intent/trading.ts`, `intent/google.ts`, `intent/general.ts`
+  - `IntentAction` 유니온 타입은 `intent/types.ts`로 이동
+  - `parseXxxMessage()`/`formatXxx()`는 해당 도메인 모듈로 이동
+
 - [ ] **Gemini Grounding 소스/인용 UI**
   - 임시 citation 텍스트를 구조화된 메시지 메타데이터로 이동
   - 답변 하단에 소스 칩/카드 렌더링

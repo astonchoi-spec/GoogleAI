@@ -1,4 +1,4 @@
-import { describe, expect, it, vi, beforeEach } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
   mockCollectMarketSnapshot: vi.fn(),
@@ -6,6 +6,7 @@ const mocks = vi.hoisted(() => ({
   mockCollectWikiDigest: vi.fn(),
   mockCollectRiskGuardSnapshot: vi.fn(),
   mockSaveBriefingArchive: vi.fn(),
+  mockParseJson: vi.fn(),
 }));
 
 vi.mock("../_core/briefingSources.ts", () => ({
@@ -16,12 +17,109 @@ vi.mock("../_core/briefingSources.ts", () => ({
   saveBriefingArchive: mocks.mockSaveBriefingArchive,
 }));
 
+vi.mock("../_core/llmAdapter.ts", () => ({
+  llmAdapter: {
+    parseJson: mocks.mockParseJson,
+    chat: vi.fn(),
+  },
+}));
+
+vi.mock("../exchanges/exchangeConnector.ts", () => ({
+  exchangeConnector: {
+    getBalance: vi.fn(),
+    getPositions: vi.fn(),
+    getCandles: vi.fn(),
+  },
+}));
+
+vi.mock("../exchanges/gateioConnector.ts", () => ({
+  gateioConnector: {
+    getBalance: vi.fn(),
+    getPositions: vi.fn(),
+  },
+}));
+
+vi.mock("../exchanges/kiwoomConnector.ts", () => ({
+  kiwoomConnector: {
+    getBalance: vi.fn(),
+  },
+}));
+
+vi.mock("../trading/technicalAnalysis.ts", () => ({
+  taEngine: {
+    analyzeSymbol: vi.fn(),
+    generateBriefing: vi.fn(),
+  },
+}));
+
+vi.mock("../trading/preCheckEngine.ts", () => ({
+  parsePreCheckMessage: vi.fn(() => null),
+  runPreCheck: vi.fn(),
+  formatPreCheck: vi.fn(),
+}));
+
+vi.mock("../trading/riskCalculator.ts", () => ({
+  calculateFuturesRisk: vi.fn(),
+}));
+
+vi.mock("../trading/riskGuard.ts", () => ({
+  riskGuard: {
+    getStatus: vi.fn(),
+    lock: vi.fn(),
+    unlock: vi.fn(),
+    updateSettings: vi.fn(),
+  },
+}));
+
+vi.mock("../realestate/dealPipeline.ts", () => ({
+  DealPipeline: vi.fn(),
+}));
+
+vi.mock("../realestate/feasibilityEngine.ts", () => ({
+  calculateFeasibility: vi.fn(),
+  formatFeasibilityReport: vi.fn(),
+  formatSimpleFeasibilityReport: vi.fn(),
+  runFeasibility: vi.fn(),
+}));
+
+vi.mock("../finance/dartAPI.ts", () => ({
+  getDisclosures: vi.fn(),
+}));
+
+vi.mock("../routers/google-workspace.ts", () => ({
+  googleAuthManager: {
+    getAuthenticatedClient: vi.fn(),
+  },
+}));
+
+vi.mock("../alerts/alertEngine.ts", () => ({
+  addAlert: vi.fn(),
+  startAlertScheduler: vi.fn(),
+}));
+
+vi.mock("../google/calendar.ts", () => ({
+  default: vi.fn(),
+}));
+
+vi.mock("../google/sheets.ts", () => ({
+  default: vi.fn(),
+}));
+
+vi.mock("../google/drive.ts", () => ({
+  default: vi.fn(),
+}));
+
+vi.mock("../google/gmail.ts", () => ({
+  default: vi.fn(),
+}));
+
 import {
   buildMorningBriefingData,
   executeMorningBriefing,
   formatMorningBriefing,
   isBriefingTestMessage,
 } from "../intelligence/briefing.ts";
+import { classifyIntent, routeIntentMessage } from "../intent/intentService.ts";
 
 describe("morning briefing", () => {
   beforeEach(() => {
@@ -77,7 +175,8 @@ describe("morning briefing", () => {
     mocks.mockSaveBriefingArchive.mockResolvedValue("/tmp/2026-04-30-briefing.md");
   });
 
-  it("recognizes briefing test commands", () => {
+  it("recognizes manual briefing commands", () => {
+    expect(isBriefingTestMessage("브리핑")).toBe(true);
     expect(isBriefingTestMessage("브리핑 테스트")).toBe(true);
     expect(isBriefingTestMessage(" 모닝 브리핑 테스트 ")).toBe(true);
     expect(isBriefingTestMessage("hello")).toBe(false);
@@ -143,5 +242,45 @@ describe("morning briefing", () => {
     expect(result.archivePath).toBe("/tmp/2026-04-30-briefing.md");
     expect(result.text).toContain("Aston Corp");
     expect(result.text).toContain("부동산 PF 메모");
+  });
+
+  it("routes briefing test to the manual briefing intent before Google Workspace", async () => {
+    const intent = await classifyIntent("브리핑 테스트");
+
+    expect(intent.domain).toBe("intelligence");
+    expect(intent.action).toBe("intelligence_morning_briefing");
+    expect(intent.confidence).toBeGreaterThanOrEqual(0.95);
+    expect(mocks.mockParseJson).not.toHaveBeenCalled();
+  });
+
+  it("routes the short briefing command to the manual briefing intent", async () => {
+    const intent = await classifyIntent("브리핑");
+
+    expect(intent.domain).toBe("intelligence");
+    expect(intent.action).toBe("intelligence_morning_briefing");
+    expect(intent.confidence).toBeGreaterThanOrEqual(0.95);
+    expect(mocks.mockParseJson).not.toHaveBeenCalled();
+  });
+
+  it("does not let a Google calendar classification override briefing keywords", async () => {
+    mocks.mockParseJson.mockResolvedValueOnce({
+      domain: "google",
+      action: "google_list_events",
+      type: "query",
+      confidence: 0.99,
+      params: { maxResults: 5 },
+    });
+
+    const routed = await routeIntentMessage({
+      userId: "user-1",
+      message: "브리핑",
+      allowExecute: true,
+    });
+
+    expect(routed.intent.domain).toBe("intelligence");
+    expect(routed.intent.action).toBe("intelligence_morning_briefing");
+    expect(routed.handled).toBe(true);
+    expect(routed.response).toContain("모닝 브리핑을 발송했습니다.");
+    expect(routed.data).toMatchObject({ archivePath: "/tmp/2026-04-30-briefing.md" });
   });
 });

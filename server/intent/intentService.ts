@@ -25,7 +25,7 @@ import DriveConnector from "../google/drive.ts";
 import GmailConnector from "../google/gmail.ts";
 import { executeMorningBriefing, isBriefingTestMessage } from "../intelligence/briefing.ts";
 
-export type IntentDomain = "trading" | "realestate" | "finance" | "google" | "wiki" | "chat";
+export type IntentDomain = "trading" | "realestate" | "finance" | "google" | "wiki" | "intelligence" | "chat";
 export type IntentType = "query" | "execute";
 export type IntentAction =
   | "trading_balance"
@@ -39,7 +39,7 @@ export type IntentAction =
   | "trading_risk_unlock" // MODIFIED: Risk Guard 수동 잠금 해제
   | "trading_risk_settings_update" // MODIFIED: Risk Guard 한도 변경
   | "trading_pre_check" // MODIFIED: 진입 전 점검 어시스턴트
-  | "intelligence_morning_briefing_test"
+  | "intelligence_morning_briefing"
   | "analysis_indicators" // MODIFIED: technical analysis full indicators
   | "analysis_rsi" // MODIFIED: technical analysis RSI
   | "analysis_macd" // MODIFIED: technical analysis MACD
@@ -132,10 +132,10 @@ function fallbackIntent(message: string): IntentResult {
 
   if (isBriefingTestMessage(message)) {
     return {
-      domain: "chat",
-      action: "intelligence_morning_briefing_test",
+      domain: "intelligence",
+      action: "intelligence_morning_briefing",
       type: "execute",
-      confidence: 0.99,
+      confidence: 0.95,
       params: {},
     };
   }
@@ -664,6 +664,7 @@ export async function classifyIntent(message: string): Promise<IntentResult> {
   console.log("[INTENT] fallback result:", keywordResult.action, "confidence:", keywordResult.confidence);
   if (keywordResult.confidence >= 0.5) {
     console.log("[INTENT] keyword match:", keywordResult.action, "confidence:", keywordResult.confidence);
+    console.log(`[intent] matched: ${keywordResult.action} for input: ${message}`);
     return keywordResult;
   }
 
@@ -1381,7 +1382,7 @@ export async function routeIntentMessage(options: RouteIntentOptions): Promise<I
       return { intent, handled: true, requiresConfirmation: false, response };
     }
 
-    if (intent.action === "intelligence_morning_briefing_test") {
+    if (intent.action === "intelligence_morning_briefing") {
       const briefing = await executeMorningBriefing({ trigger: "manual", deliver: true });
       return {
         intent,

@@ -34,9 +34,11 @@ export type MorningBriefingRunResult = {
 export function isBriefingTestMessage(message: string): boolean {
   const normalized = message.trim().toLowerCase();
   return (
+    normalized === "브리핑" ||
     /^브리핑\s*테스트$/.test(normalized) ||
-    /^모닝\s*브리핑\s*테스트$/.test(normalized) ||
-    /^아침\s*브리핑\s*테스트$/.test(normalized) ||
+    /^모닝\s*브리핑(?:\s*테스트)?$/.test(normalized) ||
+    /^아침\s*브리핑(?:\s*테스트)?$/.test(normalized) ||
+    normalized === "morning briefing" ||
     normalized === "briefing test"
   );
 }

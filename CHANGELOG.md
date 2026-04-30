@@ -5,6 +5,12 @@
 
 ## 2026-04-30
 
+### [Codex] 운영 체계 구축 + PROJECT_BRIEFING.md 신규 생성
+- **작업**: `CURRENT_TASK.md` 운영 체계 구축, 자동 명령어 정리, 자율 결정 원칙 반영
+- **작업**: `docs/PROJECT_BRIEFING.md` 신규 생성으로 새 AI 세션용 프로젝트 브리핑 영구 보존
+- **작업**: `HANDOFF.md`, `TODO.md` 갱신으로 Phase 1a 완료 및 Phase 1b 대기 상태 반영
+- **검증**: 문서 갱신 중심 작업, 코드 변경 없음
+
 ### [Claude Code] Aston Intelligence System Phase 1a — Wiki 수동 저장·검색
 - **작업**: 텔레그램·웹채팅에서 손으로 메모를 wiki에 저장하고 검색할 수 있는 인프라 구축
 - **신규 파일**:

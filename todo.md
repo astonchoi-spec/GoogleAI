@@ -75,13 +75,36 @@
 
 ---
 
+## P2 Intelligence System (Phase별 진행)
+
+- [x] **Phase 1a — Aston Wiki 수동 저장·검색** (2026-04-30 완료)
+  - `서버/wiki/wikiStore.ts`, `server/intent/wiki.ts`, 테스트 25개
+  - 인텐트: `위키 저장 <내용> #태그`, `위키 검색 <키워드>`
+  - 저장 경로: `WIKI_ROOT` 환경변수 (Google Drive 등 외부 경로)
+- [ ] **Phase 1b — 모닝 브리핑** (다음)
+  - `node-cron` + `briefing.ts` (기존 Bot API 활용, 07:00 자동 발송)
+- [ ] **Phase 1c — Gemini 자동 분류**
+  - `compiler.ts` (채널 메시지 → AI 요약 + 카테고리 분류)
+- [ ] **Phase 1d — MTProto 채널 수집**
+  - `collector.ts` (User API, 주의: 인터랙티브 인증 필요)
+
 ## Backlog (우선순위 낮음 / 향후)
 
 - OpenClaw 자동화 레이어 (예약 포지션 요약, 주간 PF 리포트, 마켓 브리핑)
 - NotebookLM 내부 모듈 연동
-- Aston Wiki 내부 모듈 연동
 - 멀티모달 음성 입력 개선
 - 모바일 앱 래퍼 (PWA or Capacitor)
+
+## P1 완료 항목
+
+- ✅ Aston Wiki Phase 1a (2026-04-30, 커밋 225acb0)
+- ✅ 운영 체계 구축 (CURRENT_TASK.md, 자율 결정 원칙)
+- ✅ PROJECT_BRIEFING.md 생성
+
+## P1 진행 예정
+
+- ⬜ Phase 1b: 모닝 브리핑 (범위 결정 대기)
+- ⬜ Phase 1c: MTProto 텔레그램 수집기
 
 ---
 

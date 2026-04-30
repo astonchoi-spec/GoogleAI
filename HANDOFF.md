@@ -176,3 +176,15 @@
 | Gemini Grounding 소스 UI 미구현 | P1 | 미해결 |
 | 홈 KPI 카드 mock 데이터 | P1 | 미해결 |
 | Telegram webhook/polling 상태 불명확 | P1 | 미해결 |
+
+## 2026-04-30 업데이트
+
+- Phase 1a 검증 완료: 텔레그램 5개 테스트 모두 통과, Google Drive .md 파일 2개 생성 확인
+- 운영 체계 구축 완료: CURRENT_TASK.md, 자동 명령어, 자율 결정 원칙 반영
+- docs/PROJECT_BRIEFING.md 생성 완료: 새 AI 세션용 영구 브리핑 보존
+- 다음 작업: Phase 1b(모닝 브리핑) - 회장이 범위 결정 후 CURRENT_TASK.md 작성 예정
+- Phase 1b 범위 선택지 미결정 상태
+  - (가) 최소: Wiki 메모만 요약
+  - (나) 확장: Wiki + 시장 데이터 + DART 공시 [참모 권장]
+  - (다) 풀세트: 위에 + Gemini 종합 의견
+- 모닝 브리핑 시간 미결정

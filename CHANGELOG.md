@@ -5,6 +5,16 @@
 
 ## 2026-04-30
 
+### [Claude Code] CLAUDE.md 아키텍처 규칙·코딩 컨벤션 추가
+- **작업**: CLAUDE.md에 섹션 6~9 신규 추가
+  - **§6 아키텍처 규칙**: 도메인 분리(DDD) — trading/google/realestate/finance/intent/exchanges/_core 책임 명시, 도메인 간 직접 import 금지, intent→도메인 단방향 규칙
+  - **§7 코딩 컨벤션**: 파일/함수/타입/상수 네이밍, 에러 처리(catch에 console.error + 사용자에는 한국어), fetch 직접 사용(exchangeConnector 미경유), 텔레그램 응답 포맷
+  - **§8 테스트 규칙**: server/__tests__/ 위치, {모듈명}.test.ts 명명, vitest, 정상/에러 케이스 의무화
+  - **§9 파일 크기 제한**: 500줄 상한, intentService.ts(900줄+) P1 분리 대상 명시
+- **수정 파일**: `CLAUDE.md`
+- **검증**: 문서 변경만 (빌드 불필요)
+- **잔여이슈**: intentService.ts 도메인별 분리 작업 P1 큐에 추가 필요
+
 ### [Claude Code] parsePreCheckMessage 정규식 버그 수정
 - **문제**: "BTC 숏 77000 손절 78500 목표 74000" 파싱 시 목표가가 7400으로 누락 가능
 - **원인 1 (주요)**: `sideRe = new RegExp(template, "i")` 생성 시 `\\s*`가 `s*`(리터럴 s)로 변환 — `\s` 공백 클래스 소실, sideRe가 항상 null 반환

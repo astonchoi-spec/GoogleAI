@@ -132,3 +132,69 @@ client/src/components/UnifiedChatInterface.tsx  → 메인 AI 채팅 UI
 - 완료 후 HANDOFF.md와 CHANGELOG.md를 갱신한다
 - 보고는 한국어로 작성한다
 - UI 화면에 영향을 주는 변경은 미리 알린다
+
+---
+
+## 6. 아키텍처 규칙
+
+### 도메인 분리 (DDD)
+
+| 도메인 디렉토리 | 책임 |
+|----------------|------|
+| `server/trading/` | 매매, 리스크(riskGuard/riskCalculator), 진입 점검(preCheckEngine), 기술적 분석, 거래일지 |
+| `server/google/` | Gmail, Calendar, Drive, Sheets, OAuth |
+| `server/realestate/` | 부동산 PF 엔진 (feasibility, dealPipeline) |
+| `server/finance/` | DART API, 공시·주식 데이터 |
+| `server/intent/` | 인텐트 파싱·라우팅 전용 (intentService.ts). **비즈니스 로직 금지** — 각 도메인 모듈을 호출만 한다 |
+| `server/exchanges/` | 거래소 ccxt 커넥터(Binance/Upbit/Gate/Bybit). 인증 필요한 잔고/포지션/체결 전용 |
+| `server/_core/` | Redis, LLMAdapter, tRPC core, intentRouter — 도메인 간 공통 인프라 |
+
+**연결 규칙**:
+- 도메인 간 직접 import 금지 (예: `trading/`이 `realestate/`를 import 금지)
+- 공유가 필요하면 `server/_core/`를 거쳐 연결한다
+- `intent/`는 모든 도메인을 호출할 수 있지만, 도메인은 `intent/`를 import하지 않는다 (단방향)
+
+---
+
+## 7. 코딩 컨벤션
+
+- **파일명**: camelCase (예: `preCheckEngine.ts`, `riskGuard.ts`, `exchangeConnector.ts`)
+- **함수명**: camelCase, 동사 시작 (예: `runPreCheck`, `formatPreCheck`, `getStatus`)
+- **타입/인터페이스**: PascalCase (예: `PreCheckResult`, `RiskGuardState`, `IntentAction`)
+- **상수**: SCREAMING_SNAKE_CASE (예: `KIMCHI_FX_RATE`, `KOREAN_TICKER_MAP`)
+- **에러 처리**:
+  - 외부 API/I/O 호출은 try-catch 필수
+  - catch 블록에 `console.error("[모듈명] context:", e)` 필수 (디버깅용)
+  - 사용자에게 노출되는 에러 메시지는 **한국어**만 (영문 스택 노출 금지, 예: "일부 데이터를 가져오지 못했습니다")
+- **외부 API 호출**:
+  - 공개 데이터(시세·펀딩·캔들 등)는 `fetch` 직접 사용 — `exchangeConnector` 경유 금지 (API 키 미설정 시 전부 실패)
+  - 인증 필요한 데이터(잔고·포지션)만 `exchangeConnector` 사용
+  - 각 fetch 호출은 독립적 try-catch (한 곳 실패가 다른 데이터 차단하지 않도록)
+- **텔레그램 응답**:
+  - `data` 필드 반환 금지 (JSON preview 노출됨)
+  - 한국어 텍스트만 반환, 이모지로 시각 구분 (📋 📈 💰 🛡 ✅ ⚠️ 🚫 등)
+  - `formatXxx()` 함수로 포맷 분리
+
+---
+
+## 8. 테스트 규칙
+
+- **위치**: 모든 테스트는 `server/__tests__/` 한 곳에 모은다
+- **파일명**: `{모듈명}.test.ts` (예: `riskGuard.test.ts`, `preCheckEngine.test.ts`)
+- **신규 모듈 생성 시**: 테스트 파일 동시 생성 필수
+- **최소 커버리지**: 핵심 함수의 정상 케이스 + 에러 케이스 (네트워크 실패, 잘못된 입력, 빈 응답)
+- **테스트 도구**: vitest (`npm test`)
+- **외부 의존(Telegram 토큰 등)**: 기본 `npm test`에서 분리 — 환경변수 가드로 skip 처리
+
+---
+
+## 9. 파일 크기 제한
+
+- **단일 파일 500줄 초과 금지**. 초과 시 도메인/관심사별 분리 필수.
+- **현재 위반 파일** (P1 분리 대상):
+  - `server/intent/intentService.ts` — 900줄+ → `intent/trading.ts`, `intent/google.ts`, `intent/general.ts`로 분리 예정
+- **분리 원칙**:
+  - 핸들러는 도메인별 파일로
+  - `IntentAction` 유니온 타입은 `intent/types.ts`에 모은다
+  - `parseXxxMessage()`/`formatXxx()`는 해당 도메인 모듈로 이동
+- **컴포넌트(client)도 동일 적용**: `UnifiedChatInterface.tsx`처럼 핵심 UI는 예외, 그 외는 500줄 초과 시 분리

@@ -20,6 +20,13 @@
 
 ## 마지막 완료 작업
 
+**2026-04-30 | Claude Code (CLAUDE.md 아키텍처 규칙·코딩 컨벤션 추가)**
+- `CLAUDE.md`: §6 아키텍처 규칙(DDD), §7 코딩 컨벤션, §8 테스트 규칙, §9 파일 크기 제한 신규 섹션 추가
+- 도메인 간 직접 import 금지, intent→도메인 단방향 규칙 명문화
+- 외부 API 호출은 fetch 직접 사용(exchangeConnector 미경유), catch에 console.error 의무화
+- 단일 파일 500줄 상한 — intentService.ts(900줄+) P1 분리 대상으로 TODO.md 등록
+- 검증: 문서 변경만
+
 **2026-04-30 | Claude Code (parsePreCheckMessage 정규식 버그 수정)**
 - `server/trading/preCheckEngine.ts`: sideRe `new RegExp(template)` → 정규식 리터럴로 교체 (\\s→s 변환 버그 수정)
 - `m[m.length-1]` → `m[2]` 명시적 그룹 참조로 변경

@@ -135,6 +135,9 @@
 | 2026-04-22 | MySQL → SQLite 전환, Web↔Telegram 동기화 복구 | Codex |
 ## 2026-04-30 Phase 1b 업데이트
 
+### P1 버그 수정 완료
+- ✅ Phase 1b 브리핑 인텐트 라우팅 충돌 수정 (`브리핑`, `브리핑 테스트`)
+
 ### P1 완료 항목
 - ✅ Aston Wiki Phase 1a (2026-04-30, 커밋 225acb0)
 - ✅ 운영 체계 구축 (CURRENT_TASK.md, 자율 결정 원칙)

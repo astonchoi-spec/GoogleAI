@@ -190,6 +190,8 @@
 - 모닝 브리핑 시간 미결정
 ## 2026-04-30 Phase 1b 인수인계
 
+- Phase 1b 라우팅 버그 수정 완료: `브리핑`과 `브리핑 테스트`가 Google Calendar로 새지 않고 `intelligence_morning_briefing`으로 우선 매칭됨
+- 검증 완료: `npm run check`, `npm run build`, `npm test`
 - Phase 1a 검증 완료: 텔레그램 5개 시나리오 통과, Google Drive .md 파일 2개 생성 확인
 - 운영 체계 구축 완료: CURRENT_TASK.md, 자동 명령어, 자율 결정 원칙 반영
 - docs/PROJECT_BRIEFING.md 생성 완료: 새 AI 세션용 영구 브리핑

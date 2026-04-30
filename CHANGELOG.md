@@ -312,6 +312,10 @@
 - **검증**: `npm run check` 통과, `npm run build` 통과
 ## 2026-04-30
 
+- Phase 1b 라우팅 수정: `브리핑`/`브리핑 테스트`를 Google Calendar보다 먼저 `intelligence_morning_briefing`으로 매칭
+- 라우팅 검증 로그 추가: `[intent] matched: <intent_name> for input: <message>`
+- `server/__tests__/briefing.test.ts`에 브리핑 인텐트 우선순위 회귀 테스트 추가
+
 - 운영 체계 구축: CURRENT_TASK.md, "현재작업" 자동 명령어, 자율 결정 원칙
 - docs/PROJECT_BRIEFING.md 신규 생성
 - Phase 1b 모닝 브리핑 자동 발송 기반 추가: node-cron, `브리핑 테스트` 수동 트리거, 위키 아카이브

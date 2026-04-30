@@ -329,3 +329,9 @@
 - **작업**: `#briefing` / `source: morning-briefing` 항목을 위키 digest에서 제외해 브리핑 재귀 누적 방지
 - **작업**: 신규 브리핑 저장 frontmatter를 `categories: [briefing]`로 보장
 - **검증**: 관련 vitest 통과, `npm run check` 통과
+## 2026-05-01 마감
+
+### [Codex] 작업일지 및 내일 인수인계 정리
+- **작업**: `HANDOFF.md`에 Phase 1b 현재 상태, 원격 push 상태, 내일 첫 확인 순서 추가
+- **작업**: `todo.md`에 내일 텔레그램 수동 QA와 07:00 KST cron 확인 항목 추가
+- **상태**: 코드 변경 없음, 문서 정리만 수행

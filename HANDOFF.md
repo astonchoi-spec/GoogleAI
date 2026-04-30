@@ -208,3 +208,28 @@
 - 실제 `G:\내 드라이브\Aston-Wiki\daily\2026-04-30-briefing.md`는 기존 단수 `category: [briefing]` 형식임을 확인했고, 코드에서 호환 처리함
 - 검증: 관련 vitest 통과, `npm run check` 통과
 - 다음 확인: 텔레그램에서 `위키 검색 briefing`, `브리핑 테스트` 수동 실행
+## 2026-05-01 마감 정리
+
+- 오늘 완료
+  - Phase 1b 모닝 브리핑 자동 발송 구현 완료 상태 유지
+  - 브리핑 인텐트 라우팅 충돌 수정 완료
+  - 브리핑 출력 품질 개선 완료
+  - `위키 검색 briefing`이 실제 `G:\내 드라이브\Aston-Wiki\daily` 브리핑 파일 2건을 찾는 것 확인
+  - 위키 digest에서 `#briefing` 및 `source: morning-briefing` 항목 제외 확인
+  - 전체 검증 완료: `npm run check`, `npm run build`, `npm test`
+- 현재 git 상태
+  - 브랜치: `codex-google-workspace-expansion`
+  - 최신 커밋: `3a0dbfa docs: Phase 1b 품질 수정 기록`
+  - 원격 push 완료
+  - 작업 트리 clean
+- 내일 첫 확인 순서
+  - 서버 실행: `npm run dev`
+  - 텔레그램에서 `위키 검색 briefing` 입력, daily 브리핑 2건 반환 확인
+  - 텔레그램에서 `브리핑 테스트` 입력, 4개 섹션 발송 확인
+  - 브리핑 위키 메모 섹션에 같은 메모가 1번만 나오는지 확인
+  - 브리핑 본문이 다음 브리핑의 위키 메모 섹션에 재노출되지 않는지 확인
+  - 07:00 KST 자동 발송 여부 확인
+- 다음 개발 후보
+  - Phase 1b 운영 QA 결과 반영
+  - Phase 1c MTProto 텔레그램 수집기 착수 전 CURRENT_TASK.md 작성
+  - `intentService.ts` 도메인 분리

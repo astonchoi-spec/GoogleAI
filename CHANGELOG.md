@@ -320,3 +320,12 @@
 - docs/PROJECT_BRIEFING.md 신규 생성
 - Phase 1b 모닝 브리핑 자동 발송 기반 추가: node-cron, `브리핑 테스트` 수동 트리거, 위키 아카이브
 - HANDOFF.md, TODO.md 갱신
+## 2026-05-01
+
+### [Codex] Phase 1b 브리핑 출력 품질 개선
+- **작업**: `server/wiki/wikiStore.ts` 검색을 `WIKI_ROOT` 전체 재귀 순회로 변경하고 `daily/` 브리핑 파일 검색 회귀 테스트 추가
+- **작업**: 기존 `category: [briefing]` frontmatter를 `categories`와 동일하게 인식하도록 하위 호환 처리
+- **작업**: 브리핑 위키 메모 섹션을 메모별 1줄 + 인라인 카테고리 형식으로 변경해 동일 메모 중복 출력 제거
+- **작업**: `#briefing` / `source: morning-briefing` 항목을 위키 digest에서 제외해 브리핑 재귀 누적 방지
+- **작업**: 신규 브리핑 저장 frontmatter를 `categories: [briefing]`로 보장
+- **검증**: 관련 vitest 통과, `npm run check` 통과

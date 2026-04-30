@@ -197,3 +197,14 @@
 - docs/PROJECT_BRIEFING.md 생성 완료: 새 AI 세션용 영구 브리핑
 - Phase 1b 완료: 07:00 KST 모닝 브리핑 자동 발송, `브리핑 테스트` 수동 트리거, 위키 일일 아카이브 연결
 - 다음 작업: Phase 1b 후속 점검 또는 Phase 1c 범위 결정
+## 2026-05-01 업데이트
+
+- Phase 1b 브리핑 출력 품질 개선 완료
+- 위키 검색이 `WIKI_ROOT` 하위 디렉터리를 재귀 순회하도록 변경되어 `daily/` 브리핑 파일 검색 가능
+- 기존 `category: [briefing]` 단수 frontmatter도 읽기 단계에서 `categories`로 호환 처리
+- 어제 저장된 위키 메모 섹션은 메모별 1줄 + 인라인 카테고리로 출력되어 다중 카테고리 메모 중복 없음
+- `#briefing` 및 `source: morning-briefing` 항목은 위키 digest에서 제외되어 브리핑 재귀 누적 방지
+- 신규 브리핑 저장은 `categories: [briefing]` frontmatter로 기록
+- 실제 `G:\내 드라이브\Aston-Wiki\daily\2026-04-30-briefing.md`는 기존 단수 `category: [briefing]` 형식임을 확인했고, 코드에서 호환 처리함
+- 검증: 관련 vitest 통과, `npm run check` 통과
+- 다음 확인: 텔레그램에서 `위키 검색 briefing`, `브리핑 테스트` 수동 실행

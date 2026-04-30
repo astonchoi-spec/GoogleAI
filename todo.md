@@ -146,3 +146,15 @@
 ### P1 진행 예정
 - ⬜ Phase 1b: 모닝 브리핑 (07:00 KST 자동 발송)
 - ⬜ Phase 1c: MTProto 텔레그램 수집기
+## 2026-05-01 Phase 1b 업데이트
+
+### P1 버그 수정 완료
+- [x] Phase 1b 브리핑 출력 품질 개선
+  - `daily/` 하위 브리핑 파일 검색 가능
+  - 위키 메모 섹션 다중 카테고리 중복 출력 제거
+  - 이전 브리핑의 `#briefing` 항목 재노출 방지
+  - 신규 브리핑 저장 frontmatter `categories: [briefing]` 보장
+
+### P1 진행 예정
+- [ ] 텔레그램 수동 QA: `위키 검색 briefing`, `브리핑 테스트`
+- [ ] Phase 1c: MTProto 텔레그램 수집기

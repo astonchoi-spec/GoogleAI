@@ -3,6 +3,20 @@
 
 ---
 
+## 2026-04-30
+
+### [Claude Code] parsePreCheckMessage 정규식 버그 수정
+- **문제**: "BTC 숏 77000 손절 78500 목표 74000" 파싱 시 목표가가 7400으로 누락 가능
+- **원인 1 (주요)**: `sideRe = new RegExp(template, "i")` 생성 시 `\\s*`가 `s*`(리터럴 s)로 변환 — `\s` 공백 클래스 소실, sideRe가 항상 null 반환
+- **원인 2**: `m[m.length-1]` 방식으로 마지막 캡처 그룹 추출 — 그룹 수 변경 시 취약
+- **수정 파일**: `server/trading/preCheckEngine.ts`
+  - `sideRe`: `new RegExp(template)` → 정규식 리터럴 `/(숏|매도|short|sell|롱|매수|long|buy)\s*([0-9][0-9,\.]*)/i` 직접 사용
+  - 그룹 참조: `m[m.length-1]` → `m[2]` (명시적 인덱스)
+  - 디버그용 `console.log` 로그 추가 (Binance/Upbit 응답 raw + 파싱값)
+  - 각 fetch catch 블록에 `console.error(e)` 추가
+- **검증**: `npm run check` ✅ / `npm run build` ✅
+- **잔여이슈**: 없음
+
 ## 2026-04-29
 
 ### [Claude Code] preCheckEngine 시장 데이터 N/A 수정

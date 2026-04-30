@@ -78,7 +78,8 @@ async function fetchBinanceCandles(
       (c) =>
         [Number(c[0]), Number(c[1]), Number(c[2]), Number(c[3]), Number(c[4]), Number(c[5])] as OhlcvCandle,
     );
-  } catch {
+  } catch (e) {
+    console.error(`[preCheck] fetchBinanceCandles(${baseAsset}, ${interval}) error:`, e);
     return [];
   }
 }
@@ -116,24 +117,35 @@ export async function runPreCheck(input: PreCheckInput): Promise<PreCheckResult>
     const res = await fetch(`https://api.binance.com/api/v3/ticker/24hr?symbol=${baseAsset}USDT`);
     if (res.ok) {
       const data = (await res.json()) as Record<string, unknown>;
+      console.log("[preCheck] Binance 24hr raw:", JSON.stringify(data).slice(0, 200));
       currentPrice = safeNumber(data.lastPrice);
       quoteVolume24h = safeNumber(data.quoteVolume);
+      console.log("[preCheck] Binance 24hr parsed: currentPrice=", currentPrice, "quoteVolume=", quoteVolume24h);
     } else {
+      console.error("[preCheck] Binance 24hr HTTP error:", res.status, res.statusText);
       marketDataError = true;
     }
-  } catch {
+  } catch (e) {
+    console.error("[preCheck] Binance 24hr fetch error:", e);
     marketDataError = true;
   }
   try {
     const res = await fetch(`https://fapi.binance.com/fapi/v1/fundingRate?symbol=${baseAsset}USDT&limit=1`);
     if (res.ok) {
       const data = (await res.json()) as unknown[];
+      console.log("[preCheck] Binance fundingRate raw:", JSON.stringify(data).slice(0, 200));
       if (Array.isArray(data) && data.length > 0) {
         const rate = safeNumber((data[0] as Record<string, unknown>).fundingRate);
         if (rate !== null) fundingRatePercent = rate * 100;
+        console.log("[preCheck] Binance fundingRate parsed: rate=", rate, "percent=", fundingRatePercent);
+      } else {
+        console.log("[preCheck] Binance fundingRate: empty array or not array, data=", data);
       }
+    } else {
+      console.error("[preCheck] Binance fundingRate HTTP error:", res.status, res.statusText);
     }
-  } catch {
+  } catch (e) {
+    console.error("[preCheck] Binance fundingRate fetch error:", e);
     // 일부 심볼은 funding 미지원 — 무시
   }
 
@@ -179,15 +191,22 @@ export async function runPreCheck(input: PreCheckInput): Promise<PreCheckResult>
     const res = await fetch(`https://api.upbit.com/v1/ticker?markets=${upbitSymbol}`);
     if (res.ok) {
       const data = (await res.json()) as unknown[];
+      console.log("[preCheck] Upbit raw:", JSON.stringify(data).slice(0, 200));
       if (Array.isArray(data) && data.length > 0) {
         const upbitPrice = safeNumber((data[0] as Record<string, unknown>).trade_price);
+        console.log("[preCheck] Upbit parsed: trade_price=", upbitPrice, "currentPrice=", currentPrice);
         if (upbitPrice !== null && currentPrice !== null && currentPrice > 0) {
           const binanceKrw = currentPrice * KIMCHI_FX_RATE;
           kimchiPremiumPercent = ((upbitPrice - binanceKrw) / binanceKrw) * 100;
         }
+      } else {
+        console.log("[preCheck] Upbit: empty array or not array, data=", data);
       }
+    } else {
+      console.error("[preCheck] Upbit HTTP error:", res.status, res.statusText);
     }
-  } catch {
+  } catch (e) {
+    console.error("[preCheck] Upbit fetch error:", e);
     // 무시 — 김프 조회 실패는 차단 사유 아님
   }
 
@@ -481,13 +500,12 @@ export function parsePreCheckMessage(message: string): ParsedPreCheck {
   if (entryExplicit) {
     entryPrice = Number(entryExplicit[2].replace(/,/g, ""));
   } else {
-    // side 단어 뒤 숫자
-    const sideRe = new RegExp(`(?:${SIDE_SHORT_RE.source}|${SIDE_LONG_RE.source})\\s*([0-9][0-9,\\.]*)`, "i");
+    // new RegExp + template literal 에서 \\s → s 로 변환되는 버그 회피: 정규식 리터럴 직접 사용
+    // 그룹1=side키워드, 그룹2=숫자 (명시적 인덱스로 m[m.length-1] 취약성 제거)
+    const sideRe = /(숏|매도|short|sell|롱|매수|long|buy)\s*([0-9][0-9,\.]*)/i;
     const m = message.match(sideRe);
-    if (m) {
-      // 마지막 캡처 그룹이 숫자
-      const numStr = m[m.length - 1];
-      if (numStr) entryPrice = Number(numStr.replace(/,/g, ""));
+    if (m && m[2]) {
+      entryPrice = Number(m[2].replace(/,/g, ""));
     }
     if (entryPrice === null) {
       // 첫 번째 등장 숫자를 진입가로 추정 (단, 손절/목표 키워드 직후 숫자는 제외)

@@ -20,6 +20,12 @@
 
 ## 마지막 완료 작업
 
+**2026-04-30 | Claude Code (parsePreCheckMessage 정규식 버그 수정)**
+- `server/trading/preCheckEngine.ts`: sideRe `new RegExp(template)` → 정규식 리터럴로 교체 (\\s→s 변환 버그 수정)
+- `m[m.length-1]` → `m[2]` 명시적 그룹 참조로 변경
+- 각 fetch에 console.log/console.error 디버그 로그 추가 (서버 재시작 후 로그에서 [preCheck] 확인 가능)
+- 검증: check ✅ / build ✅
+
 **2026-04-29 | Claude Code (preCheckEngine 시장 데이터 N/A 수정)**
 - `server/trading/preCheckEngine.ts`: Binance/Upbit ccxt 의존 제거 → 공개 REST API 직접 fetch로 교체
 - 현재가(`/api/v3/ticker/24hr`), 펀딩비(`fapi/v1/fundingRate`), 캔들(`/api/v3/klines`), 김프(`upbit /v1/ticker`)
@@ -116,7 +122,7 @@
 
 ---
 
-## 알려진 이슈
+## 알려진 이슈 (2026-04-30 기준)
 
 | 이슈 | 심각도 | 상태 |
 |------|--------|------|

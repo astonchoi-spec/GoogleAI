@@ -15,6 +15,7 @@ import googleCallbackRouter, { initializeGoogleAuth } from "../webhooks/google-c
 import { googleAuthManager } from "../routers/google-workspace.ts";
 import { installDeploymentGuards, logStartupSummary } from "./deployment.ts"; // MODIFIED: add production bootstrap checks and persistent error logging.
 import { registerTvWebhookRoutes } from "../alerts/tvWebhookServer.ts"; // MODIFIED: register TradingView webhook endpoint.
+import { registerMorningBriefingScheduler } from "../intelligence/briefing.ts";
 
 function isPortAvailable(port: number): Promise<boolean> {
   return new Promise(resolve => {
@@ -40,6 +41,8 @@ async function startServer() {
   if (process.env.NODE_ENV === "production") {
     await logStartupSummary(); // MODIFIED: surface production readiness warnings only in production boot logs.
   }
+
+  registerMorningBriefingScheduler();
 
   const app = express();
   const server = createServer(app);

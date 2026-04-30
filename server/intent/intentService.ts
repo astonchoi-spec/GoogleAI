@@ -23,6 +23,7 @@ import CalendarConnector from "../google/calendar.ts";
 import SheetsConnector from "../google/sheets.ts";
 import DriveConnector from "../google/drive.ts";
 import GmailConnector from "../google/gmail.ts";
+import { executeMorningBriefing, isBriefingTestMessage } from "../intelligence/briefing.ts";
 
 export type IntentDomain = "trading" | "realestate" | "finance" | "google" | "wiki" | "chat";
 export type IntentType = "query" | "execute";
@@ -38,6 +39,7 @@ export type IntentAction =
   | "trading_risk_unlock" // MODIFIED: Risk Guard 수동 잠금 해제
   | "trading_risk_settings_update" // MODIFIED: Risk Guard 한도 변경
   | "trading_pre_check" // MODIFIED: 진입 전 점검 어시스턴트
+  | "intelligence_morning_briefing_test"
   | "analysis_indicators" // MODIFIED: technical analysis full indicators
   | "analysis_rsi" // MODIFIED: technical analysis RSI
   | "analysis_macd" // MODIFIED: technical analysis MACD
@@ -125,6 +127,16 @@ function fallbackIntent(message: string): IntentResult {
         stopLoss: parsedPreCheck.stopLoss,
         takeProfit: parsedPreCheck.takeProfit,
       },
+    };
+  }
+
+  if (isBriefingTestMessage(message)) {
+    return {
+      domain: "chat",
+      action: "intelligence_morning_briefing_test",
+      type: "execute",
+      confidence: 0.99,
+      params: {},
     };
   }
 
@@ -1367,6 +1379,20 @@ export async function routeIntentMessage(options: RouteIntentOptions): Promise<I
     if (intent.action === "wiki_search") {
       const response = await executeWikiSearch(intent.params);
       return { intent, handled: true, requiresConfirmation: false, response };
+    }
+
+    if (intent.action === "intelligence_morning_briefing_test") {
+      const briefing = await executeMorningBriefing({ trigger: "manual", deliver: true });
+      return {
+        intent,
+        handled: true,
+        requiresConfirmation: false,
+        response: "모닝 브리핑을 발송했습니다.",
+        data: {
+          briefing: briefing.text,
+          archivePath: briefing.archivePath,
+        },
+      };
     }
 
     if (intent.action === "execute_placeholder") {

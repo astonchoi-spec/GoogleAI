@@ -310,3 +310,9 @@
 - **작업**: DB 엔진 교체, Telegram↔Web 대화 동기화 수리
 - **수정 파일**: `drizzle/schema.ts`, `server/db.ts`, `server/db-chat.ts`, `drizzle.config.ts`, `.env`
 - **검증**: `npm run check` 통과, `npm run build` 통과
+## 2026-04-30
+
+- 운영 체계 구축: CURRENT_TASK.md, "현재작업" 자동 명령어, 자율 결정 원칙
+- docs/PROJECT_BRIEFING.md 신규 생성
+- Phase 1b 모닝 브리핑 자동 발송 기반 추가: node-cron, `브리핑 테스트` 수동 트리거, 위키 아카이브
+- HANDOFF.md, TODO.md 갱신

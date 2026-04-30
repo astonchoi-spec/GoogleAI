@@ -133,3 +133,13 @@
 | 2026-04-24 | 알림 엔진, 리스크 계산기, PF 파이프라인, DART API 추가 | Codex |
 | 2026-04-23 | Google Workspace 확장 (Calendar 월뷰, Drive 파일, Gmail UTF-8) | Codex |
 | 2026-04-22 | MySQL → SQLite 전환, Web↔Telegram 동기화 복구 | Codex |
+## 2026-04-30 Phase 1b 업데이트
+
+### P1 완료 항목
+- ✅ Aston Wiki Phase 1a (2026-04-30, 커밋 225acb0)
+- ✅ 운영 체계 구축 (CURRENT_TASK.md, 자율 결정 원칙)
+- ✅ PROJECT_BRIEFING.md 생성
+
+### P1 진행 예정
+- ⬜ Phase 1b: 모닝 브리핑 (07:00 KST 자동 발송)
+- ⬜ Phase 1c: MTProto 텔레그램 수집기

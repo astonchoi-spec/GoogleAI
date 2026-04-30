@@ -1,4 +1,12 @@
-# ASTON WORKSTATION — 작업 목록
+# ASTON WORKSTATION — 작업 목록 (아카이브)
+
+> ⚠️ **이 파일은 아카이브 스냅샷이다 (최종 갱신: 2026-04-27).**
+> **권위 있는 작업 목록은 `TODO.md`, 진행 상태는 `HANDOFF.md`, 이력은 `CHANGELOG.md`다.**
+> AGENTS.md / CLAUDE.md의 "작업준비" 명령은 이 파일을 읽지 않는다.
+> 새 작업·우선순위 변경은 반드시 TODO.md에 기록한다. 본 파일은 Phase 1~2 초기 마일스톤 기록용으로만 보존.
+
+---
+
 last_updated: 2026-04-27 (귀가 세션)
 branch: codex-google-workspace-expansion
 

@@ -5,6 +5,20 @@
 
 ## 2026-04-30
 
+### [Claude Code] AGENTS.md / TASKS.md 동기화
+- **작업**: CLAUDE.md §6~9 신규 섹션을 AGENTS.md에도 동일 반영, Codex 전용 규칙 강화, TASKS.md 아카이브 처리
+- **AGENTS.md 변경**:
+  - §5 Codex-specific Rules 재구성:
+    - 작업 시작 전 의무 절차 추가: `git fetch` + `git log HEAD..origin/codex-...` 으로 원격 신규 커밋 확인 → CHANGELOG/HANDOFF/TODO 읽기 → HANDOFF "현재 진행 작업"에 본인 등록
+    - 도메인 경계 명시: intentService.ts 라우팅 전용, 비즈니스 로직 금지, exchangeConnector 미경유, fetch 직접
+    - 텔레그램 응답: data(JSON) 반환 금지, 한국어 텍스트 + 이모지만
+    - 커밋 후 push 의무, 작업 완료 시 CHANGELOG/TODO/HANDOFF 3종 갱신
+  - §6 아키텍처 규칙(DDD), §7 코딩 컨벤션, §8 테스트 규칙, §9 파일 크기 제한 신규 추가 — CLAUDE.md와 동일 내용
+- **TASKS.md 변경**: 상단에 아카이브 헤더 추가 — TODO.md/HANDOFF.md/CHANGELOG.md가 권위 출처임을 명시, "작업준비" 명령은 TASKS.md 읽지 않음 명문화 (충돌 방지)
+- **수정 파일**: `AGENTS.md`, `TASKS.md`
+- **검증**: 문서 변경만 (빌드 불필요)
+- **잔여이슈**: 없음
+
 ### [Claude Code] CLAUDE.md 아키텍처 규칙·코딩 컨벤션 추가
 - **작업**: CLAUDE.md에 섹션 6~9 신규 추가
   - **§6 아키텍처 규칙**: 도메인 분리(DDD) — trading/google/realestate/finance/intent/exchanges/_core 책임 명시, 도메인 간 직접 import 금지, intent→도메인 단방향 규칙

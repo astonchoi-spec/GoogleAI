@@ -5,6 +5,26 @@
 
 ## 2026-04-30
 
+### [Claude Code] Aston Intelligence System Phase 1a — Wiki 수동 저장·검색
+- **작업**: 텔레그램·웹채팅에서 손으로 메모를 wiki에 저장하고 검색할 수 있는 인프라 구축
+- **신규 파일**:
+  - `server/wiki/wikiStore.ts` (~130줄): 마크다운 파일 기반 저장소. `writeWiki()` + `searchWiki()` + frontmatter 정규식 파싱
+  - `server/intent/wiki.ts` (~130줄): `wiki_save` / `wiki_search` 인텐트 매처·핸들러. 한국어→영문 카테고리 매핑 테이블
+  - `server/__tests__/wiki.test.ts` (~230줄): vitest 25개 테스트 (저장·검색·충돌·정규화·에러 처리)
+  - `docs/superpowers/specs/2026-04-30-aston-wiki-phase1a-design.md`: 설계 문서
+- **수정 파일**:
+  - `server/intent/intentService.ts`: wiki import 1줄 + `IntentAction` 유니온에 `wiki_save\|wiki_search` 추가 + fallbackIntent 최상단 wiki 매칭 + routeIntentMessage 핸들러 분기 (총 +12줄)
+  - `.env.example`: `WIKI_ROOT` 환경변수 추가
+- **설계 결정**:
+  - 저장 위치: `WIKI_ROOT` 환경변수 (회장님: `G:\내 드라이브\Aston-Wiki`)
+  - 파일 구조: 항목별 1파일 (`wiki/YYYY-MM-DD/HH-MM-SS-ms-슬러그.md`) + frontmatter
+  - 카테고리: 한국어 해시태그 입력 (`#부동산 #서울`) → 영문 정규화 (`realestate, seoul`)
+  - 검색: substring + 카테고리 필터 (`위키 검색 #부동산 신논현`) + date desc 상위 10건
+  - 의존성: 0 (Node.js 내장 fs/path/os만 사용)
+  - Phase 1b(브리핑)/1c(Gemini)/1d(MTProto)는 별도 Phase로 분리
+- **검증**: `npm run check` ✅ / `npm run build` ✅ / `npm test` (25 passed) ✅
+- **잔여이슈**: 실제 `WIKI_ROOT=G:\내 드라이브\Aston-Wiki` 경로에서 운영 검증 필요
+
 ### [Claude Code] CURRENT_TASK.md 운영 규칙 + "현재작업" 자동 명령어 추가
 - **작업**: AGENTS.md와 CLAUDE.md에 공통 작업 파일 운영 규칙 추가
 - **CLAUDE.md 변경**:

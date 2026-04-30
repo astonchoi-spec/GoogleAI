@@ -20,6 +20,17 @@
 
 ## 마지막 완료 작업
 
+**2026-04-30 | Claude Code (Aston Intelligence System Phase 1a — Wiki 수동 저장·검색)**
+- 신규: `server/wiki/wikiStore.ts` — writeWiki / searchWiki, 마크다운+frontmatter 기반
+- 신규: `server/intent/wiki.ts` — wiki_save / wiki_search 인텐트, 한국어→영문 카테고리 매핑
+- 신규: `server/__tests__/wiki.test.ts` — vitest 25개 통과
+- 신규: `docs/superpowers/specs/2026-04-30-aston-wiki-phase1a-design.md`
+- 수정: `server/intent/intentService.ts` (+12줄, wiki 분기 추가)
+- 수정: `.env.example` (WIKI_ROOT 추가)
+- 환경변수: `WIKI_ROOT=G:\내 드라이브\Aston-Wiki` — .env에 직접 설정 필요
+- 검증: check ✅ / build ✅ / test 25 passed ✅
+- 잔여: 실제 Google Drive 경로에서 운영 검증 필요
+
 **2026-04-30 | Claude Code (CURRENT_TASK.md 운영 규칙 + "현재작업" 명령어 추가)**
 - `AGENTS.md`: "자동 명령어" 섹션 신규 추가 — "현재작업" 명령어 + CURRENT_TASK.md 운영 규칙
 - `CLAUDE.md`: "현재작업" 자동 명령어 + CURRENT_TASK.md 운영 규칙 섹션 추가
@@ -114,6 +125,8 @@
 |------|----------------|------|
 | 없음 | — | 현재 진행 중인 작업 없음 |
 
+> **Note**: Phase 1a 완료. Phase 1b(모닝 브리핑) 준비되면 CURRENT_TASK.md 작성 후 시작.
+
 > **Codex가 작업을 시작하려면**: 위 표에 파일명과 작업 내용을 추가한 후 시작한다.
 > **Claude Code가 작업을 시작하려면**: 위 표에 파일명과 작업 내용을 추가한 후 시작한다.
 
@@ -135,6 +148,9 @@
 
 ## 다음 추천 작업
 
+### 즉시 (운영 검증)
+0. **.env에 `WIKI_ROOT=G:\내 드라이브\Aston-Wiki` 추가** — 서버 재시작 후 텔레그램에서 `위키 저장 테스트 #트레이딩` 전송해 동작 확인
+
 ### 즉시 (P0)
 1. **Yahoo Finance CORS 프록시** — `server/routers/proxy.ts` 생성, `/api/yahoo-proxy` 엔드포인트 추가
    - 수정 파일: `server/routers/proxy.ts`, `server/routers.ts`
@@ -144,6 +160,9 @@
 ### 이번 주 (P1)
 3. **Telegram 운영 검증** — webhook 상태 엔드포인트 + UI 뱃지
 4. **대시보드 실시간 KPI** — mock 값 → 실제 서비스 카운트
+
+### Intelligence System 다음 Phase
+5. **Phase 1b** — `node-cron` + `server/intelligence/briefing.ts` (07:00 모닝 브리핑, 기존 Bot API 활용)
 
 ---
 

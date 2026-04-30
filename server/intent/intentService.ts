@@ -1,4 +1,5 @@
-﻿import { exchangeConnector } from "../exchanges/exchangeConnector.ts";
+﻿import { matchWikiSave, matchWikiSearch, executeWikiSave, executeWikiSearch } from "./wiki.ts";
+import { exchangeConnector } from "../exchanges/exchangeConnector.ts";
 import { gateioConnector } from "../exchanges/gateioConnector.ts";
 import { kiwoomConnector } from "../exchanges/kiwoomConnector.ts";
 import { taEngine } from "../trading/technicalAnalysis.ts";
@@ -59,6 +60,8 @@ export type IntentAction =
   | "google_get_emails"
   | "google_send_email"
   | "google_list_events"
+  | "wiki_save"
+  | "wiki_search"
   | "execute_placeholder"
   | "chat";
 
@@ -99,6 +102,12 @@ function spreadsheetIdFromEnv(): string {
 
 function fallbackIntent(message: string): IntentResult {
   const lower = message.toLowerCase();
+
+  // wiki_save / wiki_search — 명시적 prefix이므로 최상단에서 처리
+  const wikiSave = matchWikiSave(message);
+  if (wikiSave) return wikiSave;
+  const wikiSearch = matchWikiSearch(message);
+  if (wikiSearch) return wikiSearch;
 
   // MODIFIED: trading_pre_check — "BTC 숏 77000 손절 78500 목표 74000" 형태 매칭
   // NOTE: 이 블록은 반드시 trading_risk_calculate("손절" 트리거)보다 먼저 실행되어야 한다.
@@ -1348,6 +1357,16 @@ export async function routeIntentMessage(options: RouteIntentOptions): Promise<I
         }
         throw err;
       }
+    }
+
+    if (intent.action === "wiki_save") {
+      const response = await executeWikiSave(intent.params, "telegram");
+      return { intent, handled: true, requiresConfirmation: false, response };
+    }
+
+    if (intent.action === "wiki_search") {
+      const response = await executeWikiSearch(intent.params);
+      return { intent, handled: true, requiresConfirmation: false, response };
     }
 
     if (intent.action === "execute_placeholder") {

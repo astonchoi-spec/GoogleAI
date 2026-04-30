@@ -5,6 +5,18 @@
 
 ## 2026-04-30
 
+### [Claude Code] preCheckEngine 디버그 로그 정리 + CLAUDE.md "작업준비" 강화
+- **작업 1**: `server/trading/preCheckEngine.ts`에서 `[preCheck] console.log` 9건 제거 — Binance 24hr raw/parsed, fundingRate raw/parsed/empty, Upbit raw/parsed/empty
+  - `console.error` 7건은 유지 (HTTP 에러, fetch 에러, fetchBinanceCandles 에러)
+  - 디버그 끝난 진단 로그를 제거해 운영 로그 잡음 감소
+- **작업 2**: `client/src/components/home/WorkspaceWidgets.tsx` FinanceSummaryWidget import 점검
+  - 결과: 디스크 상태 이상 없음. `FinanceSummaryWidget.tsx`(40줄, /finance 링크 카드) 정상 존재, `WorkspaceWidgets.tsx`에는 import 없음 — 직전 vite 에러는 dev 서버 캐시 잔재로 확인. **코드 수정 없음.**
+- **작업 3**: `CLAUDE.md` "작업준비" 자동 명령어 절차 강화
+  - 단계 추가: ① `git fetch origin` ② `git log HEAD..origin/codex-... --oneline` 으로 원격 신규 커밋 확인 ③ 신규 있으면 `git pull --rebase` (충돌 시 사용자 보고 후 중단) ④ 4개 문서 읽기 ⑤ 상태 요약
+- **수정 파일**: `server/trading/preCheckEngine.ts`, `CLAUDE.md`
+- **검증**: `npm run check` ✅ / `npm run build` ✅
+- **잔여이슈**: 없음
+
 ### [Claude Code] AGENTS.md / TASKS.md 동기화
 - **작업**: CLAUDE.md §6~9 신규 섹션을 AGENTS.md에도 동일 반영, Codex 전용 규칙 강화, TASKS.md 아카이브 처리
 - **AGENTS.md 변경**:

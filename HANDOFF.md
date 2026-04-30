@@ -20,6 +20,12 @@
 
 ## 마지막 완료 작업
 
+**2026-04-30 | Claude Code (preCheckEngine 디버그 로그 정리 + CLAUDE.md 작업준비 강화)**
+- `server/trading/preCheckEngine.ts`: `[preCheck] console.log` 9건 제거 (Binance/Upbit raw·parsed·empty), `console.error` 7건은 유지
+- `client/src/components/home/WorkspaceWidgets.tsx`: 점검만 — 디스크 상태 이상 없음 (vite 캐시 잔재였음), 코드 수정 없음
+- `CLAUDE.md`: "작업준비" 절차에 git fetch + 원격 신규 커밋 확인 + 필요 시 pull --rebase 단계 추가
+- 검증: check ✅ / build ✅
+
 **2026-04-30 | Claude Code (AGENTS.md / TASKS.md 동기화)**
 - `AGENTS.md`: §5 Codex 규칙 재구성(작업 시작 전 git fetch + 원격 커밋 확인 의무화, 도메인 경계, 텔레그램 응답, 커밋·push 절차)
 - `AGENTS.md`: §6 아키텍처 규칙, §7 코딩 컨벤션, §8 테스트 규칙, §9 파일 크기 제한 추가 — CLAUDE.md와 동기화

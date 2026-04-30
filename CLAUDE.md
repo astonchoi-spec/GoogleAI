@@ -17,7 +17,12 @@
 ## 자동 명령어
 
 ### "작업준비"
-TODO.md, CHANGELOG.md, HANDOFF.md, CLAUDE.md를 읽고 현재 상태 요약.
+다음을 순서대로 자동 수행:
+1. `git fetch origin` 실행 (원격 최신화)
+2. `git log HEAD..origin/codex-google-workspace-expansion --oneline` 으로 원격에 새로 들어온 커밋 확인
+3. 원격 신규 커밋이 있으면 `git pull --rebase origin codex-google-workspace-expansion` 실행 (충돌 시 사용자에게 보고 후 중단)
+4. TODO.md, CHANGELOG.md, HANDOFF.md, CLAUDE.md 읽기
+5. 현재 상태 요약 한 줄 출력 (브랜치, HEAD 커밋, 진행 중 작업, 다음 추천 작업)
 
 ### "작업정리"
 다음을 자동 수행:

@@ -117,10 +117,8 @@ export async function runPreCheck(input: PreCheckInput): Promise<PreCheckResult>
     const res = await fetch(`https://api.binance.com/api/v3/ticker/24hr?symbol=${baseAsset}USDT`);
     if (res.ok) {
       const data = (await res.json()) as Record<string, unknown>;
-      console.log("[preCheck] Binance 24hr raw:", JSON.stringify(data).slice(0, 200));
       currentPrice = safeNumber(data.lastPrice);
       quoteVolume24h = safeNumber(data.quoteVolume);
-      console.log("[preCheck] Binance 24hr parsed: currentPrice=", currentPrice, "quoteVolume=", quoteVolume24h);
     } else {
       console.error("[preCheck] Binance 24hr HTTP error:", res.status, res.statusText);
       marketDataError = true;
@@ -133,13 +131,9 @@ export async function runPreCheck(input: PreCheckInput): Promise<PreCheckResult>
     const res = await fetch(`https://fapi.binance.com/fapi/v1/fundingRate?symbol=${baseAsset}USDT&limit=1`);
     if (res.ok) {
       const data = (await res.json()) as unknown[];
-      console.log("[preCheck] Binance fundingRate raw:", JSON.stringify(data).slice(0, 200));
       if (Array.isArray(data) && data.length > 0) {
         const rate = safeNumber((data[0] as Record<string, unknown>).fundingRate);
         if (rate !== null) fundingRatePercent = rate * 100;
-        console.log("[preCheck] Binance fundingRate parsed: rate=", rate, "percent=", fundingRatePercent);
-      } else {
-        console.log("[preCheck] Binance fundingRate: empty array or not array, data=", data);
       }
     } else {
       console.error("[preCheck] Binance fundingRate HTTP error:", res.status, res.statusText);
@@ -191,16 +185,12 @@ export async function runPreCheck(input: PreCheckInput): Promise<PreCheckResult>
     const res = await fetch(`https://api.upbit.com/v1/ticker?markets=${upbitSymbol}`);
     if (res.ok) {
       const data = (await res.json()) as unknown[];
-      console.log("[preCheck] Upbit raw:", JSON.stringify(data).slice(0, 200));
       if (Array.isArray(data) && data.length > 0) {
         const upbitPrice = safeNumber((data[0] as Record<string, unknown>).trade_price);
-        console.log("[preCheck] Upbit parsed: trade_price=", upbitPrice, "currentPrice=", currentPrice);
         if (upbitPrice !== null && currentPrice !== null && currentPrice > 0) {
           const binanceKrw = currentPrice * KIMCHI_FX_RATE;
           kimchiPremiumPercent = ((upbitPrice - binanceKrw) / binanceKrw) * 100;
         }
-      } else {
-        console.log("[preCheck] Upbit: empty array or not array, data=", data);
       }
     } else {
       console.error("[preCheck] Upbit HTTP error:", res.status, res.statusText);

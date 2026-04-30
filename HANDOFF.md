@@ -20,6 +20,12 @@
 
 ## 마지막 완료 작업
 
+**2026-04-30 | Claude Code (CURRENT_TASK.md 운영 규칙 + "현재작업" 명령어 추가)**
+- `AGENTS.md`: "자동 명령어" 섹션 신규 추가 — "현재작업" 명령어 + CURRENT_TASK.md 운영 규칙
+- `CLAUDE.md`: "현재작업" 자동 명령어 + CURRENT_TASK.md 운영 규칙 섹션 추가
+- CURRENT_TASK.md 없으면 즉시 중단("CURRENT_TASK.md가 없습니다" 보고) 규칙 명문화
+- 검증: 문서 변경만
+
 **2026-04-30 | Claude Code (preCheckEngine 디버그 로그 정리 + CLAUDE.md 작업준비 강화)**
 - `server/trading/preCheckEngine.ts`: `[preCheck] console.log` 9건 제거 (Binance/Upbit raw·parsed·empty), `console.error` 7건은 유지
 - `client/src/components/home/WorkspaceWidgets.tsx`: 점검만 — 디스크 상태 이상 없음 (vite 캐시 잔재였음), 코드 수정 없음

@@ -35,6 +35,29 @@
 ### "커밋"
 작업정리 수행 후, 변경분을 논리적 단위로 나눠 커밋 (feat/fix/docs 프리픽스 사용). 커밋 후 반드시 git push origin 현재브랜치 실행.
 
+### "현재작업"
+다음을 순서대로 자동 수행:
+1. 프로젝트 루트에 `CURRENT_TASK.md`가 존재하는지 확인한다.
+   - **없으면 즉시 중단**: "CURRENT_TASK.md가 없습니다" 라고 보고하고 작업하지 않는다.
+2. `CURRENT_TASK.md`를 읽고 작업 지시 내용을 파악한다.
+3. `git fetch origin` 실행 후 `git log HEAD..origin/codex-google-workspace-expansion --oneline` 으로 원격 신규 커밋 확인. 있으면 `git pull --rebase` (충돌 시 보고 후 중단).
+4. `TODO.md`, `CHANGELOG.md`, `HANDOFF.md`를 읽어 현재 상태를 확인한다.
+5. `CURRENT_TASK.md`에 명시된 범위 내 작업만 수행한다. 범위 밖 작업은 하지 않는다.
+6. 작업 완료 후 `npm run check && npm run build`를 실행한다.
+7. `TODO.md`, `CHANGELOG.md`, `HANDOFF.md`를 갱신한다.
+8. 변경분을 논리 단위로 커밋하고 `git push origin 현재브랜치`를 실행한다.
+9. 결과만 요약 보고한다.
+
+---
+
+## CURRENT_TASK.md 운영 규칙
+
+- `CURRENT_TASK.md`는 프로젝트 루트에 두는 **현재 작업 지시서**다.
+- 작업 지시·범위·완료 조건을 명시한다.
+- **"현재작업" 명령은 이 파일이 없으면 실행하지 않는다.**
+- 작업이 끝나면 이 파일을 삭제하거나 내용을 비워 완료 상태임을 표시한다.
+- `.gitignore`에 추가하지 않는다 — Codex·Claude Code 모두 공유해야 한다.
+
 ---
 
 ---

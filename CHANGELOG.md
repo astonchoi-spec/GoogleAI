@@ -5,6 +5,19 @@
 
 ## 2026-04-30
 
+### [Claude Code] CURRENT_TASK.md 운영 규칙 + "현재작업" 자동 명령어 추가
+- **작업**: AGENTS.md와 CLAUDE.md에 공통 작업 파일 운영 규칙 추가
+- **CLAUDE.md 변경**:
+  - "현재작업" 자동 명령어 추가 (CURRENT_TASK.md 존재 확인 → git fetch → 상태 파악 → 범위 내 작업 → build → 문서 갱신 → 커밋·push → 요약 보고)
+  - CURRENT_TASK.md 운영 규칙 섹션 추가 (파일 없으면 작업 중단 명시)
+- **AGENTS.md 변경**:
+  - "자동 명령어" 섹션 신규 추가
+  - "현재작업" 자동 명령어 추가 (CLAUDE.md와 동일 내용)
+  - CURRENT_TASK.md 운영 규칙 섹션 추가
+- **수정 파일**: `AGENTS.md`, `CLAUDE.md`
+- **검증**: 문서 변경만 (빌드 불필요)
+- **잔여이슈**: 없음
+
 ### [Claude Code] preCheckEngine 디버그 로그 정리 + CLAUDE.md "작업준비" 강화
 - **작업 1**: `server/trading/preCheckEngine.ts`에서 `[preCheck] console.log` 9건 제거 — Binance 24hr raw/parsed, fundingRate raw/parsed/empty, Upbit raw/parsed/empty
   - `console.error` 7건은 유지 (HTTP 에러, fetch 에러, fetchBinanceCandles 에러)

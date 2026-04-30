@@ -47,8 +47,10 @@ function extractHashtags(text: string): { tags: string[]; stripped: string } {
 }
 
 function extractTitle(body: string): string {
-  const match = body.match(/^([^.。\n]{1,60})/);
-  return match ? match[1].trim() : body.slice(0, 30).trim();
+  // 소수점(1.2억)은 자르지 않음 — ". " 또는 "。" 또는 줄바꿈까지를 제목으로
+  const match = body.match(/^([\s\S]{1,60}?)(?:\.\s|。|\n|$)/);
+  if (match && match[1].trim()) return match[1].trim();
+  return body.slice(0, 40).trim();
 }
 
 export function matchWikiSave(message: string): IntentResult | null {

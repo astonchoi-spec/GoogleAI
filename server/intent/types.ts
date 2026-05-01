@@ -1,6 +1,6 @@
 import { googleAuthManager } from "../routers/google-workspace.ts";
 
-export type IntentDomain = "trading" | "realestate" | "finance" | "google" | "wiki" | "intelligence" | "chat";
+export type IntentDomain = "trading" | "realestate" | "finance" | "google" | "wiki" | "intelligence" | "deals" | "chat";
 export type IntentType = "query" | "execute";
 export type IntentAction =
   | "trading_balance"
@@ -43,6 +43,7 @@ export type IntentAction =
   | "google_list_events"
   | "wiki_save"
   | "wiki_search"
+  | "deals_command"
   | "execute_placeholder"
   | "chat";
 

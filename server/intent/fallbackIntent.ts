@@ -26,6 +26,16 @@ export function fallbackIntent(message: string): IntentResult {
   const lower = message.toLowerCase();
   const compact = lower.replace(/\s+/g, "");
 
+  if (/^딜(?:\s|$)/.test(message.trim())) {
+    return {
+      domain: "deals",
+      action: "deals_command",
+      type: "query",
+      confidence: 0.98,
+      params: {},
+    };
+  }
+
   // 위키 저장/검색 — 명시적 prefix
   const wikiSave = matchWikiSave(message);
   if (wikiSave) return wikiSave;

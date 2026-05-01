@@ -41,6 +41,15 @@ export class AgentQueue {
     return this.tasks.get(id) ?? null;
   }
 
+  getTasksByDate(dateISO: string): AgentTask[] {
+    const finalStatuses = new Set<AgentStatus>(["completed", "failed", "cancelled"]);
+    return this.list().filter((task) => {
+      if (!finalStatuses.has(task.status)) return false;
+      const stamp = task.finishedAt ?? task.createdAt;
+      return toKstDateKey(new Date(stamp)) === dateISO;
+    });
+  }
+
   enqueue(input: CreateAgentTaskInput): AgentTask {
     if (this.tasks.size >= this.maxTasks) {
       throw new Error(`작업 큐가 가득 찼습니다. (최대 ${this.maxTasks}개)`);
@@ -216,4 +225,14 @@ export class AgentQueue {
       await new Promise((resolve) => setTimeout(resolve, 20));
     }
   }
+}
+
+function toKstDateKey(date: Date): string {
+  if (Number.isNaN(date.getTime())) return "";
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Seoul",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(date);
 }

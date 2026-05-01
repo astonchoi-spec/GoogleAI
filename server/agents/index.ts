@@ -46,6 +46,10 @@ export function listAgentTasks(): AgentTask[] {
   return getAgentQueue().list();
 }
 
+export function getAgentTasksByDate(dateISO: string): AgentTask[] {
+  return getAgentQueue().getTasksByDate(dateISO);
+}
+
 export function getAgentTask(id: string): AgentTask | null {
   return getAgentQueue().get(id);
 }

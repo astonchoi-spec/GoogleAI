@@ -418,3 +418,15 @@
 - **신규 테스트**: `dealStore.test.ts`, `dealFileRouter.test.ts` 총 38개
 - **검증**: `npm run check` 통과 / `npm run build` 통과 / `npm test` 통과 (227 passed, 7 skipped, 2 todo)
 - **아카이브**: `docs/tasks/2026-05-01-deal-folder-phase-a.md`
+
+# 2026-05-01 Modular Monolith
+
+### [Codex] 모듈 독립성 원칙 문서화 및 경계 검사 추가
+- **작업**: `AGENTS.md`, `CLAUDE.md`에 "모듈 독립성 원칙 (Modular Monolith)" 섹션 추가
+- **신규 문서**: `server/wiki/README.md`, `server/deals/README.md`, `server/trading/README.md`, `server/intelligence/README.md`, `server/google/README.md`, `server/finance/README.md`, `server/realestate/README.md`, `server/intent/README.md`, `server/_core/README.md`
+- **신규 도구**: `scripts/check-module-boundaries.ts` 추가. 도메인 모듈 간 직접 import 및 도메인→intent import를 검사
+- **수정**: `package.json`의 `npm run check`에 모듈 경계 검사 통합
+- **검증**: 의도적 위반 케이스 1건 감지 확인 후 제거, 실제 경계 위반 0건
+- **검증**: `npm run check` 통과 / `npm run build` 통과 / `npm test` 통과 (227 passed, 7 skipped, 2 todo)
+- **아카이브**: `docs/tasks/2026-05-01-modular-monolith.md`
+- **잔여이슈**: 신규 도메인 모듈 추가 시 README와 검사 스크립트 도메인 목록을 함께 갱신 필요

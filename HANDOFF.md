@@ -9,7 +9,7 @@
 |------|------|
 | 서버 | 정상 기동 (포트 4000) |
 | 빌드 | `npm run check` ✅ / `npm run build` ✅ (2026-05-01) |
-| 테스트 | 189 passed, 7 skipped, 2 todo |
+| 테스트 | 227 passed, 7 skipped, 2 todo |
 | 브랜치 | `codex-google-workspace-expansion` |
 | Redis | 선택적 (없어도 부팅됨, BullMQ lazy init) |
 | Google OAuth | 정상 연결 시 작동 |
@@ -337,3 +337,22 @@
 - Phase B Gmail 자동 분류
 - Downloads 감시
 - Aston Wiki 판단 기록 연계
+
+## 2026-05-01 Modular Monolith 완료 (Codex)
+
+### 완료 내용
+- `AGENTS.md`, `CLAUDE.md`에 "모듈 독립성 원칙 (Modular Monolith)" 섹션 추가
+- 9개 모듈 README 추가: wiki, deals, trading, intelligence, google, finance, realestate, intent, _core
+- `scripts/check-module-boundaries.ts` 추가 및 `npm run check` 통합
+- 의도적 위반 케이스 1건 감지 확인 후 제거
+- 실제 모듈 경계 위반 0건, 자동 수정 0건, 후속 분리 위반 0건
+- 아카이브: `docs/tasks/2026-05-01-modular-monolith.md`
+
+### 검증
+- `npm run check` 통과
+- `npm run build` 통과
+- `npm test` 통과: 227 passed, 7 skipped, 2 todo
+
+### 다음 작업 후보
+- 신규 도메인 모듈 추가 시 README와 `scripts/check-module-boundaries.ts` 도메인 목록 동시 갱신
+- 기존 500줄 초과 파일(`server/trading/tradeJournal.ts`, `server/_core/intentRouter.ts` 등)은 별도 P1 분리 작업으로 유지

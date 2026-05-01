@@ -193,3 +193,12 @@
   - 텔레그램 document/photo 저장 핸들러 분리
   - 테스트 38개 추가, `npm run check`, `npm run build`, `npm test` 통과
 - [ ] Phase B 후보: Gmail 자동 분류, Downloads 감시, Wiki 판단 기록 연계는 별도 CURRENT_TASK로 진행
+
+# 2026-05-01 Modular Monolith 업데이트
+
+- [x] 모듈 독립성 원칙 문서화 완료
+  - `AGENTS.md`, `CLAUDE.md`에 "모듈 독립성 원칙 (Modular Monolith)" 추가
+  - `server/wiki`, `server/deals`, `server/trading`, `server/intelligence`, `server/google`, `server/finance`, `server/realestate`, `server/intent`, `server/_core` README 추가
+  - `scripts/check-module-boundaries.ts` 추가 및 `npm run check` 통합
+  - 실제 모듈 경계 위반 0건, 자동 수정 0건, 후속 분리 위반 0건
+- [ ] 신규 도메인 모듈 추가 시 README와 `scripts/check-module-boundaries.ts` 도메인 목록을 함께 갱신

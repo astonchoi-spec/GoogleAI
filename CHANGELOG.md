@@ -395,3 +395,16 @@
 - **잔여이슈**:
   - telegram-bot.ts 568줄로 500줄 룰 위반(이전부터 위반, +22줄 추가). P1 분리 대상
   - 지정가 주문 미지원, 자동 신호 트리거(preCheckEngine + cron) 연결은 후속 과제
+
+## 2026-05-01 Telegram 검토 모드 전환
+
+### [Codex] 실주문 잠금 + 의사결정 리포트 강화
+- **작업**: `ENABLE_REAL_ORDERS=false` 기본값을 추가하고, false 상태에서는 Upbit 실주문 실행 전 `🔒 검토 모드: 실주문 비활성화 상태입니다.`로 차단
+- **작업**: `server/trading/reviewReport.ts` 신규 추가 — `검토 BTC`, `롱 검토 BTC 15배`, `숏 검토 ETH 5배`, `매수 적합?` 등 자연어/키워드 검토 리포트 생성
+- **작업**: `매수 시뮬` / `매도 시뮬` 명령은 실주문 비활성 상태에서 승인 큐 대신 검토 리포트를 반환하도록 변경
+- **작업**: 레버리지(`15배`), KRW(`원/만원/억`), 수량(`0.01BTC`), USD(`달러/$`) 단위 파서 추가. 단위 없는 숫자는 KRW 가정 안내 표시
+- **작업**: 1h/4h/1d RSI·볼린저 위치, 1h/4h MACD, 거래량 스파이크, 펀딩비 평균, 김프 변화, Risk Guard 체크리스트 기반 종합 판정 추가
+- **수정 파일**: `server/trading/orderExecutor.ts`, `server/intent/handlers/approval.ts`, `server/intent/handlers/trading.ts`, `server/intent/fallbackIntent.ts`, `server/intent/types.ts`, `.env.example`
+- **신규 파일**: `server/trading/reviewReport.ts`, `server/__tests__/reviewReport.test.ts`, `README.md`, `docs/tasks/2026-05-01-review-mode-transition.md`
+- **검증**: `npm run check` ✅ / `npm run build` ✅ / `npm test` ✅ (189 passed, 7 skipped, 2 todo)
+- **잔여이슈**: 회장님 Telegram 수동 QA 필요. 실주문 재활성화는 `.env`에서 `ENABLE_REAL_ORDERS=true` 명시 필요

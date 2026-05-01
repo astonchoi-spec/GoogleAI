@@ -8,8 +8,8 @@
 | 항목 | 상태 |
 |------|------|
 | 서버 | 정상 기동 (포트 4000) |
-| 빌드 | `npm run check` ✅ / `npm run build` ✅ (2026-04-29) |
-| 테스트 | 92 passed, 7 skipped |
+| 빌드 | `npm run check` ✅ / `npm run build` ✅ (2026-05-01) |
+| 테스트 | 189 passed, 7 skipped, 2 todo |
 | 브랜치 | `codex-google-workspace-expansion` |
 | Redis | 선택적 (없어도 부팅됨, BullMQ lazy init) |
 | Google OAuth | 정상 연결 시 작동 |
@@ -289,3 +289,33 @@
 - preCheckEngine 자동 신호 → 승인 큐 연결 (수동 트리거 → 자동 트리거)
 - 지정가 주문 지원
 - Phase 1c MTProto 텔레그램 수집기
+
+## 2026-05-01 Telegram 검토 모드 전환 완료 (Codex)
+
+### 완료 내용
+- 기본값 `ENABLE_REAL_ORDERS=false` 추가. false 상태에서는 `orderExecutor`가 실주문 fetch 전에 차단
+- `매수 시뮬` / `매도 시뮬`은 검토 모드에서 승인 큐 대신 검토 리포트를 반환
+- 기존 pending 승인 버튼을 클릭해도 false 상태에서는 `🔒 검토 모드: 실주문 비활성화 상태입니다.`로 차단
+- 신규 `trading_review_report` 인텐트 추가
+- `server/trading/reviewReport.ts` 신규: 1h/4h/1d RSI·볼린저, 1h/4h MACD, 거래량 스파이크, 펀딩비 평균, 김프 변화, Risk Guard 체크리스트
+- 단위 파서 개선: `원/만원/억`, `BTC/ETH` 수량, `달러/$`, `배` 레버리지, 모호한 숫자는 KRW 가정 안내
+- 검증: `npm run check` / `npm run build` / `npm test` 통과 (189 passed, 7 skipped, 2 todo)
+- 아카이브: `docs/tasks/2026-05-01-review-mode-transition.md`
+
+### 수동 QA 명령
+- [ ] `검토 BTC`
+- [ ] `롱 검토 BTC 15배`
+- [ ] `숏 검토 ETH 5배`
+- [ ] `매수 시뮬 BTC 5만원`
+- [ ] `매수 적합?`
+- [ ] 기존 승인 버튼 클릭 시 검토 모드 차단 메시지 확인
+
+### 보안 상태
+- 기본 운영은 검토 모드
+- 실주문은 `.env`에 `ENABLE_REAL_ORDERS=true`를 명시해야만 활성화
+- 실주문 활성화 시 `orderExecutor`가 경고 로그 출력
+
+### 다음 작업 후보
+- Telegram 검토 모드 수동 QA 결과 반영
+- `server/llm/telegram-bot.ts` 도메인별 분리
+- 실거래 재개 전 주문 단위/계좌 잔고 기반 사이징 별도 설계

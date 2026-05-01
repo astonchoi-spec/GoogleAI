@@ -172,7 +172,16 @@
 - [ ] Phase 1c MTProto 텔레그램 수집기 작업 지시서 작성
 - [x] `server/intent/intentService.ts` 도메인별 분리 (2026-05-01 완료)
 - [x] Telegram 승인 모드 + Upbit 1탭 자동 체결 (2026-05-01 완료)
+- [x] Telegram 승인 모드 → 검토 모드 전환 (2026-05-01 완료)
+  - `ENABLE_REAL_ORDERS=false` 기본값으로 실주문 잠금
+  - `검토 BTC`, `롱 검토 BTC 15배`, `매수 적합?`, `매수 시뮬 BTC 5만원` 리포트 지원
+  - 멀티 타임프레임 수치 리포트 + 체크리스트 추가
 - [ ] `server/llm/telegram-bot.ts` 도메인별 분리 (568줄, P1)
 - [ ] preCheckEngine 자동 신호 → 승인 큐 연결
 - [ ] Upbit 지정가 주문 지원
-- [ ] Telegram 승인 모드 실거래 소액 검증 (회장)
+- [ ] Telegram 검토 모드 수동 QA (회장)
+  - `검토 BTC`
+  - `롱 검토 BTC 15배`
+  - `매수 시뮬 BTC 5만원`
+  - `매수 적합?`
+  - 기존 승인 버튼 클릭 시 검토 모드 차단 메시지 확인

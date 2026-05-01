@@ -95,6 +95,24 @@ describe("AgentQueue", () => {
     expect(maxObserved).toBe(1);
   });
 
+  it("returns final tasks by KST date only", async () => {
+    const queue = new AgentQueue({ runner: instantRunner() });
+    const first = queue.enqueue({ templateId: "pf-comprehensive", target: "A" });
+    queue.enqueue({ templateId: "pf-comprehensive", target: "B" });
+    await queue.waitForIdle();
+    const today = new Intl.DateTimeFormat("en-CA", {
+      timeZone: "Asia/Seoul",
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+    }).format(new Date());
+
+    const tasks = queue.getTasksByDate(today);
+
+    expect(tasks.map((task) => task.id)).toContain(first.id);
+    expect(tasks.every((task) => task.status === "completed")).toBe(true);
+  });
+
   it("keeps level 2 tasks awaiting approval until approved", async () => {
     process.env.AGENT_PERMISSION_LEVEL = "2";
     const queue = new AgentQueue({ runner: instantRunner() });

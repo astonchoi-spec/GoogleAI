@@ -5,6 +5,7 @@ const mocks = vi.hoisted(() => ({
   mockCollectDartDigest: vi.fn(),
   mockCollectWikiDigest: vi.fn(),
   mockGetDealsSection: vi.fn(),
+  mockGetAgentResultsSection: vi.fn(),
   mockCollectRiskGuardSnapshot: vi.fn(),
   mockSaveBriefingArchive: vi.fn(),
   mockParseJson: vi.fn(),
@@ -15,6 +16,7 @@ vi.mock("../_core/briefingSources.ts", () => ({
   collectDartDigest: mocks.mockCollectDartDigest,
   collectWikiDigest: mocks.mockCollectWikiDigest,
   getDealsSection: mocks.mockGetDealsSection,
+  getAgentResultsSection: mocks.mockGetAgentResultsSection,
   collectRiskGuardSnapshot: mocks.mockCollectRiskGuardSnapshot,
   saveBriefingArchive: mocks.mockSaveBriefingArchive,
 }));
@@ -177,6 +179,8 @@ describe("morning briefing", () => {
       ],
     });
 
+    mocks.mockGetAgentResultsSection.mockResolvedValue(null);
+
     mocks.mockCollectRiskGuardSnapshot.mockResolvedValue({
       dailyPnlPercent: -1.2,
       dailyLossLimitPercent: 3,
@@ -221,6 +225,7 @@ describe("morning briefing", () => {
       deals: {
         items: [],
       },
+      agents: null,
       risk: {
         dailyPnlPercent: -1.2,
         dailyLossLimitPercent: 3,
@@ -276,6 +281,7 @@ describe("morning briefing", () => {
       deals: {
         items: [],
       },
+      agents: null,
       risk: {
         dailyPnlPercent: -1.2,
         dailyLossLimitPercent: 3,
@@ -331,6 +337,7 @@ describe("morning briefing", () => {
           },
         ],
       },
+      agents: null,
       risk: {
         dailyPnlPercent: -1.2,
         dailyLossLimitPercent: 3,
@@ -343,6 +350,38 @@ describe("morning briefing", () => {
     expect(text).toContain("• 포항해상케이블카 — 자료 8건 (어제 +1) ⚠️");
     expect(text.indexOf("어제 저장된 위키 메모")).toBeLessThan(text.indexOf("진행 중 딜"));
     expect(text.indexOf("진행 중 딜")).toBeLessThan(text.indexOf("Risk Guard"));
+  });
+
+  it("places yesterday agent results after deals and before Risk Guard", () => {
+    const text = formatMorningBriefing({
+      dateKey: "2026-05-01",
+      market: { symbol: "BTC", currentPrice: 100000, priceChangePercent: 1.23, rsi1h: 55.5, rsi4h: 61.2, fundingRatePercent: 0.012, kimchiPremiumPercent: 2.5, volume24h: 123456789, notes: [] },
+      dart: { startDate: "2026-04-30", endDate: "2026-05-01", items: [] },
+      wiki: { items: [] },
+      deals: { items: [] },
+      agents: {
+        date: "2026-04-30",
+        items: [{
+          id: "abc12",
+          templateId: "pf-comprehensive",
+          templateLabel: "PF 종합 분석",
+          icon: "🧪",
+          target: "한남동644",
+          preview: "IRR 14.1%, 평당 4,800만원, 리스크 3건",
+          wikiPath: "G:\\Aston-Wiki\\agents\\2026-04-30-pf-comprehensive-abc12.md",
+          simulation: true,
+          status: "completed",
+        }],
+        failedItems: [],
+        extraCount: 0,
+      },
+      risk: { dailyPnlPercent: -1.2, dailyLossLimitPercent: 3, consecutiveLosses: 1, consecutiveLossBlock: 3, locked: false },
+    });
+
+    expect(text).toContain("## 🤖 어제 에이전트 작업 (1건)");
+    expect(text).toContain("• 🧪 PF 종합 분석 — 한남동644");
+    expect(text.indexOf("진행 중 딜")).toBeLessThan(text.indexOf("어제 에이전트 작업"));
+    expect(text.indexOf("어제 에이전트 작업")).toBeLessThan(text.indexOf("Risk Guard"));
   });
 
   it("shows an empty deal state when there are no active deal files", () => {
@@ -370,6 +409,7 @@ describe("morning briefing", () => {
       deals: {
         items: [],
       },
+      agents: null,
       risk: {
         dailyPnlPercent: -1.2,
         dailyLossLimitPercent: 3,
@@ -390,6 +430,7 @@ describe("morning briefing", () => {
     expect(data.dart.items).toHaveLength(1);
     expect(data.wiki.items).toHaveLength(1);
     expect(data.deals.items).toHaveLength(1);
+    expect(data.agents).toBeNull();
     expect(data.risk.locked).toBe(false);
 
     const result = await executeMorningBriefing({

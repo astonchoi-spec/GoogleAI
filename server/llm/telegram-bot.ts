@@ -15,6 +15,7 @@ import { registerTelegramBot } from "../telegram-service.ts";
 import { googleAuthManager } from "../routers/google-workspace.ts";
 import { classifyIntent, formatIntentRouteMessage, routeIntentMessage } from "../intent/intentService.ts"; // MODIFIED: reuse shared formatter to keep Telegram output aligned with web intent responses.
 import { handleApprovalCallback } from "../intent/handlers/approval.ts"; // MODIFIED: 1탭 승인 매매 callback_query 처리
+import { handleDealFile, isDealFileMessage } from "../deals/telegramDealFileHandler.ts"; // MODIFIED: keep deal file download/storage logic outside telegram-bot.ts.
 import { llmAdapter } from "../_core/llmAdapter.ts"; // MODIFIED: use central LLM adapter for command parsing instead of hardcoded Gemini Flash.
 import GmailConnector from "../google/gmail.ts";
 import CalendarConnector from "../google/calendar.ts";
@@ -407,6 +408,17 @@ Return ONLY the JSON object, no other text.`;
       }
 
       const userMessage = (ctx.message as any)?.text as string | undefined;
+      if (isDealFileMessage(ctx)) {
+        try {
+          await ctx.sendChatAction("typing");
+          const response = await handleDealFile(ctx, this.bot.telegram);
+          await ctx.reply(response, { reply_parameters: { message_id: ctx.message.message_id } });
+        } catch (err) {
+          console.error("[Telegram] deal file error:", err);
+          await ctx.reply("⚠️ 딜 자료 저장 중 오류가 발생했습니다.");
+        }
+        return;
+      }
       if (!userMessage) {
         return;
       }

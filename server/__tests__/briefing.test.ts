@@ -4,6 +4,7 @@ const mocks = vi.hoisted(() => ({
   mockCollectMarketSnapshot: vi.fn(),
   mockCollectDartDigest: vi.fn(),
   mockCollectWikiDigest: vi.fn(),
+  mockGetDealsSection: vi.fn(),
   mockCollectRiskGuardSnapshot: vi.fn(),
   mockSaveBriefingArchive: vi.fn(),
   mockParseJson: vi.fn(),
@@ -13,6 +14,7 @@ vi.mock("../_core/briefingSources.ts", () => ({
   collectMarketSnapshot: mocks.mockCollectMarketSnapshot,
   collectDartDigest: mocks.mockCollectDartDigest,
   collectWikiDigest: mocks.mockCollectWikiDigest,
+  getDealsSection: mocks.mockGetDealsSection,
   collectRiskGuardSnapshot: mocks.mockCollectRiskGuardSnapshot,
   saveBriefingArchive: mocks.mockSaveBriefingArchive,
 }));
@@ -163,6 +165,18 @@ describe("morning briefing", () => {
       ],
     });
 
+    mocks.mockGetDealsSection.mockResolvedValue({
+      items: [
+        {
+          name: "용인신대지구",
+          totalFiles: 12,
+          yesterdayFiles: 3,
+          hasNotebook: true,
+          updatedAt: "2026-05-01T00:00:00.000Z",
+        },
+      ],
+    });
+
     mocks.mockCollectRiskGuardSnapshot.mockResolvedValue({
       dailyPnlPercent: -1.2,
       dailyLossLimitPercent: 3,
@@ -204,6 +218,9 @@ describe("morning briefing", () => {
       wiki: {
         items: [],
       },
+      deals: {
+        items: [],
+      },
       risk: {
         dailyPnlPercent: -1.2,
         dailyLossLimitPercent: 3,
@@ -216,6 +233,7 @@ describe("morning briefing", () => {
     expect(text).toContain("모닝 브리핑");
     expect(text).toContain("시장 현황");
     expect(text).toContain("DART 공시");
+    expect(text).toContain("진행 중 딜");
     expect(text).toContain("Risk Guard");
     expect(text).toContain("더보기는 웹 대시보드에서 확인할 수 있습니다.");
   });
@@ -255,6 +273,9 @@ describe("morning briefing", () => {
           },
         ],
       },
+      deals: {
+        items: [],
+      },
       risk: {
         dailyPnlPercent: -1.2,
         dailyLossLimitPercent: 3,
@@ -270,11 +291,105 @@ describe("morning briefing", () => {
     expect(text).not.toContain("이전 브리핑 본문");
   });
 
+  it("places the deal section after wiki and before Risk Guard", () => {
+    const text = formatMorningBriefing({
+      dateKey: "2026-05-01",
+      market: {
+        symbol: "BTC",
+        currentPrice: 100000,
+        priceChangePercent: 1.23,
+        rsi1h: 55.5,
+        rsi4h: 61.2,
+        fundingRatePercent: 0.012,
+        kimchiPremiumPercent: 2.5,
+        volume24h: 123456789,
+        notes: [],
+      },
+      dart: {
+        startDate: "2026-04-30",
+        endDate: "2026-05-01",
+        items: [],
+      },
+      wiki: {
+        items: [
+          {
+            title: "위키 메모",
+            bodyPreview: "메모",
+            categories: ["realestate"],
+            date: "2026-04-30T08:00:00.000Z",
+          },
+        ],
+      },
+      deals: {
+        items: [
+          {
+            name: "포항해상케이블카",
+            totalFiles: 8,
+            yesterdayFiles: 1,
+            hasNotebook: false,
+            updatedAt: "2026-05-01T00:00:00.000Z",
+          },
+        ],
+      },
+      risk: {
+        dailyPnlPercent: -1.2,
+        dailyLossLimitPercent: 3,
+        consecutiveLosses: 1,
+        consecutiveLossBlock: 3,
+        locked: false,
+      },
+    });
+
+    expect(text).toContain("- 포항해상케이블카 — 자료 8건 (어제 +1) ⚠️ NotebookLM 미연결");
+    expect(text.indexOf("어제 저장된 위키 메모")).toBeLessThan(text.indexOf("진행 중 딜"));
+    expect(text.indexOf("진행 중 딜")).toBeLessThan(text.indexOf("Risk Guard"));
+  });
+
+  it("shows an empty deal state when there are no active deal files", () => {
+    const text = formatMorningBriefing({
+      dateKey: "2026-05-01",
+      market: {
+        symbol: "BTC",
+        currentPrice: 100000,
+        priceChangePercent: 1.23,
+        rsi1h: 55.5,
+        rsi4h: 61.2,
+        fundingRatePercent: 0.012,
+        kimchiPremiumPercent: 2.5,
+        volume24h: 123456789,
+        notes: [],
+      },
+      dart: {
+        startDate: "2026-04-30",
+        endDate: "2026-05-01",
+        items: [],
+      },
+      wiki: {
+        items: [],
+      },
+      deals: {
+        items: [],
+      },
+      risk: {
+        dailyPnlPercent: -1.2,
+        dailyLossLimitPercent: 3,
+        consecutiveLosses: 1,
+        consecutiveLossBlock: 3,
+        locked: false,
+      },
+    });
+
+    expect(text).toContain("## 📁 진행 중 딜 (0건)");
+    expect(text).toContain("- 진행 중 딜 없음");
+  });
+
+
   it("builds and archives a briefing without network side effects", async () => {
     const data = await buildMorningBriefingData(new Date("2026-04-30T00:00:00+09:00"));
     expect(data.market.symbol).toBe("BTC");
     expect(data.dart.items).toHaveLength(1);
     expect(data.wiki.items).toHaveLength(1);
+    expect(data.deals.items).toHaveLength(1);
     expect(data.risk.locked).toBe(false);
 
     const result = await executeMorningBriefing({
@@ -292,6 +407,7 @@ describe("morning briefing", () => {
     expect(result.archivePath).toBe("/tmp/2026-04-30-briefing.md");
     expect(result.text).toContain("Aston Corp");
     expect(result.text).toContain("부동산 PF 메모");
+    expect(result.text).toContain("용인신대지구");
   });
 
   it("routes briefing test to the manual briefing intent before Google Workspace", async () => {

@@ -1,7 +1,8 @@
 import { describe, it, expect, beforeAll, afterAll, vi } from "vitest";
 import { SessionManager } from "./session";
 import LLMCaller from "./caller";
-import TelegramBot from "./telegram-bot";
+import TelegramBot, { TelegramBot as CompatTelegramBot } from "./telegram-bot";
+import DirectTelegramBot from "./telegramBot/index";
 import { getModel, getDefaultModel } from "./models";
 
 describe("Telegram Bot Commands", () => {
@@ -246,6 +247,13 @@ describe("Telegram Bot Commands", () => {
     it("should have correct default model name", () => {
       const defaultModel = getDefaultModel();
       expect(defaultModel.name).toContain("Pro");
+    });
+  });
+
+  describe("Split module compatibility", () => {
+    it("should keep the legacy telegram-bot import path compatible", () => {
+      expect(TelegramBot).toBe(DirectTelegramBot);
+      expect(CompatTelegramBot).toBe(DirectTelegramBot);
     });
   });
 });

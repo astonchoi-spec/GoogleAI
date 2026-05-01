@@ -408,3 +408,13 @@
 - **신규 파일**: `server/trading/reviewReport.ts`, `server/__tests__/reviewReport.test.ts`, `README.md`, `docs/tasks/2026-05-01-review-mode-transition.md`
 - **검증**: `npm run check` ✅ / `npm run build` ✅ / `npm test` ✅ (189 passed, 7 skipped, 2 todo)
 - **잔여이슈**: 회장님 Telegram 수동 QA 필요. 실주문 재활성화는 `.env`에서 `ENABLE_REAL_ORDERS=true` 명시 필요
+# 2026-05-01 Deal Folder Phase A
+
+### [Codex] 텔레그램 파일 기반 딜 자료 자동 정리
+- **작업**: `server/deals/` 신규 모듈 추가. 딜 폴더 6개 카테고리 생성, `_deal.json` 메타 관리, 파일 저장/충돌 처리, 부분 매칭 구현
+- **작업**: `딜 추가`, `딜 목록`, `딜 한남동644`, `딜 노트북`, `딜 상태`, `딜 저장` 명령 파서와 인텐트 핸들러 추가
+- **작업**: `telegram-bot.ts`에는 document/photo + `딜 저장` 캡션 감지 후 `telegramDealFileHandler.handleDealFile()` 호출만 추가
+- **작업**: `.env.example`에 `DEALS_ROOT` 추가
+- **신규 테스트**: `dealStore.test.ts`, `dealFileRouter.test.ts` 총 38개
+- **검증**: `npm run check` 통과 / `npm run build` 통과 / `npm test` 통과 (227 passed, 7 skipped, 2 todo)
+- **아카이브**: `docs/tasks/2026-05-01-deal-folder-phase-a.md`

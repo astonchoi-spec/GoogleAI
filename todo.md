@@ -185,3 +185,11 @@
   - `매수 시뮬 BTC 5만원`
   - `매수 적합?`
   - 기존 승인 버튼 클릭 시 검토 모드 차단 메시지 확인
+# 2026-05-01 Deal Folder Phase A 업데이트
+
+- [x] 텔레그램 파일 기반 딜 자료 자동 정리 Phase A 완료
+  - `DEALS_ROOT` 기반 딜 폴더 생성 및 `_deal.json` 메타 관리
+  - `딜 추가/목록/상세/노트북/상태/저장` 명령 지원
+  - 텔레그램 document/photo 저장 핸들러 분리
+  - 테스트 38개 추가, `npm run check`, `npm run build`, `npm test` 통과
+- [ ] Phase B 후보: Gmail 자동 분류, Downloads 감시, Wiki 판단 기록 연계는 별도 CURRENT_TASK로 진행

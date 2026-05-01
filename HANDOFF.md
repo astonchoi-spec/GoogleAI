@@ -319,3 +319,21 @@
 - Telegram 검토 모드 수동 QA 결과 반영
 - `server/llm/telegram-bot.ts` 도메인별 분리
 - 실거래 재개 전 주문 단위/계좌 잔고 기반 사이징 별도 설계
+## 2026-05-01 Deal Folder Phase A 완료 (Codex)
+
+### 완료 내용
+- `server/deals/` 신규 모듈로 딜 폴더/메타/파일 저장/텔레그램 파일 핸들러 분리 완료
+- `server/intent/handlers/deals.ts` 및 registry/fallback 연결 완료
+- `server/llm/telegram-bot.ts`는 파일 첨부 + `딜 저장` 캡션 감지 호출만 추가
+- `.env.example`에 `DEALS_ROOT` 추가
+- `docs/tasks/2026-05-01-deal-folder-phase-a.md` 아카이브 완료
+
+### 검증
+- `npm run check` 통과
+- `npm run build` 통과
+- `npm test` 통과: 227 passed, 7 skipped, 2 todo
+
+### 다음 작업 후보
+- Phase B Gmail 자동 분류
+- Downloads 감시
+- Aston Wiki 판단 기록 연계

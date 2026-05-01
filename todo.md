@@ -221,3 +221,15 @@
   - 신규 테스트 18개, 전체 `npm test` 253 passed
 - [ ] Telegram 실제 화면에서 카톡 인라인 버튼 2단계(딜 선택 → 카테고리 선택) 최종 확인
 - [ ] 딜 목록이 8개를 넘을 때 검색/페이지네이션 UX 개선 검토
+
+# 2026-05-01 Gmail/Download Watcher 업데이트
+
+- [x] Gmail 자동 분류 + 다운로드 폴더 감시 Phase B-2/B-3 완료
+  - `fileClassifier.ts` 공통 분류 엔진으로 카톡/Gmail/다운로드 중복 제거
+  - Gmail `Aston-Deals` 라벨 + unread + attachment 폴링, 첨부 다운로드 후 분류
+  - 다운로드 폴더 감시, `.crdownload`/이미지/1MB 미만 파일 무시
+  - `kakao:`, `gmail:`, `dl:` 인라인 callback 통합
+  - 신규 테스트 16개, 전체 `npm test` 269 passed
+- [ ] 실제 Gmail inbox에서 `Aston-Deals` 라벨 메일 1건으로 운영 QA
+- [ ] 실제 Telegram 화면에서 Gmail/다운로드 인라인 버튼 분류 최종 확인
+- [ ] 딜 목록 8개 초과 시 검색/페이지네이션 UX 개선 검토

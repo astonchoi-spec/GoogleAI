@@ -9,7 +9,7 @@
 |------|------|
 | 서버 | 정상 기동 (포트 4000) |
 | 빌드 | `npm run check` ✅ / `npm run build` ✅ (2026-05-01) |
-| 테스트 | 253 passed, 7 skipped, 2 todo |
+| 테스트 | 269 passed, 7 skipped, 2 todo |
 | 브랜치 | `codex-google-workspace-expansion` |
 | Redis | 선택적 (없어도 부팅됨, BullMQ lazy init) |
 | Google OAuth | 정상 연결 시 작동 |
@@ -401,3 +401,34 @@
 - Telegram 실제 화면에서 인라인 버튼 2단계 분류 최종 QA
 - 딜 목록 8개 초과 시 검색/페이지네이션 추가
 - 네이버메일/Gmail 첨부 자동 분류는 별도 CURRENT_TASK로 진행
+
+## 2026-05-01 Gmail/Download Watcher Phase B-2/B-3 완료 (Codex)
+
+### 완료 내용
+- `server/deals/fileClassifier.ts`: 카톡/Gmail/다운로드 공통 분류 엔진 추가
+- `server/deals/gmailWatcher.ts`: `GMAIL_AUTO_LABEL` + unread + attachment 메일 폴링, 첨부 다운로드, processed 라벨/읽음 처리
+- `server/deals/downloadWatcher.ts`: 다운로드 폴더 감시, 임시파일/이미지/1MB 미만 파일 무시
+- `server/intent/handlers/fileCallback.ts`: `kakao:`, `gmail:`, `dl:` callback 통합
+- `server/deals/kakaoFileHandler.ts`: 기존 API 유지 wrapper로 축소
+- `server/llm/telegram-bot.ts`: callback 라우팅 통합 후 499줄 유지
+- `_core/googleOAuth.ts`: Google OAuth 토큰 접근을 `_core` 경유로 제공해 도메인 직접 import 회피
+
+### 검증
+- `npm run check` 통과
+- `npm run build` 통과
+- `npm test` 통과: 269 passed, 7 skipped, 2 todo
+- 수동 스모크:
+  - `[kakao-watcher] watching: C:\Users\user\Documents\카카오톡 받은 파일`
+  - `[download-watcher] watching: C:\Users\user\Downloads`
+  - `[gmail-watcher] polling every 5min, label: Aston-Deals`
+  - Gmail metadata 매칭 저장, 다운로드 PDF 저장, `.crdownload`/스크린샷 무시 확인
+
+### Gmail OAuth 상태
+- `data/google-tokens.json`에 userId=1 토큰 존재
+- access/refresh token 모두 있음
+- access token 만료 전: 2026-05-01 19:59:19 KST
+
+### 다음 작업 후보
+- 실제 Gmail inbox에서 `Aston-Deals` 라벨 메일 운영 QA
+- Telegram 실제 화면에서 Gmail/다운로드 인라인 버튼 최종 QA
+- 딜 후보 8개 초과 시 검색/페이지네이션 개선

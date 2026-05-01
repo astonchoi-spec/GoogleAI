@@ -322,6 +322,21 @@
 - HANDOFF.md, TODO.md 갱신
 ## 2026-05-01
 
+### [Codex] Gmail 자동 분류 + 다운로드 폴더 감시 Phase B-2/B-3
+- **작업**: 카톡/Gmail/다운로드 3채널이 공통 `fileClassifier`를 사용하도록 분류 엔진을 통합
+- **신규 파일**:
+  - `server/deals/fileClassifier.ts` (197줄) — 공통 무시/매칭/자동 저장/인라인 분류 대기 처리
+  - `server/deals/gmailWatcher.ts` (149줄) — Gmail `Aston-Deals` 라벨 5분 폴링, 첨부 다운로드, 처리 라벨/읽음 처리
+  - `server/deals/downloadWatcher.ts` (84줄) — 다운로드 폴더 chokidar 감시, 임시/이미지/1MB 미만 파일 무시
+  - `server/intent/handlers/fileCallback.ts` (104줄) — `kakao:`, `gmail:`, `dl:` callback 통합
+  - `server/_core/googleOAuth.ts` (31줄) — 도메인 경계 보존용 Google OAuth 클라이언트 브리지
+- **수정 파일**: `dealMatcher.ts` extraText 매칭 추가, `kakaoFileHandler.ts` wrapper화, `telegram-bot.ts` callback 라우팅 통합(499줄 유지), `_core/index.ts` watcher 시작/종료 연결, `.env.example` 환경변수 추가
+- **신규 테스트**: `fileClassifier.test.ts`, `gmailWatcher.test.ts`, `downloadWatcher.test.ts` 총 16개
+- **검증**: `npm run check` ✅ / `npm run build` ✅ / `npm test` ✅ (269 passed, 7 skipped, 2 todo)
+- **수동 스모크**: 카톡/다운로드/Gmail watcher 로그 확인, Gmail metadata 매칭 저장, 다운로드 PDF 저장, `.crdownload`/스크린샷 무시 확인
+- **Gmail OAuth 상태**: `data/google-tokens.json`에 userId=1 토큰 존재, access/refresh 있음, 만료 전(`2026-05-01 19:59:19 KST`)
+- **아카이브**: `docs/tasks/2026-05-01-gmail-download-watcher.md`
+
 ### [Codex] 카카오톡 받은 파일 폴더 감시 및 딜 분류 Phase B-1
 - **작업**: `KAKAO_DOWNLOAD_PATH` 기반 카카오톡 받은 파일 폴더 감시를 추가하고 신규 파일을 딜 폴더로 복사 분류
 - **신규 파일**:

@@ -47,10 +47,11 @@ Telegram/Web 메시지를 도메인 액션으로 분류하고 호출하는 라�
 | `wiki.ts` | 160 | Wiki 인텐트 파서/실행기 |
 | `handlers/approval.ts` | 360 | 거래 승인/검토 핸들러 |
 | `handlers/deals.ts` | 9 | Deals 핸들러 |
+| `handlers/fileCallback.ts` | 104 | 카톡/Gmail/다운로드 인라인 분류 callback 처리 |
 | `handlers/finance.ts` | 18 | Finance 핸들러 |
 | `handlers/google.ts` | 186 | Google 핸들러 |
 | `handlers/intelligence.ts` | 18 | Intelligence 핸들러 |
-| `handlers/kakaoCallback.ts` | 102 | 카톡 파일 인라인 분류 callback 처리 |
+| `handlers/kakaoCallback.ts` | 5 | 기존 카톡 callback 호환 wrapper |
 | `handlers/realestate.ts` | 161 | Realestate 핸들러 |
 | `handlers/trading.ts` | 299 | Trading 핸들러 |
 | `handlers/wiki.ts` | 14 | Wiki 핸들러 |

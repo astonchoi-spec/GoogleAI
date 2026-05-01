@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { Bot, Play, X, Clock, CheckCircle2, AlertCircle } from "lucide-react";
+import { Bot, Play, X, Clock, CheckCircle2, AlertCircle, ShieldCheck } from "lucide-react";
 
 type AgentTemplateInput = {
   key: string;
@@ -16,7 +16,7 @@ type AgentTemplate = {
   inputs: AgentTemplateInput[];
 };
 
-type AgentStatus = "pending" | "running" | "completed" | "failed" | "cancelled";
+type AgentStatus = "awaiting_approval" | "pending" | "running" | "completed" | "failed" | "cancelled" | "rejected";
 
 type AgentTask = {
   id: string;
@@ -40,24 +40,36 @@ type TemplatesResponse = {
   permissionLabel: string;
 };
 
+type HealthResponse = {
+  openclaw: { available: boolean; simulationMode: boolean; url: string | null; authType: string; taskEndpoint: string | null; lastProbeAt: string | null; reason?: string };
+  permissionLevel: number;
+  permissionLabel: string;
+  queue: { total: number; active: number; completed: number; failed: number };
+};
+
 const STATUS_TEXT: Record<AgentStatus, string> = {
+  awaiting_approval: "승인 대기",
   pending: "대기",
   running: "진행 중",
   completed: "완료",
   failed: "실패",
   cancelled: "취소",
+  rejected: "거부",
 };
 
 const STATUS_ICON: Record<AgentStatus, React.ReactElement> = {
+  awaiting_approval: <ShieldCheck size={16} />,
   pending: <Clock size={16} />,
   running: <Play size={16} />,
   completed: <CheckCircle2 size={16} />,
   failed: <AlertCircle size={16} />,
   cancelled: <X size={16} />,
+  rejected: <X size={16} />,
 };
 
 export default function AgentControl(): React.ReactElement {
   const [meta, setMeta] = useState<TemplatesResponse | null>(null);
+  const [health, setHealth] = useState<HealthResponse | null>(null);
   const [tasks, setTasks] = useState<AgentTask[]>([]);
   const [modalTemplate, setModalTemplate] = useState<AgentTemplate | null>(null);
   const [formValues, setFormValues] = useState<Record<string, string>>({});
@@ -77,6 +89,21 @@ export default function AgentControl(): React.ReactElement {
   useEffect(() => {
     let cancelled = false;
     const tick = () => {
+      fetch("/api/agents/health")
+        .then((r) => r.json())
+        .then((data: HealthResponse) => {
+          if (!cancelled) setHealth(data);
+        })
+        .catch((err) => console.error("[AgentControl] health:", err));
+    };
+    tick();
+    const interval = setInterval(tick, 5000);
+    return () => { cancelled = true; clearInterval(interval); };
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    const tick = () => {
       fetch("/api/agents/tasks")
         .then((r) => r.json())
         .then((data: { tasks: AgentTask[] }) => {
@@ -89,8 +116,8 @@ export default function AgentControl(): React.ReactElement {
     return () => { cancelled = true; clearInterval(interval); };
   }, []);
 
-  const active = useMemo(() => tasks.filter((t) => t.status === "pending" || t.status === "running"), [tasks]);
-  const recent = useMemo(() => tasks.filter((t) => t.status !== "pending" && t.status !== "running").slice(0, 10), [tasks]);
+  const active = useMemo(() => tasks.filter((t) => t.status === "awaiting_approval" || t.status === "pending" || t.status === "running"), [tasks]);
+  const recent = useMemo(() => tasks.filter((t) => t.status !== "awaiting_approval" && t.status !== "pending" && t.status !== "running").slice(0, 10), [tasks]);
 
   function openModal(template: AgentTemplate): void {
     setModalTemplate(template);
@@ -145,8 +172,11 @@ export default function AgentControl(): React.ReactElement {
       <div style={panelStyle}>
         <div style={{ fontSize: 13, color: "#94a3b8" }}>권한 단계</div>
         <div style={{ fontSize: 16, fontWeight: 500 }}>{meta?.permissionLabel ?? "로딩 중..."}</div>
-        <div style={{ fontSize: 12, color: meta?.simulationMode ? "#facc15" : "#34d399", marginTop: 4 }}>
-          {meta?.simulationMode ? "🧪 시뮬레이션 모드 (OpenClaw 미연동)" : "🛰 OpenClaw 연동 모드"}
+        <div style={{ fontSize: 12, color: health?.openclaw.available ? "#34d399" : "#facc15", marginTop: 4 }}>
+          {health?.openclaw.available ? `🛰 OpenClaw 연결됨 · ${health.openclaw.url}` : "🧪 시뮬레이션 모드 (OpenClaw 미탐지)"}
+        </div>
+        <div style={{ fontSize: 12, color: "#94a3b8", marginTop: 4 }}>
+          큐 {health?.queue.total ?? tasks.length}건 · 실행 {health?.queue.active ?? active.length}건 · 인증 {health?.openclaw.authType ?? "unknown"}
         </div>
       </div>
 
@@ -220,7 +250,7 @@ function TaskRow({ task, onCancel }: { task: AgentTask; onCancel: () => void }):
       </div>
       {task.resultPreview && <div style={{ fontSize: 12, color: "#cbd5e1", marginTop: 6, whiteSpace: "pre-wrap" }}>{task.resultPreview}</div>}
       {task.error && <div style={{ fontSize: 12, color: "#f87171", marginTop: 6 }}>{task.error}</div>}
-      {(task.status === "pending" || task.status === "running") && (
+      {(task.status === "awaiting_approval" || task.status === "pending" || task.status === "running") && (
         <button style={{ ...btnSecondary, marginTop: 8 }} onClick={onCancel}>취소</button>
       )}
     </div>

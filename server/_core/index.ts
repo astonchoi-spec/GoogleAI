@@ -8,7 +8,7 @@ import { registerStorageProxy } from "./storageProxy.ts";
 import { registerProxyRoutes } from "../routers/proxy.ts";
 import { registerTradingRiskRoutes } from "../routers/tradingRisk.ts"; // MODIFIED: Trading Risk Guard endpoints.
 import { registerAgentRoutes } from "../routers/agents.ts"; // MODIFIED: Agent Control endpoints.
-import { setAgentNotifier } from "../agents/index.ts"; // MODIFIED: wire telegram notifier for agent tasks.
+import { probeOpenClaw, setAgentNotifier } from "../agents/index.ts"; // MODIFIED: wire telegram notifier and OpenClaw probe for agent tasks.
 import { agentTelegramNotifier } from "./agentNotifier.ts"; // MODIFIED: telegram notifier for agent tasks.
 import { appRouter } from "../routers.ts";
 import { createContext } from "./context.ts";
@@ -60,6 +60,7 @@ async function startServer() {
   registerProxyRoutes(app);
   registerTradingRiskRoutes(app); // MODIFIED: register Trading Risk Guard /api/trading/risk/* routes.
   setAgentNotifier(agentTelegramNotifier); // MODIFIED: hook telegram notifications into agent queue.
+  void probeOpenClaw(); // MODIFIED: startup OpenClaw auto-detection keeps simulation fallback on failure.
   registerAgentRoutes(app); // MODIFIED: register Agent Control /api/agents/* routes.
 
   // TradingView webhook route

@@ -4,6 +4,7 @@ import {
   describeLevel,
   enqueueAgentTask,
   getAgentTask,
+  getOpenClawClient,
   getPermissionLevel,
   isSimulationMode,
   listAgentTasks,
@@ -26,6 +27,22 @@ export function registerAgentRoutes(app: Express): void {
 
   app.get("/api/agents/tasks", (_req: Request, res: Response) => {
     res.json({ tasks: listAgentTasks() });
+  });
+
+  app.get("/api/agents/health", (_req: Request, res: Response) => {
+    const tasks = listAgentTasks();
+    const active = tasks.filter((task) => task.status === "awaiting_approval" || task.status === "pending" || task.status === "running");
+    res.json({
+      openclaw: getOpenClawClient().getStatus(),
+      permissionLevel: getPermissionLevel(),
+      permissionLabel: describeLevel(),
+      queue: {
+        total: tasks.length,
+        active: active.length,
+        completed: tasks.filter((task) => task.status === "completed").length,
+        failed: tasks.filter((task) => task.status === "failed").length,
+      },
+    });
   });
 
   app.get("/api/agents/tasks/:id", (req: Request, res: Response) => {

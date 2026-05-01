@@ -17,6 +17,8 @@ import { installDeploymentGuards, logStartupSummary } from "./deployment.ts"; //
 import { registerTvWebhookRoutes } from "../alerts/tvWebhookServer.ts"; // MODIFIED: register TradingView webhook endpoint.
 import { registerMorningBriefingScheduler } from "../intelligence/briefing.ts";
 import { startKakaoFolderWatcher, stopKakaoFolderWatcher } from "../deals/folderWatcher.ts"; // MODIFIED: watch KakaoTalk downloads for deal file classification.
+import { startGmailWatcher, stopGmailWatcher } from "../deals/gmailWatcher.ts"; // MODIFIED: poll Gmail deal attachments.
+import { startDownloadWatcher, stopDownloadWatcher } from "../deals/downloadWatcher.ts"; // MODIFIED: watch browser downloads for deal file classification.
 
 function isPortAvailable(port: number): Promise<boolean> {
   return new Promise(resolve => {
@@ -95,6 +97,8 @@ async function startServer() {
   // Initialize Telegram bot
   await initializeTelegramBot();
   startKakaoFolderWatcher();
+  startGmailWatcher();
+  startDownloadWatcher();
 
   // Merge ghost Telegram conversations (userId=1) into real web user on startup
   try {
@@ -106,7 +110,8 @@ async function startServer() {
 
   // Graceful shutdown
   const shutdown = () => {
-    void stopKakaoFolderWatcher().finally(() => server.close());
+    stopGmailWatcher();
+    void Promise.all([stopKakaoFolderWatcher(), stopDownloadWatcher()]).finally(() => server.close());
   };
   process.once("SIGINT", shutdown);
   process.once("SIGTERM", shutdown);

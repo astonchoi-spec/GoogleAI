@@ -5,3 +5,5 @@ export * from "./telegramDealFileHandler.ts";
 export * from "./dealMatcher.ts";
 export * from "./kakaoFileHandler.ts";
 export * from "./folderWatcher.ts";
+export * from "./gmailWatcher.ts";
+export * from "./downloadWatcher.ts";

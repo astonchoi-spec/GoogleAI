@@ -36,6 +36,7 @@ const navItems: NavItem[] = [
   { kind: "link",     href: "/google",        label: "Google Workspace", sub: "메일 · 드라이브 · 캘린더", icon: Mail },
   { kind: "link",     href: "/notebook-lm",   label: "노트북LM",          sub: "AI 리서치 · 분석",        icon: BookOpen },
   { kind: "link",     href: "/wiki",          label: "에스턴 위키",        sub: "지식 저장소",             icon: Library },
+  { kind: "link",     href: "/agents",        label: "Agent Control",   sub: "에이전트 작업 큐",         icon: Bot },
   { kind: "link",     href: "/monitoring",    label: "모니터링",          sub: "시스템 상태",             icon: Activity },
   { kind: "link",     href: "/google?tab=gmail",    label: "메일 작성",   sub: "Gmail 바로가기",   icon: Send },
   { kind: "link",     href: "/google?tab=calendar", label: "일정 만들기", sub: "캘린더 바로가기", icon: CalendarPlus },

@@ -18,6 +18,7 @@ const RealEstatePage = lazy(() => import("./pages/RealEstatePage")); // MODIFIED
 const Monitoring = lazy(() => import("./pages/Monitoring")); // MODIFIED: code-split the monitoring dashboard bundle.
 const NotebookLMPage = lazy(() => import("./pages/NotebookLMPage"));
 const WikiPage = lazy(() => import("./pages/WikiPage"));
+const AgentControl = lazy(() => import("./pages/AgentControl"));
 
 function Router() {
   return (
@@ -38,6 +39,7 @@ function Router() {
           <Route path={"/settings"} component={Settings} />
           <Route path={"/notebook-lm"} component={NotebookLMPage} />
           <Route path={"/wiki"} component={WikiPage} />
+          <Route path={"/agents"} component={AgentControl} />
           <Route path={"/monitoring"} component={Monitoring} /> {/* MODIFIED: expose analytics dashboard route. */}
           <Route path={"/login"} component={Login} />
           <Route path={"/404"} component={NotFound} />

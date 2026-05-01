@@ -2,7 +2,8 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import fs from "node:fs/promises";
 import path from "node:path";
 import os from "node:os";
-import { makeSimulationRunner, isSimulationMode } from "../agents/agentExecutor.ts";
+import { makeAgentRunner, makeSimulationRunner, isSimulationMode } from "../agents/agentExecutor.ts";
+import { OpenClawClient, resetOpenClawClientForTesting } from "../agents/openclawClient.ts";
 import type { AgentTask } from "../agents/agentTypes.ts";
 
 let tmpDir: string;
@@ -21,6 +22,7 @@ afterEach(async () => {
   else process.env.OPENCLAW_API_URL = ORIG_URL;
   if (ORIG_PATH === undefined) delete process.env.AGENT_WIKI_PATH;
   else process.env.AGENT_WIKI_PATH = ORIG_PATH;
+  resetOpenClawClientForTesting(null);
   await fs.rm(tmpDir, { recursive: true, force: true });
 });
 
@@ -80,5 +82,22 @@ describe("agentExecutor", () => {
     expect(trading.markdown).toMatch(/롱/);
     const legal = await runner(makeTask({ templateId: "pf-legal-risk", templateLabel: "법무", target: "한남동644" }), new AbortController().signal);
     expect(legal.markdown).toMatch(/리스크/);
+  });
+
+  it("agent runner falls back to simulation when OpenClaw task call fails", async () => {
+    process.env.OPENCLAW_API_URL = "http://openclaw.local";
+    const client = new OpenClawClient({
+      fetchImpl: (async (input: string | URL | Request) => {
+        const url = String(input);
+        if (url.endsWith("/health")) return new Response("ok", { status: 200 });
+        return new Response("", { status: 500 });
+      }) as typeof fetch,
+      requestTimeoutMs: 50,
+    });
+    resetOpenClawClientForTesting(client);
+    const runner = makeAgentRunner({ sleepMs: 10 });
+    const out = await runner(makeTask(), new AbortController().signal);
+    expect(out.markdown).toContain("⚠️ OpenClaw 호출 실패");
+    expect(out.markdown).toContain("시뮬레이션");
   });
 });

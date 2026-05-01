@@ -1,6 +1,7 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 import type { AgentTask } from "./agentTypes.ts";
+import { getOpenClawClient } from "./openclawClient.ts";
 
 export type ExecutorOutput = { markdown: string; wikiPath: string | null };
 
@@ -12,8 +13,8 @@ export type ExecutorOptions = {
 };
 
 export function isSimulationMode(): boolean {
-  const url = process.env.OPENCLAW_API_URL?.trim();
-  return !url;
+  const envUrl = process.env.OPENCLAW_API_URL?.trim();
+  return !envUrl && !getOpenClawClient().getStatus().available;
 }
 
 export function getAgentWikiRoot(override?: string): string | null {
@@ -100,6 +101,7 @@ function renderTemplateBody(task: AgentTask): string[] {
         `> ${task.inputs?.question ?? "(질문 없음)"}`,
         "",
         "## NotebookLM 응답 (시뮬레이션)",
+        "OpenClaw 연동 후 사용 가능합니다.",
         `${target} 노트북에서 발췌한 핵심 답변 3건:`,
         "1. 토지 매입은 2026-06 잔금 예정",
         "2. 인허가는 5월 말 사전 협의 진행 중",
@@ -108,6 +110,10 @@ function renderTemplateBody(task: AgentTask): string[] {
     default:
       return [`### ${target}`, "(템플릿이 정의되지 않음)"];
   }
+}
+
+function withFallbackWarning(reason: string | undefined, markdown: string): string {
+  return [`⚠️ OpenClaw 호출 실패로 시뮬레이션 결과를 반환합니다.`, `사유: ${reason ?? "알 수 없음"}`, "", markdown].join("\n");
 }
 
 export function makeSimulationRunner(options: ExecutorOptions = {}) {
@@ -129,6 +135,29 @@ export function makeSimulationRunner(options: ExecutorOptions = {}) {
     const markdown = buildSimulationMarkdown(task, stamp);
     const wikiPath = await persistResult(task, markdown, stamp, fileApi, options.rootOverride);
     return { markdown, wikiPath };
+  };
+}
+
+export function makeAgentRunner(options: ExecutorOptions = {}) {
+  const simulationRunner = makeSimulationRunner(options);
+  return async function runAgent(task: AgentTask, signal: AbortSignal): Promise<ExecutorOutput> {
+    const client = getOpenClawClient();
+    const status = client.getStatus();
+    if (!status.available) {
+      await client.probe();
+    }
+    const probed = client.getStatus();
+    if (!probed.available) {
+      return simulationRunner(task, signal);
+    }
+    const result = await client.runTask(task);
+    if (result.ok) {
+      const stamp = options.now?.() ?? new Date();
+      const wikiPath = await persistResult(task, result.markdown, stamp, options.fs ?? fs, options.rootOverride);
+      return { markdown: result.markdown, wikiPath };
+    }
+    const fallback = await simulationRunner(task, signal);
+    return { markdown: withFallbackWarning(result.reason, fallback.markdown), wikiPath: fallback.wikiPath };
   };
 }
 

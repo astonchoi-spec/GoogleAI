@@ -9,7 +9,7 @@
 |------|------|
 | 서버 | 정상 기동 (포트 4000) |
 | 빌드 | `npm run check` ✅ / `npm run build` ✅ (2026-05-01) |
-| 테스트 | 235 passed, 7 skipped, 2 todo |
+| 테스트 | 253 passed, 7 skipped, 2 todo |
 | 브랜치 | `codex-google-workspace-expansion` |
 | Redis | 선택적 (없어도 부팅됨, BullMQ lazy init) |
 | Google OAuth | 정상 연결 시 작동 |
@@ -379,3 +379,25 @@
 ### 다음 작업 후보
 - Telegram 실제 화면에서 딜 5개 명령 최종 수동 QA
 - Deal Folder Phase B: Gmail 자동 분류, Downloads 감시, Wiki 판단 기록 연계
+
+## 2026-05-01 Kakao Folder Watcher Phase B-1 완료 (Codex)
+
+### 완료 내용
+- `server/deals/folderWatcher.ts`: `KAKAO_DOWNLOAD_PATH`를 chokidar로 감시, `awaitWriteFinish` 적용, 폴더 미존재/빈 값 시 비활성화
+- `server/deals/dealMatcher.ts`: 딜명 exact/partial/none 매칭과 카테고리 추정 추가
+- `server/deals/kakaoFileHandler.ts`: 무시 패턴, exact 자동 복사 저장, partial/none Telegram 인라인 분류 대기 Map 추가
+- `server/intent/handlers/kakaoCallback.ts`: `kakao:` callback 권한 확인, 딜 선택 후 카테고리 선택 2단계 처리
+- `server/_core/index.ts`: Telegram bot 초기화 후 watcher 시작, 종료 시 watcher close
+- `server/llm/telegram-bot.ts`: `kakao:` callback 라우팅 추가, 최종 499줄로 500줄 이하 유지
+- `.env.example`: `KAKAO_DOWNLOAD_PATH` 추가. 로컬 `.env`: `C:\Users\user\Documents\카카오톡 받은 파일` 설정
+
+### 검증
+- `npm run check` 통과
+- `npm run build` 통과
+- `npm test` 통과: 253 passed, 7 skipped, 2 todo
+- 수동 스모크: watcher 로그, exact 2건 자동 저장, 모호 파일 pending, KakaoTalk 미디어 무시, 원본 파일 유지 확인
+
+### 다음 작업 후보
+- Telegram 실제 화면에서 인라인 버튼 2단계 분류 최종 QA
+- 딜 목록 8개 초과 시 검색/페이지네이션 추가
+- 네이버메일/Gmail 첨부 자동 분류는 별도 CURRENT_TASK로 진행

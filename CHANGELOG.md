@@ -322,6 +322,19 @@
 - HANDOFF.md, TODO.md 갱신
 ## 2026-05-01
 
+### [Codex] 카카오톡 받은 파일 폴더 감시 및 딜 분류 Phase B-1
+- **작업**: `KAKAO_DOWNLOAD_PATH` 기반 카카오톡 받은 파일 폴더 감시를 추가하고 신규 파일을 딜 폴더로 복사 분류
+- **신규 파일**:
+  - `server/deals/folderWatcher.ts` (78줄) — chokidar 감시, `awaitWriteFinish` 적용, 폴더 미존재/비활성 경고
+  - `server/deals/dealMatcher.ts` (77줄) — 딜명 exact/partial/none 매칭, 카테고리 키워드 추정
+  - `server/deals/kakaoFileHandler.ts` (187줄) — 무시 패턴, 자동 저장, Telegram 인라인 분류 대기 Map
+  - `server/intent/handlers/kakaoCallback.ts` (102줄) — `kakao:` callback 권한 확인, 딜/카테고리 선택 처리
+- **수정 파일**: `server/_core/index.ts`, `server/llm/telegram-bot.ts`, `server/deals/index.ts`, `server/deals/README.md`, `server/intent/README.md`, `.env.example`, `package.json`, `package-lock.json`
+- **신규 테스트**: `dealMatcher.test.ts`, `kakaoFileHandler.test.ts`, `folderWatcher.test.ts` 총 18개
+- **검증**: `npm run check` ✅ / `npm run build` ✅ / `npm test` ✅ (253 passed, 7 skipped, 2 todo)
+- **수동 스모크**: `C:\Users\user\Documents\카카오톡 받은 파일` watcher 로그 확인, `용인신대지구_사업계획서.pdf`→사업수지, `포항 해상케이블카_시장조사.pdf`→시장조사, `사업계획서_제1권.pdf`→인라인 분류 대기, `KakaoTalk_20260101_test.mp4`→무시 확인
+- **아카이브**: `docs/tasks/2026-05-01-kakao-folder-watcher.md`
+
 ### [Codex] Phase 1b 브리핑 출력 품질 개선
 - **작업**: `server/wiki/wikiStore.ts` 검색을 `WIKI_ROOT` 전체 재귀 순회로 변경하고 `daily/` 브리핑 파일 검색 회귀 테스트 추가
 - **작업**: 기존 `category: [briefing]` frontmatter를 `categories`와 동일하게 인식하도록 하위 호환 처리

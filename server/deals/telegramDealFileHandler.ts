@@ -8,8 +8,22 @@ import {
   DEAL_STATUS_EMOJIS,
   DEAL_STATUS_LABELS,
 } from "./dealTypes.ts";
-import { createDeal, findDealByPartialName, getDeal, listDeals, saveFile, toFileUrl, updateDealMeta } from "./dealStore.ts";
+import {
+  addMilestone,
+  clearDealDeadline,
+  completeMilestone,
+  createDeal,
+  findDealByPartialName,
+  getDeal,
+  listDeals,
+  removeMilestone,
+  saveFile,
+  setDealDeadline,
+  toFileUrl,
+  updateDealMeta,
+} from "./dealStore.ts";
 import { parseDealCommand } from "./dealFileRouter.ts";
+import { calcDday, formatKstShortDate, parseDealDate } from "./dateParser.ts";
 
 type TelegramLikeBot = Telegraf<any>["telegram"];
 
@@ -84,23 +98,67 @@ function formatDealList(metas: DealMeta[]): string {
   return lines.join("\n").trim();
 }
 
-function formatDealDetail(meta: DealMeta): string {
+function ddayEmoji(dday: number): string {
+  if (dday < 0) return "⌛";
+  if (dday <= 3) return "🚨";
+  if (dday <= 7) return "⏰";
+  if (dday <= 30) return "📌";
+  return "🗓";
+}
+
+function formatDdayText(dday: number): string {
+  if (dday > 0) return `D-${dday}`;
+  if (dday === 0) return "D-DAY";
+  return `D+${Math.abs(dday)}`;
+}
+
+function formatDeadlineLine(meta: DealMeta, now: Date = new Date()): string | null {
+  if (!meta.deadline) return null;
+  const dday = calcDday(meta.deadline, now);
+  const labelText = meta.deadlineLabel ? ` — ${meta.deadlineLabel}` : "";
+  return `${ddayEmoji(dday)} 마감: ${formatKstShortDate(meta.deadline)} (${formatDdayText(dday)})${labelText}`;
+}
+
+function formatMilestonesBlock(meta: DealMeta, now: Date = new Date()): string[] {
+  const list = meta.milestones ?? [];
+  if (list.length === 0) return [];
+  const sorted = [...list].sort((a, b) => a.date.localeCompare(b.date));
+  const lines = [`📌 이정표 (${sorted.length}건)`];
+  for (const m of sorted) {
+    if (m.done) {
+      lines.push(`  ✅ ${formatKstShortDate(m.date)} ${m.label} (완료)`);
+      continue;
+    }
+    const dday = calcDday(m.date, now);
+    lines.push(`  ⏳ ${formatKstShortDate(m.date)} ${m.label} (${formatDdayText(dday)})`);
+  }
+  return lines;
+}
+
+function formatDealDetail(meta: DealMeta, now: Date = new Date()): string {
   const drivePath = path.join(meta.drivePath, path.sep);
-  return [
+  const lines = [
     `📁 ${meta.name}`,
     "━━━━━━━━━━",
     `상태: ${DEAL_STATUS_EMOJIS[meta.status]} ${DEAL_STATUS_LABELS[meta.status]}`,
     `생성: ${detailDate(meta.createdAt).slice(0, 12).trim()}`,
     `최근 갱신: ${detailDate(meta.updatedAt)}`,
-    "",
-    `📂 자료 (${totalFiles(meta)}건)`,
-    ...DEAL_CATEGORIES.map((category) => `• ${DEAL_CATEGORY_DIRS[category]}: ${meta.fileCount[category]}`),
+  ];
+  const deadlineLine = formatDeadlineLine(meta, now);
+  if (deadlineLine) lines.push(deadlineLine);
+  lines.push("", `📂 자료 (${totalFiles(meta)}건)`, ...DEAL_CATEGORIES.map((category) => `• ${DEAL_CATEGORY_DIRS[category]}: ${meta.fileCount[category]}`));
+  const milestonesBlock = formatMilestonesBlock(meta, now);
+  if (milestonesBlock.length > 0) {
+    lines.push("", ...milestonesBlock);
+  }
+  lines.push(
     "",
     `🔗 NotebookLM: ${meta.notebookUrl ?? "미등록"}`,
     "📂 Drive 경로:",
     `   ${toFileUrl(meta.drivePath)}/`,
-    `   ${drivePath}`,
-  ].join("\n");
+    `   ${drivePath}`
+  );
+  return lines.join("\n");
 }
 
 async function resolveDeal(query: string): Promise<DealMeta | string> {
@@ -133,6 +191,55 @@ async function executeDealCommandText(text: string): Promise<string> {
     if (typeof resolved === "string") return resolved;
     const meta = await updateDealMeta(resolved.name, { status: command.status });
     return `✅ 딜 상태 변경 완료\n📁 ${meta.name}\n상태: ${DEAL_STATUS_EMOJIS[meta.status]} ${DEAL_STATUS_LABELS[meta.status]}`;
+  }
+  if (command.action === "deadline_set") {
+    const resolved = await resolveDeal(command.dealName);
+    if (typeof resolved === "string") return resolved;
+    const iso = parseDealDate(command.dateText);
+    if (!iso) return `⚠️ 날짜를 인식하지 못했습니다: "${command.dateText}"`;
+    const meta = await setDealDeadline(resolved.name, iso, command.label);
+    const dday = calcDday(iso);
+    const past = dday < 0 ? "\n⚠️ 과거 날짜입니다." : "";
+    const labelText = command.label ? `\n📝 ${command.label}` : "";
+    return `✅ 딜 마감일 등록\n📁 ${meta.name}\n${ddayEmoji(dday)} ${formatKstShortDate(iso)} (${formatDdayText(dday)})${labelText}${past}`;
+  }
+  if (command.action === "deadline_clear") {
+    const resolved = await resolveDeal(command.dealName);
+    if (typeof resolved === "string") return resolved;
+    const meta = await clearDealDeadline(resolved.name);
+    return `✅ 딜 마감일 해제\n📁 ${meta.name}`;
+  }
+  if (command.action === "milestone_add") {
+    const resolved = await resolveDeal(command.dealName);
+    if (typeof resolved === "string") return resolved;
+    const iso = parseDealDate(command.dateText);
+    if (!iso) return `⚠️ 날짜를 인식하지 못했습니다: "${command.dateText}"`;
+    const { meta, milestone } = await addMilestone(resolved.name, command.label, iso);
+    const dday = calcDday(iso);
+    const past = dday < 0 ? "\n⚠️ 과거 날짜입니다." : "";
+    return `✅ 이정표 추가\n📁 ${meta.name}\n📌 ${milestone.label}\n${ddayEmoji(dday)} ${formatKstShortDate(iso)} (${formatDdayText(dday)})${past}`;
+  }
+  if (command.action === "milestone_complete") {
+    const resolved = await resolveDeal(command.dealName);
+    if (typeof resolved === "string") return resolved;
+    try {
+      const { meta, milestone } = await completeMilestone(resolved.name, command.query);
+      return `✅ 이정표 완료\n📁 ${meta.name}\n✔️ ${milestone.label} (${formatKstShortDate(milestone.date)})`;
+    } catch (err) {
+      console.error("[telegramDealFileHandler] milestone_complete:", err);
+      return `🚫 이정표 "${command.query}"를 찾지 못했습니다.`;
+    }
+  }
+  if (command.action === "milestone_remove") {
+    const resolved = await resolveDeal(command.dealName);
+    if (typeof resolved === "string") return resolved;
+    try {
+      const { meta, milestone } = await removeMilestone(resolved.name, command.query);
+      return `✅ 이정표 삭제\n📁 ${meta.name}\n🗑 ${milestone.label}`;
+    } catch (err) {
+      console.error("[telegramDealFileHandler] milestone_remove:", err);
+      return `🚫 이정표 "${command.query}"를 찾지 못했습니다.`;
+    }
   }
   return "⚠️ 파일 첨부와 함께 사용해주세요.";
 }

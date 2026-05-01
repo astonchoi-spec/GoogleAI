@@ -1,4 +1,5 @@
 import type { DealCategory, DealStatus } from "./dealTypes.ts";
+import { parseDealDate } from "./dateParser.ts";
 
 export type DealCommand =
   | { action: "create"; dealName: string }
@@ -7,6 +8,11 @@ export type DealCommand =
   | { action: "save"; dealName: string; category: DealCategory }
   | { action: "notebook"; dealName: string; notebookUrl: string }
   | { action: "status"; dealName: string; status: DealStatus }
+  | { action: "deadline_set"; dealName: string; dateText: string; label?: string }
+  | { action: "deadline_clear"; dealName: string }
+  | { action: "milestone_add"; dealName: string; label: string; dateText: string }
+  | { action: "milestone_complete"; dealName: string; query: string }
+  | { action: "milestone_remove"; dealName: string; query: string }
   | { action: "unknown"; reason: string };
 
 const FORBIDDEN_WINDOWS_CHARS = /[\\/:*?"<>|]/g;
@@ -60,6 +66,29 @@ export function parseDealStatus(input: string): DealStatus | null {
   return STATUS_KEYWORDS[compact] ?? null;
 }
 
+type SplitResult = { dealName: string; label: string; dateText: string };
+
+function splitTrailingDate(rest: string, opts: { allowLabelInMiddle: boolean }): SplitResult | null {
+  const tokens = rest.trim().split(/\s+/).filter(Boolean);
+  if (tokens.length < 2) return null;
+  for (const dateLen of [2, 1]) {
+    if (tokens.length < dateLen + 1) continue;
+    const dateText = tokens.slice(-dateLen).join(" ");
+    if (parseDealDate(dateText)) {
+      const head = tokens.slice(0, -dateLen);
+      if (opts.allowLabelInMiddle) {
+        const dealName = normalizeDealName(head[0] ?? "");
+        const label = head.slice(1).join(" ").trim();
+        return { dealName, label, dateText };
+      }
+      const dealName = normalizeDealName(head[0] ?? "");
+      const label = head.slice(1).join(" ").trim();
+      return { dealName, label, dateText };
+    }
+  }
+  return null;
+}
+
 export function parseDealCommand(text: string): DealCommand {
   const message = text.trim();
   if (!message.startsWith("딜")) {
@@ -96,6 +125,47 @@ export function parseDealCommand(text: string): DealCommand {
     if (!dealName) return { action: "unknown", reason: "딜명을 입력해주세요" };
     if (!status) return { action: "unknown", reason: "상태는 검토중/진행중/대기/완료/거절 중 하나입니다" };
     return { action: "status", dealName, status };
+  }
+
+  const deadlineClearMatch = message.match(/^딜\s*마감\s*(?:해제|삭제|취소)\s+(.+?)\s*$/);
+  if (deadlineClearMatch) {
+    const dealName = normalizeDealName(deadlineClearMatch[1]);
+    return dealName ? { action: "deadline_clear", dealName } : { action: "unknown", reason: "딜명을 입력해주세요" };
+  }
+
+  const deadlineMatch = message.match(/^딜\s*마감\s+(.+)$/);
+  if (deadlineMatch) {
+    const split = splitTrailingDate(deadlineMatch[1], { allowLabelInMiddle: true });
+    if (!split) return { action: "unknown", reason: "마감 날짜를 인식하지 못했습니다. 예: 딜 마감 한남동644 2026-06-30" };
+    if (!split.dealName) return { action: "unknown", reason: "딜명을 입력해주세요" };
+    return { action: "deadline_set", dealName: split.dealName, dateText: split.dateText, label: split.label || undefined };
+  }
+
+  const milestoneCompleteMatch = message.match(/^딜\s*이정표\s*완료\s+(\S+)\s+(.+?)\s*$/);
+  if (milestoneCompleteMatch) {
+    const dealName = normalizeDealName(milestoneCompleteMatch[1]);
+    const query = milestoneCompleteMatch[2].trim();
+    if (!dealName) return { action: "unknown", reason: "딜명을 입력해주세요" };
+    if (!query) return { action: "unknown", reason: "이정표 라벨을 입력해주세요" };
+    return { action: "milestone_complete", dealName, query };
+  }
+
+  const milestoneRemoveMatch = message.match(/^딜\s*이정표\s*(?:삭제|제거)\s+(\S+)\s+(.+?)\s*$/);
+  if (milestoneRemoveMatch) {
+    const dealName = normalizeDealName(milestoneRemoveMatch[1]);
+    const query = milestoneRemoveMatch[2].trim();
+    if (!dealName) return { action: "unknown", reason: "딜명을 입력해주세요" };
+    if (!query) return { action: "unknown", reason: "이정표 라벨을 입력해주세요" };
+    return { action: "milestone_remove", dealName, query };
+  }
+
+  const milestoneAddMatch = message.match(/^딜\s*이정표\s+(.+)$/);
+  if (milestoneAddMatch) {
+    const split = splitTrailingDate(milestoneAddMatch[1], { allowLabelInMiddle: false });
+    if (!split) return { action: "unknown", reason: "이정표 날짜를 인식하지 못했습니다. 예: 딜 이정표 한남동644 인허가신청 2026-05-15" };
+    if (!split.dealName) return { action: "unknown", reason: "딜명을 입력해주세요" };
+    if (!split.label) return { action: "unknown", reason: "이정표 라벨을 입력해주세요" };
+    return { action: "milestone_add", dealName: split.dealName, label: split.label, dateText: split.dateText };
   }
 
   const detailMatch = message.match(/^딜\s+(.+)$/);

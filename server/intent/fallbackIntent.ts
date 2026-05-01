@@ -1,5 +1,6 @@
 import { matchWikiSave, matchWikiSearch } from "./wiki.ts";
 import { parsePreCheckMessage } from "../trading/preCheckEngine.ts";
+import { parseReviewMessage } from "../trading/reviewReport.ts";
 import { isBriefingTestMessage } from "../intelligence/briefing.ts";
 import { yyyymmdd, type IntentResult } from "./types.ts";
 
@@ -31,6 +32,55 @@ export function fallbackIntent(message: string): IntentResult {
   const wikiSearch = matchWikiSearch(message);
   if (wikiSearch) return wikiSearch;
 
+  const simReview = parseReviewMessage(message);
+  if (/^매수\s*시뮬/i.test(message) && simReview) {
+    return {
+      domain: "trading",
+      action: "trading_buy_signal",
+      type: "execute",
+      confidence: 0.96,
+      params: {
+        market: `KRW-${simReview.symbol}`,
+        amountKrw: simReview.money?.currency === "KRW" ? simReview.money.value : 50_000,
+        leverage: simReview.leverage,
+        reason: "수동 트리거 — 매수 시뮬",
+      },
+    };
+  }
+  if (/^매도\s*시뮬/i.test(message) && simReview) {
+    return {
+      domain: "trading",
+      action: "trading_sell_signal",
+      type: "execute",
+      confidence: 0.96,
+      params: {
+        market: `KRW-${simReview.symbol}`,
+        volume: simReview.quantity?.value ?? 0.0001,
+        leverage: simReview.leverage,
+        reason: "수동 트리거 — 매도 시뮬",
+      },
+    };
+  }
+
+  if (simReview) {
+    return {
+      domain: "trading",
+      action: "trading_review_report",
+      type: "query",
+      confidence: 0.97,
+      params: {
+        symbol: simReview.symbol,
+        side: simReview.side,
+        leverage: simReview.leverage,
+        amountKrw: simReview.money?.currency === "KRW" ? simReview.money.value : undefined,
+        amountUsd: simReview.money?.currency === "USD" ? simReview.money.value : undefined,
+        amountAmbiguous: simReview.money?.ambiguous === true,
+        quantity: simReview.quantity?.value,
+        notes: simReview.notes,
+      },
+    };
+  }
+
   // 진입 전 점검 — "BTC 숏 77000 손절 78500 목표 74000"
   const parsedPreCheck = parsePreCheckMessage(message);
   if (parsedPreCheck) {
@@ -49,34 +99,6 @@ export function fallbackIntent(message: string): IntentResult {
     };
   }
 
-  // 매수/매도 시뮬레이션 신호 — 텔레그램 1탭 승인 플로우 트리거
-  // 패턴: "매수 시뮬 [종목] [금액]" / "매도 시뮬 [종목] [수량]"
-  // - 종목 미지정 시 BTC, 매수 금액 미지정 시 50000, 매도 수량 미지정 시 0.0001
-  const buySim = message.match(/^매수\s*시뮬(?:\s+([A-Za-z가-힣]+))?(?:\s+([0-9][\d,\.]*)\s*(만원|원|krw)?)?/i);
-  if (buySim) {
-    const symbol = (buySim[1] || "BTC").toUpperCase();
-    let amount = buySim[2] ? Number(buySim[2].replace(/,/g, "")) : 50_000;
-    if (buySim[3] === "만원") amount = amount * 10_000;
-    return {
-      domain: "trading",
-      action: "trading_buy_signal",
-      type: "execute",
-      confidence: 0.95,
-      params: { market: `KRW-${symbol}`, amountKrw: amount, reason: "수동 트리거 — 매수 시뮬" },
-    };
-  }
-  const sellSim = message.match(/^매도\s*시뮬(?:\s+([A-Za-z가-힣]+))?(?:\s+([0-9][\d\.]*))?/i);
-  if (sellSim) {
-    const symbol = (sellSim[1] || "BTC").toUpperCase();
-    const volume = sellSim[2] ? Number(sellSim[2]) : 0.0001;
-    return {
-      domain: "trading",
-      action: "trading_sell_signal",
-      type: "execute",
-      confidence: 0.95,
-      params: { market: `KRW-${symbol}`, volume, reason: "수동 트리거 — 매도 시뮬" },
-    };
-  }
   if (compact.includes("승인큐") || compact.includes("승인목록") || lower.includes("approval list")) {
     return { domain: "trading", action: "trading_approval_list", type: "query", confidence: 0.9, params: {} };
   }

@@ -14,6 +14,7 @@ export type IntentAction =
   | "trading_risk_unlock"
   | "trading_risk_settings_update"
   | "trading_pre_check"
+  | "trading_review_report"
   | "trading_buy_signal"
   | "trading_sell_signal"
   | "trading_approval_list"

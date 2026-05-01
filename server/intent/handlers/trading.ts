@@ -5,6 +5,7 @@ import { taEngine } from "../../trading/technicalAnalysis.ts";
 import { calculateFuturesRisk } from "../../trading/riskCalculator.ts";
 import { riskGuard } from "../../trading/riskGuard.ts";
 import { runPreCheck, formatPreCheck } from "../../trading/preCheckEngine.ts";
+import { runReviewReport, formatReviewReport } from "../../trading/reviewReport.ts";
 import { addAlert, startAlertScheduler } from "../../alerts/alertEngine.ts";
 import {
   asString,
@@ -195,6 +196,46 @@ const tradingPreCheck: IntentHandler = async (intent) => {
   }
 };
 
+const tradingReviewReport: IntentHandler = async (intent) => {
+  const symbol = asString(intent.params.symbol, "BTC");
+  const sideRaw = asString(intent.params.side, "neutral");
+  const side = sideRaw === "long" || sideRaw === "short" ? sideRaw : "neutral";
+  const leverageRaw = intent.params.leverage;
+  const leverage = typeof leverageRaw === "number" && Number.isFinite(leverageRaw) ? leverageRaw : undefined;
+  const amountKrwRaw = intent.params.amountKrw;
+  const amountUsdRaw = intent.params.amountUsd;
+  const quantityRaw = intent.params.quantity;
+  const notesRaw = Array.isArray(intent.params.notes)
+    ? intent.params.notes.filter((note): note is string => typeof note === "string")
+    : [];
+
+  try {
+    const result = await runReviewReport({
+      symbol,
+      side,
+      leverage,
+      money: typeof amountKrwRaw === "number" && Number.isFinite(amountKrwRaw)
+        ? { value: amountKrwRaw, currency: "KRW", ambiguous: intent.params.amountAmbiguous === true }
+        : typeof amountUsdRaw === "number" && Number.isFinite(amountUsdRaw)
+          ? { value: amountUsdRaw, currency: "USD" }
+          : undefined,
+      quantity: typeof quantityRaw === "number" && Number.isFinite(quantityRaw)
+        ? { value: quantityRaw, symbol }
+        : undefined,
+      notes: notesRaw,
+    });
+    return { intent, handled: true, requiresConfirmation: false, response: formatReviewReport(result) };
+  } catch (err) {
+    console.error("[trading] review report failed:", err);
+    return {
+      intent,
+      handled: true,
+      requiresConfirmation: false,
+      response: `검토 리포트 생성 실패: ${(err as Error).message}`,
+    };
+  }
+};
+
 const analysisHandler: IntentHandler = async (intent) => {
   const symbol = asString(intent.params.symbol, "BTC/USDT");
   const timeframe = asString(intent.params.timeframe, "1h");
@@ -266,6 +307,7 @@ export const tradingHandlers: HandlerMap = {
   trading_risk_unlock: tradingRiskUnlock,
   trading_risk_settings_update: tradingRiskSettingsUpdate,
   trading_pre_check: tradingPreCheck,
+  trading_review_report: tradingReviewReport,
   trading_add_alert: tradingAddAlert,
   analysis_indicators: analysisHandler,
   analysis_rsi: analysisHandler,

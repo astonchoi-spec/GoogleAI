@@ -9,7 +9,8 @@
 
 import type { Context } from "telegraf";
 import { approvalQueue, type ApprovalRequest, type ApprovalSide } from "../../trading/approvalQueue.ts";
-import { orderExecutor } from "../../trading/orderExecutor.ts";
+import { isRealOrdersEnabled, orderExecutor, REVIEW_MODE_MESSAGE } from "../../trading/orderExecutor.ts";
+import { formatReviewReport, runReviewReport, type ReviewSide } from "../../trading/reviewReport.ts";
 import { riskGuard } from "../../trading/riskGuard.ts";
 import { getTelegramBot } from "../../telegram-service.ts";
 import { writeWiki } from "../../wiki/wikiStore.ts";
@@ -48,7 +49,7 @@ function buildSignalMessage(req: ApprovalRequest): string {
   lines.push(`📝 사유: ${req.reason}`);
   lines.push(`⏱ 승인 만료: ${expireMin}분 내 응답 필요`);
   lines.push(`━━━━━━━━━━━━`);
-  lines.push(`✅ 승인 시 즉시 Upbit 주문이 실행됩니다.`);
+  lines.push(isRealOrdersEnabled() ? `✅ 승인 시 즉시 Upbit 주문이 실행됩니다.` : REVIEW_MODE_MESSAGE);
   return lines.join("\n");
 }
 
@@ -85,6 +86,31 @@ async function dispatchSignalToTelegram(req: ApprovalRequest): Promise<{ chatId:
   }
 }
 
+async function buildReviewModeResponse(input: {
+  market: string;
+  side: ReviewSide;
+  amountKrw?: number;
+  volume?: number;
+  leverage?: number;
+  reason: string;
+}): Promise<string> {
+  const symbol = normalizeMarket(input.market).replace("KRW-", "");
+  try {
+    const report = await runReviewReport({
+      symbol,
+      side: input.side,
+      leverage: input.leverage,
+      money: input.amountKrw ? { value: input.amountKrw, currency: "KRW" } : undefined,
+      quantity: input.volume ? { value: input.volume, symbol } : undefined,
+      notes: [input.reason, REVIEW_MODE_MESSAGE],
+    });
+    return `${formatReviewReport(report)}\n\n${REVIEW_MODE_MESSAGE}`;
+  } catch (err) {
+    console.error("[approval] review report failed:", err);
+    return `${REVIEW_MODE_MESSAGE}\n검토 리포트를 생성하지 못했습니다: ${(err as Error).message}`;
+  }
+}
+
 const tradingBuySignal: IntentHandler = async (intent) => {
   const market = normalizeMarket(asString(intent.params.market, "KRW-BTC"));
   const requested = asNumber(intent.params.amountKrw, 50_000);
@@ -97,6 +123,17 @@ const tradingBuySignal: IntentHandler = async (intent) => {
     };
   }
   const reason = asString(intent.params.reason, "수동 트리거 — 매수 시뮬");
+
+  if (!isRealOrdersEnabled()) {
+    const response = await buildReviewModeResponse({
+      market,
+      side: "long",
+      amountKrw: requested,
+      leverage: asNumber(intent.params.leverage, 0) || undefined,
+      reason,
+    });
+    return { intent, handled: true, requiresConfirmation: false, response };
+  }
 
   const req = approvalQueue.enqueue({
     market,
@@ -125,6 +162,17 @@ const tradingSellSignal: IntentHandler = async (intent) => {
     };
   }
   const reason = asString(intent.params.reason, "수동 트리거 — 매도 시뮬");
+
+  if (!isRealOrdersEnabled()) {
+    const response = await buildReviewModeResponse({
+      market,
+      side: "short",
+      volume,
+      leverage: asNumber(intent.params.leverage, 0) || undefined,
+      reason,
+    });
+    return { intent, handled: true, requiresConfirmation: false, response };
+  }
 
   const req = approvalQueue.enqueue({
     market,
@@ -249,6 +297,13 @@ export async function handleApprovalCallback(
 }
 
 async function executeApprovedOrder(ctx: Context, req: ApprovalRequest): Promise<void> {
+  if (!isRealOrdersEnabled()) {
+    approvalQueue.setStatus(req.id, "rejected", { errorMessage: REVIEW_MODE_MESSAGE });
+    await safeAnswer(ctx, "검토 모드입니다", true);
+    await safeEdit(ctx, `${REVIEW_MODE_MESSAGE}\n주문이 실행되지 않았습니다.`);
+    return;
+  }
+
   // 일일 한도 검사
   const todayCount = approvalQueue.countExecutedToday();
   if (todayCount >= MAX_DAILY_AUTO_TRADES) {

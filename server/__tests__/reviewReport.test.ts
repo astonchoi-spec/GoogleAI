@@ -1,0 +1,70 @@
+import { describe, expect, it } from "vitest";
+import { formatReviewReport, parseReviewMessage, type ReviewReport } from "../trading/reviewReport.ts";
+
+describe("parseReviewMessage", () => {
+  it("롱 검토 BTC 15배를 레버리지 시나리오로 파싱하고 금액으로 오해하지 않는다", () => {
+    const parsed = parseReviewMessage("롱 검토 BTC 15배");
+    expect(parsed?.symbol).toBe("BTC");
+    expect(parsed?.side).toBe("long");
+    expect(parsed?.leverage).toBe(15);
+    expect(parsed?.money).toBeUndefined();
+  });
+
+  it("매수 시뮬 BTC 5만원은 50,000 KRW로 파싱한다", () => {
+    const parsed = parseReviewMessage("매수 시뮬 BTC 5만원");
+    expect(parsed?.symbol).toBe("BTC");
+    expect(parsed?.side).toBe("long");
+    expect(parsed?.money).toEqual({ value: 50_000, currency: "KRW" });
+  });
+
+  it("단위 없는 큰 숫자는 KRW로 가정하고 안내 notes를 남긴다", () => {
+    const parsed = parseReviewMessage("검토 ETH 5000");
+    expect(parsed?.symbol).toBe("ETH");
+    expect(parsed?.money).toEqual({ value: 5000, currency: "KRW", ambiguous: true });
+    expect(parsed?.notes.join(" ")).toContain("KRW로 가정");
+  });
+
+  it("수량과 USD 단위를 구분한다", () => {
+    const quantity = parseReviewMessage("검토 BTC 0.01BTC");
+    const usd = parseReviewMessage("검토 BTC 500달러");
+    expect(quantity?.quantity).toEqual({ value: 0.01, symbol: "BTC" });
+    expect(usd?.money).toEqual({ value: 500, currency: "USD" });
+  });
+});
+
+describe("formatReviewReport", () => {
+  it("손절가/목표가 자동 제안 없이 회장님 직접 결정 안내를 포함한다", () => {
+    const report: ReviewReport = {
+      input: { symbol: "BTC", side: "long", leverage: 15, notes: [] },
+      currentPrice: 80_000,
+      priceChange24hPercent: 2.1,
+      quoteVolume24h: 1_000_000_000,
+      timeframes: [
+        { timeframe: "1h", rsi: 55, bbPositionPercent: 62, bbLabel: "밴드 내부", macdHistogram: 10, close: 80_000 },
+        { timeframe: "4h", rsi: 58, bbPositionPercent: 70, bbLabel: "밴드 내부", macdHistogram: 8, close: 80_000 },
+        { timeframe: "1d", rsi: 60, bbPositionPercent: 65, bbLabel: "밴드 내부", macdHistogram: null, close: 80_000 },
+      ],
+      volumeSpikeRatio: 1.2,
+      funding: { latestPercent: 0.01, avg4Percent: 0.02, avg24Percent: 0.015 },
+      kimchiPremiumPercent: 1.3,
+      kimchiPremiumChange24h: -0.2,
+      riskGuard: {
+        dailyPnlPercent: 0,
+        dailyLossLimitPercent: 3,
+        consecutiveLosses: 0,
+        consecutiveLossBlock: 3,
+        locked: false,
+      },
+      liquidationPrice: 74_666.666,
+      checklist: [
+        { label: "Risk Guard", status: "ok", detail: "차단 조건 없음" },
+      ],
+      verdict: "caution",
+      notes: [],
+    };
+    const text = formatReviewReport(report);
+    expect(text).toContain("검토 리포트");
+    expect(text).toContain("손절가/목표가는 회장님이 직접 결정");
+    expect(text).not.toContain("자동 제안");
+  });
+});

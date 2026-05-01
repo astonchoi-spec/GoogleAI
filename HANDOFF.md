@@ -9,7 +9,7 @@
 |------|------|
 | 서버 | 정상 기동 (포트 4000) |
 | 빌드 | `npm run check` ✅ / `npm run build` ✅ (2026-05-01) |
-| 테스트 | 227 passed, 7 skipped, 2 todo |
+| 테스트 | 235 passed, 7 skipped, 2 todo |
 | 브랜치 | `codex-google-workspace-expansion` |
 | Redis | 선택적 (없어도 부팅됨, BullMQ lazy init) |
 | Google OAuth | 정상 연결 시 작동 |
@@ -356,3 +356,26 @@
 ### 다음 작업 후보
 - 신규 도메인 모듈 추가 시 README와 `scripts/check-module-boundaries.ts` 도메인 목록 동시 갱신
 - 기존 500줄 초과 파일(`server/trading/tradeJournal.ts`, `server/_core/intentRouter.ts` 등)은 별도 P1 분리 작업으로 유지
+
+## 2026-05-01 Deal Routing Priority Fix 완료 (Codex)
+
+### 완료 내용
+- `딜 ...` 명령을 `deals.deals_command`로 최우선 라우팅하도록 고정
+- `server/intent/handlers/realestate.ts`의 `realestate.deals.list` raw JSON 응답 제거
+- `realestate_deals_list/create/update` 액션과 fallback 중복 제거
+- raw object 응답 표시 차단 및 경고 로그 추가
+- `[intent] matched: <domain>.<action> for input: <message>` 매칭 로그 정리
+- `server/trading/orderExecutor.ts` parameter property 제거로 dev 서버 strip-types 오류 방지
+- 신규 테스트: `server/__tests__/dealRouting.test.ts` 8개
+- 아카이브: `docs/tasks/2026-05-01-deal-routing-priority-fix.md`
+
+### 검증
+- `npm run check` 통과
+- `npm run build` 통과
+- `npm test` 통과: 235 passed, 7 skipped, 2 todo
+- 로컬 라우팅 스모크 통과: `딜 추가`, `딜 목록`, `딜 한남동644`, `딜 노트북`, PDF 저장
+- 회귀 인텐트 확인: 미팅 추가, Drive 검색, Wiki 검색, 브리핑 테스트 정상 라우팅
+
+### 다음 작업 후보
+- Telegram 실제 화면에서 딜 5개 명령 최종 수동 QA
+- Deal Folder Phase B: Gmail 자동 분류, Downloads 감시, Wiki 판단 기록 연계

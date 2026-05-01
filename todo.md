@@ -202,3 +202,12 @@
   - `scripts/check-module-boundaries.ts` 추가 및 `npm run check` 통합
   - 실제 모듈 경계 위반 0건, 자동 수정 0건, 후속 분리 위반 0건
 - [ ] 신규 도메인 모듈 추가 시 README와 `scripts/check-module-boundaries.ts` 도메인 목록을 함께 갱신
+
+# 2026-05-01 Deal Routing 업데이트
+
+- [x] 딜 인텐트 우선순위 수정 완료
+  - `딜 ...` 명령을 `deals.deals_command`로 최우선 라우팅
+  - `realestate.deals.*` / `realestate_deals_*` 잔존 제거
+  - raw object JSON 응답 노출 차단
+  - 신규 회귀 테스트 8개 추가, 전체 `npm test` 235 passed
+- [ ] Telegram 실사용 화면에서 `딜 추가/목록/상세/노트북/저장` 5개 명령 최종 수동 확인

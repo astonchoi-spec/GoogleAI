@@ -430,3 +430,17 @@
 - **검증**: `npm run check` 통과 / `npm run build` 통과 / `npm test` 통과 (227 passed, 7 skipped, 2 todo)
 - **아카이브**: `docs/tasks/2026-05-01-modular-monolith.md`
 - **잔여이슈**: 신규 도메인 모듈 추가 시 README와 검사 스크립트 도메인 목록을 함께 갱신 필요
+
+# 2026-05-01 Deal Routing Priority Fix
+
+### [Codex] 딜 인텐트 우선순위 수정 + JSON 노출 차단
+- **작업**: `딜 ...` prefix 명령을 모든 도메인보다 먼저 `deals.deals_command`로 라우팅하도록 고정
+- **작업**: `server/intent/handlers/realestate.ts`의 `realestate.deals.list` raw JSON 응답 핸들러와 `realestate_deals_*` 중복 액션 제거
+- **작업**: `formatIntentRouteMessage()`에 raw object 차단 로직 추가. `{ method: ... }`, `{ files: ... }` 형태는 경고 로그 후 한국어 안내로 대체
+- **작업**: `[intent] matched: <domain>.<action> for input: <message>` 형식의 매칭 로그 정리
+- **작업**: `server/trading/orderExecutor.ts`의 parameter property를 일반 필드 할당으로 변경해 `npm run dev` strip-types 런타임 오류 방지
+- **신규 테스트**: `server/__tests__/dealRouting.test.ts` 8개 추가
+- **검증**: `npm run check` 통과 / `npm run build` 통과 / `npm test` 통과 (235 passed, 7 skipped, 2 todo)
+- **수동 스모크**: `딜 추가`, `딜 목록`, `딜 한남동644`, `딜 노트북`, PDF 저장 핸들러 로컬 실행 및 `G:\내 드라이브\Aston-Deals\한남동644\01_계약서` 파일 생성 확인
+- **아카이브**: `docs/tasks/2026-05-01-deal-routing-priority-fix.md`
+- **잔여이슈**: 실제 Telegram 화면에서 동일 5개 명령 최종 확인 필요

@@ -14,6 +14,7 @@ import { getOrCreateConversation, getOrCreateTelegramConversation, getConversati
 import { registerTelegramBot } from "../telegram-service.ts";
 import { googleAuthManager } from "../routers/google-workspace.ts";
 import { classifyIntent, formatIntentRouteMessage, routeIntentMessage } from "../intent/intentService.ts"; // MODIFIED: reuse shared formatter to keep Telegram output aligned with web intent responses.
+import { handleApprovalCallback } from "../intent/handlers/approval.ts"; // MODIFIED: 1탭 승인 매매 callback_query 처리
 import { llmAdapter } from "../_core/llmAdapter.ts"; // MODIFIED: use central LLM adapter for command parsing instead of hardcoded Gemini Flash.
 import GmailConnector from "../google/gmail.ts";
 import CalendarConnector from "../google/calendar.ts";
@@ -43,6 +44,7 @@ export class TelegramBot {
 
     this.setupMiddleware();
     this.setupCommands();
+    this.setupApprovalCallbacks();
     this.setupMessageHandler();
     registerTelegramBot(this.bot);
   }
@@ -373,6 +375,26 @@ Return ONLY the JSON object, no other text.`;
     }
 
     return null;
+  }
+
+  /**
+   * 승인 모드 callback_query 등록 — approve/reject/detail:<id>
+   * 매매 신호 발송 후 회장님이 인라인 버튼을 누르면 여기로 들어온다.
+   */
+  private setupApprovalCallbacks(): void {
+    this.bot.action(/^(approve|reject|detail):(.+)$/, async (ctx) => {
+      const match = ctx.match as RegExpMatchArray;
+      const kind = match[1] as "approve" | "reject" | "detail";
+      const id = match[2];
+      try {
+        await handleApprovalCallback(ctx, kind, id);
+      } catch (err) {
+        console.error("[Telegram] approval callback error:", err);
+        try {
+          await ctx.answerCbQuery("처리 중 오류 발생", { show_alert: true });
+        } catch {}
+      }
+    });
   }
 
   /**

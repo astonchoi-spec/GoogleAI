@@ -9,12 +9,13 @@
 |------|------|
 | 서버 | 정상 기동 (포트 4000) |
 | 빌드 | `npm run check` ✅ / `npm run build` ✅ (2026-05-01) |
-| 테스트 | 269 passed, 7 skipped, 2 todo |
+| 테스트 | 330 passed, 7 skipped, 2 todo |
 | 브랜치 | `codex-google-workspace-expansion` |
 | Redis | 선택적 (없어도 부팅됨, BullMQ lazy init) |
 | Google OAuth | 정상 연결 시 작동 |
 | Upbit | ccxt 인스턴스 정상, KRW 잔고 조회 확인됨 |
 | Gate.io | 400 에러 반복 중 (API 키 문제 또는 미지원 엔드포인트) |
+| OpenClaw | 자동 탐지 실행 완료, 현재 미탐지 → 시뮬레이션 모드 유지 |
 
 ---
 
@@ -477,6 +478,36 @@
 - OpenClaw 실 API 연동 (Phase 3)
 - D-3/D-7 임박 자동 푸시 (별 작업)
 - 모닝브리핑에 어제 에이전트 결과 통합
+
+## 2026-05-01 OpenClaw 자동 탐지 및 연동 완료 (Codex, Phase 3)
+
+### 완료 내용
+- `scripts/detect-openclaw.ts` 추가: localhost/127.0.0.1/host.docker.internal, 후보 포트 7개, health/root endpoint, Docker 컨테이너 포트 탐지
+- `data/openclaw-discovery.json` 저장 로직 추가. 현재 탐지 결과는 미탐지이며 시뮬레이션 모드 유지
+- `server/agents/openclawClient.ts`: 자동 탐지 결과 또는 환경변수 fallback 로드, 인증 방식 none/Bearer/X-API-Key 자동 감지, `/api/tasks`/`/v1/run`/`/execute` endpoint와 payload/응답 포맷 fallback
+- `agentExecutor`: startup probe 1회, 실제 호출 우선, 실패 시 `⚠️` 표시가 붙은 시뮬레이션 결과로 성공 fallback
+- 권한 2단계 구현: 기본값 `AGENT_PERMISSION_LEVEL=2`, 실행 전 텔레그램 승인 요청, `agent_approve:<task_id>`/`agent_reject:<task_id>`, 5분 미응답 자동 거부
+- `/api/agents/health` 추가 및 `/agents` UI 상단에 OpenClaw 상태/권한/큐 상태 표시
+- `notebook-query`: `_deal.json`의 `notebookUrl`을 파일 시스템으로 조회해 NotebookLM 웹 자동화 지시를 OpenClaw에 전달
+
+### 탐지 결과
+- 명령: `npx tsx scripts/detect-openclaw.ts`
+- 결과: OpenClaw 미탐지
+- 사유: 후보 포트와 Docker 컨테이너에서 OpenClaw 식별 응답 없음
+- Docker CLI: `spawn docker ENOENT`
+- 회장님 추가 작업: 없음. OpenClaw가 실행되면 서버 startup probe 또는 탐지 스크립트 재실행으로 자동 재탐지
+
+### 검증
+- `npm run check` ✅ (모듈 경계 위반 0건)
+- `npm run build` ✅
+- `npm test` ✅ 330 passed, 7 skipped, 2 todo
+- 신규/보강 테스트 17개: detect/openclawClient/permissionGate/agentQueue/agentExecutor
+
+### 다음 작업 후보
+- 실제 OpenClaw 실행 상태에서 smoke test
+- 모닝브리핑에 전일 에이전트 결과 통합
+- Phase 1c MTProto 텔레그램 수집기
+- PF Google Sheets 동기화
 
 ## 2026-05-01 딜 마감일/이정표 관리 완료 (Claude Code)
 

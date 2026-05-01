@@ -322,6 +322,17 @@
 - HANDOFF.md, TODO.md 갱신
 ## 2026-05-01
 
+### [Codex] OpenClaw 자동 탐지 및 연동 (Phase 3)
+- **작업**: `scripts/detect-openclaw.ts` 추가. localhost/127.0.0.1/host.docker.internal, 후보 포트, health/root endpoint, Docker `openclaw` 컨테이너 포트 탐지 후 `data/openclaw-discovery.json` 저장
+- **작업**: `server/agents/openclawDiscovery.ts`, `server/agents/openclawClient.ts` 추가. 탐지 결과/환경변수 fallback, 인증 방식(none/Bearer/X-API-Key), 실행 endpoint(`/api/tasks`/`/v1/run`/`/execute`), payload/응답 포맷 자동 fallback 구현
+- **작업**: `agentExecutor`가 startup probe 후 OpenClaw 실제 호출을 우선 사용하고, 미탐지/실패 시 `⚠️` 표시가 붙은 시뮬레이션 결과로 성공 fallback
+- **작업**: 권한 2단계 구현. `AGENT_PERMISSION_LEVEL=2` 기본값, `awaiting_approval`/`rejected` 상태, 텔레그램 `agent_approve:<id>`/`agent_reject:<id>` 콜백, 5분 자동 거부
+- **작업**: `/api/agents/health` 추가 및 `/agents` UI 상단 상태 배지에 OpenClaw/권한/큐 상태 표시
+- **작업**: `notebook-query` 실행 시 `_deal.json`의 `notebookUrl`을 파일 시스템으로 조회해 OpenClaw에 NotebookLM 접속/질문/응답 추출 절차 전달
+- **탐지 결과**: `npx tsx scripts/detect-openclaw.ts` 실행 결과 OpenClaw 미탐지. Docker CLI도 미탐지(`spawn docker ENOENT`). 시뮬레이션 모드 유지
+- **검증**: `npm run check` ✅ / `npm run build` ✅ / `npm test` ✅ (330 passed, 7 skipped, 2 todo)
+- **아카이브**: `docs/tasks/2026-05-01-openclaw-integration.md`
+
 ### [Claude Code] Agent Control 골격 (Phase 2 — 시뮬레이션 모드)
 - **신규 모듈**: `server/agents/` (agentTypes/agentTemplates/agentQueue/agentExecutor/permissionGate/index + README) — 인메모리 큐(max 50, 30분 timeout, 동시 1건), 5개 템플릿(pf-comprehensive, pf-version-compare, pf-legal-risk, trading-decision, notebook-query), AGENT_WIKI_PATH에 결과 마크다운 저장
 - **신규**: `server/intent/handlers/agents.ts`(129줄, 5개 텔레그램 명령), `server/routers/agents.ts`(68줄, GET/POST/DELETE /api/agents/*), `server/_core/agentNotifier.ts`(텔레그램 시작/완료/실패 알림)

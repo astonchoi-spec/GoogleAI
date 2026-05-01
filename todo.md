@@ -241,9 +241,21 @@
   - 검증: `npm run check`, `npm run build`, `npm test` 313 passed
 - [ ] 텔레그램 수동 QA: 5개 명령 + 작업 시작/완료 알림
 - [ ] `/agents` UI 수동 QA: 카드 → 모달 → 진행 표시
-- [ ] OpenClaw 실제 API 연동 (Phase 3)
-- [ ] 권한 단계 2/3 구현
+- [x] OpenClaw 자동 탐지 + 실제 API 연동 fallback (Phase 3, 2026-05-01)
+- [x] 권한 단계 2 구현 (텔레그램 실행 승인, 5분 타임아웃)
+- [ ] 권한 3단계 완전 자동 실행 운영 검증
 - [ ] 모닝브리핑에 어제 에이전트 결과 통합
+
+# 2026-05-01 OpenClaw 자동 탐지 및 연동 (Phase 3)
+
+- [x] `scripts/detect-openclaw.ts` 추가 및 `data/openclaw-discovery.json` 저장
+- [x] `server/agents/openclawClient.ts` 추가: 인증/엔드포인트/payload/응답 포맷 자동 fallback
+- [x] OpenClaw 미탐지 또는 호출 실패 시 시뮬레이션 결과 성공 fallback
+- [x] `AGENT_PERMISSION_LEVEL=2` 기본값 + Telegram 승인/거부 callback 추가
+- [x] `/api/agents/health` 및 `/agents` 상태 배지 추가
+- [x] 테스트 17개 신규/보강, 전체 `npm test` 330 passed
+- [ ] 실제 OpenClaw 실행 상태에서 재탐지 및 smoke test
+- [ ] 모닝브리핑에 전일 에이전트 결과 통합
 
 # 2026-05-01 딜 마감일/이정표 관리 (Phase B-4)
 

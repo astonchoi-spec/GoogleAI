@@ -12,6 +12,14 @@ export type DealRecentFile = {
   path: string;
 };
 
+export type Milestone = {
+  id: string;
+  label: string;
+  date: string;
+  done: boolean;
+  completedAt?: string;
+};
+
 export type DealMeta = {
   id: string;
   name: string;
@@ -24,6 +32,9 @@ export type DealMeta = {
   memo?: string;
   fileCount: DealFileCount;
   recentFiles: DealRecentFile[];
+  deadline?: string;
+  deadlineLabel?: string;
+  milestones?: Milestone[];
 };
 
 export type DealListResult = {

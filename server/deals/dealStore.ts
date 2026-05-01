@@ -1,6 +1,7 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
+import { randomBytes } from "node:crypto";
 import {
   DEAL_CATEGORIES,
   DEAL_CATEGORY_DIRS,
@@ -10,6 +11,7 @@ import {
   type DealListResult,
   type DealMatch,
   type DealMeta,
+  type Milestone,
 } from "./dealTypes.ts";
 import { normalizeDealName, sanitizeFileName } from "./dealFileRouter.ts";
 
@@ -256,4 +258,66 @@ export async function findDealByPartialName(partial: string): Promise<DealMatch>
 
 export function toFileUrl(targetPath: string): string {
   return pathToFileURL(path.resolve(targetPath)).href;
+}
+
+export async function setDealDeadline(dealName: string, isoDate: string, label?: string): Promise<DealMeta> {
+  const meta = await getDeal(dealName);
+  const patch: Partial<DealMeta> = { deadline: isoDate };
+  if (label !== undefined) patch.deadlineLabel = label.trim() || undefined;
+  return updateDealMeta(meta.name, patch);
+}
+
+export async function clearDealDeadline(dealName: string): Promise<DealMeta> {
+  const meta = await getDeal(dealName);
+  return updateDealMeta(meta.name, { deadline: undefined, deadlineLabel: undefined });
+}
+
+export async function addMilestone(dealName: string, label: string, isoDate: string): Promise<{ meta: DealMeta; milestone: Milestone }> {
+  const trimmed = label.trim();
+  if (!trimmed) throw new Error("이정표 라벨이 비어 있습니다.");
+  const meta = await getDeal(dealName);
+  const milestone: Milestone = {
+    id: randomBytes(4).toString("base64url"),
+    label: trimmed,
+    date: isoDate,
+    done: false,
+  };
+  const milestones = [...(meta.milestones ?? []), milestone].sort((a, b) => a.date.localeCompare(b.date));
+  const updated = await updateDealMeta(meta.name, { milestones });
+  return { meta: updated, milestone };
+}
+
+function findMilestone(milestones: Milestone[], query: string): Milestone | null {
+  const compact = query.replace(/\s+/g, "").toLowerCase();
+  if (!compact) return null;
+  const exact = milestones.find((m) => m.id === query);
+  if (exact) return exact;
+  const matches = milestones.filter((m) => m.label.replace(/\s+/g, "").toLowerCase().includes(compact));
+  if (matches.length === 1) return matches[0];
+  if (matches.length > 1) {
+    const pending = matches.filter((m) => !m.done);
+    if (pending.length === 1) return pending[0];
+  }
+  return null;
+}
+
+export async function completeMilestone(dealName: string, query: string): Promise<{ meta: DealMeta; milestone: Milestone }> {
+  const meta = await getDeal(dealName);
+  const list = meta.milestones ?? [];
+  const target = findMilestone(list, query);
+  if (!target) throw new Error("이정표를 찾지 못했습니다.");
+  const completed: Milestone = { ...target, done: true, completedAt: nowIso() };
+  const milestones = list.map((m) => (m.id === target.id ? completed : m));
+  const updated = await updateDealMeta(meta.name, { milestones });
+  return { meta: updated, milestone: completed };
+}
+
+export async function removeMilestone(dealName: string, query: string): Promise<{ meta: DealMeta; milestone: Milestone }> {
+  const meta = await getDeal(dealName);
+  const list = meta.milestones ?? [];
+  const target = findMilestone(list, query);
+  if (!target) throw new Error("이정표를 찾지 못했습니다.");
+  const milestones = list.filter((m) => m.id !== target.id);
+  const updated = await updateDealMeta(meta.name, { milestones });
+  return { meta: updated, milestone: target };
 }

@@ -162,30 +162,6 @@ const updateDealStage: IntentHandler = async (intent, options) => {
   };
 };
 
-const dealsList: IntentHandler = async (intent) => ({
-  intent,
-  handled: true,
-  requiresConfirmation: false,
-  response: "PF 딜 목록을 조회합니다.",
-  data: { method: "realestate.deals.list" },
-});
-
-const dealsCreate: IntentHandler = async (intent) => ({
-  intent,
-  handled: false,
-  requiresConfirmation: true,
-  response: "새 PF 딜을 등록합니다. 프로젝트명, 위치, 금액, 담당자를 입력해주세요.",
-  confirmation: { action: "realestate_deals_create", domain: "realestate", params: intent.params },
-});
-
-const dealsUpdate: IntentHandler = async (intent) => ({
-  intent,
-  handled: false,
-  requiresConfirmation: true,
-  response: "PF 딜을 수정합니다. 딜 ID와 변경 내용을 입력해주세요.",
-  confirmation: { action: "realestate_deals_update", domain: "realestate", params: intent.params },
-});
-
 export const realestateHandlers: HandlerMap = {
   realestate_portfolio_summary: portfolioSummary,
   realestate_simple_feasibility: simpleFeasibility,
@@ -195,7 +171,4 @@ export const realestateHandlers: HandlerMap = {
   realestate_feasibility: feasibility,
   realestate_add_deal: addDeal,
   realestate_update_deal_stage: updateDealStage,
-  realestate_deals_list: dealsList,
-  realestate_deals_create: dealsCreate,
-  realestate_deals_update: dealsUpdate,
 };

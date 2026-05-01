@@ -8,6 +8,34 @@ import {
   type RouteIntentOptions,
 } from "./types.ts";
 
+function intentLogName(intent: IntentResult): string {
+  return `${intent.domain}.${intent.action}`;
+}
+
+function logIntentMatched(intent: IntentResult, message: string): void {
+  console.log(`[intent] matched: ${intentLogName(intent)} for input: ${message}`);
+}
+
+function containsRawObjectShape(data: unknown): boolean {
+  if (!data || typeof data !== "object") return false;
+  const record = data as Record<string, unknown>;
+  return "method" in record || "files" in record;
+}
+
+function safeDisplayBody(data: unknown): string {
+  if (data === undefined || data === null) return "";
+  if (typeof data === "string") return data;
+  if (containsRawObjectShape(data)) {
+    console.warn("[intent] raw object response blocked:", stringifyPreview(data, 300));
+    return "⚠️ 내부 데이터가 직접 노출될 수 있어 요약 표시로 전환했습니다.";
+  }
+  if (typeof data === "object") {
+    console.warn("[intent] object response omitted from user output:", stringifyPreview(data, 300));
+    return "";
+  }
+  return String(data);
+}
+
 // 외부 모듈에서 사용 중인 타입을 동일 경로로 노출 — 기존 import 경로 보존
 export type {
   IntentDomain,
@@ -39,7 +67,7 @@ export async function classifyIntent(message: string): Promise<IntentResult> {
   console.log("[INTENT] fallback result:", keywordResult.action, "confidence:", keywordResult.confidence);
   if (keywordResult.confidence >= 0.5) {
     console.log("[INTENT] keyword match:", keywordResult.action, "confidence:", keywordResult.confidence);
-    console.log(`[intent] matched: ${keywordResult.action} for input: ${message}`);
+    logIntentMatched(keywordResult, message);
     return keywordResult;
   }
 
@@ -48,7 +76,7 @@ export async function classifyIntent(message: string): Promise<IntentResult> {
   const prompt = `사용자 메시지를 분석해서 JSON으로 응답하세요.
 
 현재 날짜: ${now}
-도메인: trading, realestate, finance, google, chat
+도메인: trading, realestate, finance, google, deals, chat
 타입: query 또는 execute
 액션:
 - trading_balance
@@ -67,6 +95,7 @@ export async function classifyIntent(message: string): Promise<IntentResult> {
 - google_get_emails: 이메일 목록 조회 → params: {maxResults: 5, searchQuery?: "검색어"}
 - google_send_email: 이메일 전송 → params: {to, subject, body}
 - google_list_events: 캘린더 일정 목록 조회 → params: {maxResults: 5}
+- deals_command: "딜 ..."로 시작하는 자료 창고 명령
 - execute_placeholder
 - chat
 
@@ -79,6 +108,7 @@ export async function classifyIntent(message: string): Promise<IntentResult> {
 - "메일 보내", "이메일 전송", "send email" → google_send_email
 - "일정 확인", "오늘 일정", "캘린더 목록", "다음 일정" → google_list_events
 - "일정 추가", "일정 잡아", "미팅 생성" → google_create_event
+- "딜 "로 시작하는 모든 메시지 → deals_command
 - 조회성 작업은 type=query, 변경성 작업(생성/삭제/수정/등록)은 type=execute
 - 파라미터를 최대한 추출
 - JSON 외 텍스트 금지`;
@@ -87,7 +117,9 @@ export async function classifyIntent(message: string): Promise<IntentResult> {
     const parsed = await llmAdapter.parseJson<Partial<IntentResult>>(message, prompt);
     if (!parsed.domain || !parsed.action || !parsed.type) {
       console.log("[INTENT] LLM returned invalid JSON, using fallbackIntent");
-      return fallbackIntent(message);
+      const fallback = fallbackIntent(message);
+      logIntentMatched(fallback, message);
+      return fallback;
     }
     const result = normalizeIntent({
       domain: parsed.domain,
@@ -97,10 +129,13 @@ export async function classifyIntent(message: string): Promise<IntentResult> {
       params: parsed.params && typeof parsed.params === "object" ? parsed.params : {},
     } as IntentResult);
     console.log("[INTENT] LLM classified:", result.action, "confidence:", result.confidence, "params:", JSON.stringify(result.params).slice(0, 100));
+    logIntentMatched(result, message);
     return result;
   } catch (err) {
     console.log("[INTENT] LLM classify error, using fallbackIntent:", (err as Error).message);
-    return fallbackIntent(message);
+    const fallback = fallbackIntent(message);
+    logIntentMatched(fallback, message);
+    return fallback;
   }
 }
 
@@ -183,7 +218,7 @@ export function formatIntentRouteMessage(routed: IntentRouteResponse): string {
             : typeof data?.report === "string" ? data.report
               : typeof data?.summary === "string" ? data.summary
                 : "";
-  const fallbackBody = primaryBody || stringifyPreview(data);
+  const fallbackBody = primaryBody || safeDisplayBody(data);
 
   return [
     routed.response,

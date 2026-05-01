@@ -18,15 +18,20 @@ function extractDriveQuery(message: string): string {
 
 /**
  * 키워드 기반 인텐트 매칭. 우선순위는 코드 순서대로 정해진다.
+ * - 딜 명령은 모든 도메인보다 최우선
  * - 명시적 prefix(위키 저장/검색) 최상단
  * - trading_pre_check는 trading_risk_calculate("손절") 보다 먼저 실행되어야 함
  * - 브리핑 테스트는 Google Calendar 매처보다 먼저 실행
  */
+export function isDealIntentMessage(message: string): boolean {
+  return /^딜(?:\s+|$)/.test(message.trim());
+}
+
 export function fallbackIntent(message: string): IntentResult {
   const lower = message.toLowerCase();
   const compact = lower.replace(/\s+/g, "");
 
-  if (/^딜(?:\s|$)/.test(message.trim())) {
+  if (isDealIntentMessage(message)) {
     return {
       domain: "deals",
       action: "deals_command",
@@ -257,17 +262,6 @@ export function fallbackIntent(message: string): IntentResult {
     };
   }
 
-  // 부동산 PF 딜
-  if (lower.includes("딜 목록") || lower.includes("pf 현황")) {
-    return { domain: "realestate", action: "realestate_deals_list", type: "query", confidence: 0.7, params: {} };
-  }
-  if (lower.includes("딜 등록") || lower.includes("신규 딜")) {
-    return { domain: "realestate", action: "realestate_deals_create", type: "execute", confidence: 0.7, params: {} };
-  }
-  if (lower.includes("딜 수정") || lower.includes("단계 변경")) {
-    return { domain: "realestate", action: "realestate_deals_update", type: "execute", confidence: 0.7, params: {} };
-  }
-
   if (lower.includes("pf") || lower.includes("파이프라인") || lower.includes("포트폴리오")) {
     return { domain: "realestate", action: "realestate_portfolio_summary", type: "query", confidence: 0.55, params: {} };
   }
@@ -433,7 +427,7 @@ export function fallbackIntent(message: string): IntentResult {
     };
   }
 
-  if ((lower.includes("캘린더") || lower.includes("일정")) && (lower.includes("생성") || lower.includes("추가"))) {
+  if ((lower.includes("캘린더") || lower.includes("일정") || lower.includes("미팅")) && (lower.includes("생성") || lower.includes("추가"))) {
     const start = new Date();
     start.setHours(start.getHours() + 1, 0, 0, 0);
     const end = new Date(start.getTime() + 60 * 60 * 1000);
@@ -463,42 +457,6 @@ export function fallbackIntent(message: string): IntentResult {
         values: [["sample"]],
       },
     };
-  }
-
-  // Google Workspace — 약한 fallback (위 풍부한 매처에서 빠진 케이스)
-  if (
-    lower.includes("드라이브") ||
-    lower.includes("구글드라이브") ||
-    lower.includes("google drive") ||
-    lower.includes("파일 검색") ||
-    lower.includes("파일 찾")
-  ) {
-    const query = message.replace(/드라이브에서|구글드라이브에서|에서|검색|찾아|줘|해줘|파일/g, "").trim();
-    return {
-      domain: "google",
-      action: "google_drive_search",
-      type: "query",
-      confidence: 0.75,
-      params: { query: query || message, maxResults: 10 },
-    };
-  }
-
-  if (
-    lower.includes("메일 확인") || lower.includes("받은 메일") ||
-    lower.includes("이메일") || lower.includes("gmail")
-  ) {
-    return { domain: "google", action: "google_get_emails", type: "query", confidence: 0.7, params: { maxResults: 5 } };
-  }
-
-  if (
-    lower.includes("일정 확인") || lower.includes("오늘 일정") ||
-    lower.includes("캘린더") || lower.includes("다음 일정") || lower.includes("스케줄")
-  ) {
-    return { domain: "google", action: "google_list_events", type: "query", confidence: 0.7, params: { maxResults: 5 } };
-  }
-
-  if (lower.includes("메일 보내") || lower.includes("이메일 전송")) {
-    return { domain: "google", action: "google_send_email", type: "execute", confidence: 0.7, params: {} };
   }
 
   // "리스크"가 포함된 메시지는 AI 일반 응답으로 넘기지 않고 Risk Guard 상태로 라우팅

@@ -1,6 +1,7 @@
 import { randomBytes } from "node:crypto";
 import type { AgentNotifier, AgentStatus, AgentTask, CreateAgentTaskInput } from "./agentTypes.ts";
 import { getTemplate } from "./agentTemplates.ts";
+import { checkAgentAction, getAgentApprovalTimeoutMs } from "./permissionGate.ts";
 
 const MAX_TASKS = 50;
 const TASK_TIMEOUT_MS = 30 * 60 * 1000;
@@ -18,6 +19,7 @@ export class AgentQueue {
   private tasks = new Map<string, AgentTask>();
   private order: string[] = [];
   private waiting: string[] = [];
+  private approvalTimers = new Map<string, ReturnType<typeof setTimeout>>();
   private active: { id: string; controller: AbortController; timer: ReturnType<typeof setTimeout> } | null = null;
   private readonly runner: AgentRunner;
   private readonly notifier?: AgentNotifier;
@@ -47,6 +49,10 @@ export class AgentQueue {
     if (!template) throw new Error(`알 수 없는 템플릿: ${input.templateId}`);
     const target = input.target.trim();
     if (!target) throw new Error("대상이 비어 있습니다.");
+    const permission = checkAgentAction("execute");
+    if (!permission.allowed) {
+      throw new Error(permission.reason ?? "에이전트 실행 권한이 없습니다.");
+    }
     const id = randomBytes(5).toString("base64url");
     const task: AgentTask = {
       id,
@@ -54,19 +60,49 @@ export class AgentQueue {
       templateLabel: template.label,
       target,
       inputs: input.inputs ?? {},
-      status: "pending",
+      status: permission.requiresApproval ? "awaiting_approval" : "pending",
       createdAt: new Date().toISOString(),
     };
     this.tasks.set(id, task);
     this.order.unshift(id);
+    if (permission.requiresApproval) {
+      this.scheduleApprovalTimeout(id);
+      void this.notifyApprovalRequired(task);
+    } else {
+      this.waiting.push(id);
+      void this.tick();
+    }
+    return task;
+  }
+
+  approve(id: string): AgentTask | null {
+    const task = this.tasks.get(id);
+    if (!task) return null;
+    if (task.status !== "awaiting_approval") return task;
+    this.clearApprovalTimer(id);
+    this.update(id, { status: "pending" });
     this.waiting.push(id);
     void this.tick();
-    return task;
+    return this.tasks.get(id) ?? null;
+  }
+
+  reject(id: string, reason = "회장 승인 거부"): AgentTask | null {
+    const task = this.tasks.get(id);
+    if (!task) return null;
+    if (task.status !== "awaiting_approval") return task;
+    this.clearApprovalTimer(id);
+    this.update(id, { status: "rejected", error: reason, finishedAt: new Date().toISOString() });
+    return this.tasks.get(id) ?? null;
   }
 
   cancel(id: string): AgentTask | null {
     const task = this.tasks.get(id);
     if (!task) return null;
+    if (task.status === "awaiting_approval") {
+      this.clearApprovalTimer(id);
+      this.update(id, { status: "cancelled", finishedAt: new Date().toISOString() });
+      return this.tasks.get(id) ?? null;
+    }
     if (task.status === "pending") {
       this.waiting = this.waiting.filter((wid) => wid !== id);
       this.update(id, { status: "cancelled", finishedAt: new Date().toISOString() });
@@ -83,6 +119,31 @@ export class AgentQueue {
     const current = this.tasks.get(id);
     if (!current) return;
     this.tasks.set(id, { ...current, ...patch });
+  }
+
+  private scheduleApprovalTimeout(id: string): void {
+    const timer = setTimeout(() => {
+      const task = this.tasks.get(id);
+      if (task?.status === "awaiting_approval") {
+        this.update(id, { status: "rejected", error: "5분 내 승인 응답이 없어 자동 거부되었습니다.", finishedAt: new Date().toISOString() });
+      }
+      this.approvalTimers.delete(id);
+    }, getAgentApprovalTimeoutMs());
+    this.approvalTimers.set(id, timer);
+  }
+
+  private clearApprovalTimer(id: string): void {
+    const timer = this.approvalTimers.get(id);
+    if (timer) clearTimeout(timer);
+    this.approvalTimers.delete(id);
+  }
+
+  private async notifyApprovalRequired(task: AgentTask): Promise<void> {
+    try {
+      await this.notifier?.onApprovalRequired?.(task);
+    } catch (err) {
+      console.error("[agentQueue] onApprovalRequired notifier:", err);
+    }
   }
 
   private async tick(): Promise<void> {

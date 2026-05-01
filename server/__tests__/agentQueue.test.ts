@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { AgentQueue } from "../agents/agentQueue.ts";
 import type { AgentTask } from "../agents/agentTypes.ts";
 
@@ -16,6 +16,20 @@ function delayedRunner(ms: number) {
       });
     });
 }
+
+const ORIG_LEVEL = process.env.AGENT_PERMISSION_LEVEL;
+const ORIG_APPROVAL_TIMEOUT = process.env.AGENT_APPROVAL_TIMEOUT_MIN;
+
+beforeEach(() => {
+  process.env.AGENT_PERMISSION_LEVEL = "3";
+});
+
+afterEach(() => {
+  if (ORIG_LEVEL === undefined) delete process.env.AGENT_PERMISSION_LEVEL;
+  else process.env.AGENT_PERMISSION_LEVEL = ORIG_LEVEL;
+  if (ORIG_APPROVAL_TIMEOUT === undefined) delete process.env.AGENT_APPROVAL_TIMEOUT_MIN;
+  else process.env.AGENT_APPROVAL_TIMEOUT_MIN = ORIG_APPROVAL_TIMEOUT;
+});
 
 describe("AgentQueue", () => {
   it("enqueues a task and runs it to completion", async () => {
@@ -79,5 +93,33 @@ describe("AgentQueue", () => {
     for (let i = 0; i < 4; i += 1) queue.enqueue({ templateId: "pf-comprehensive", target: `t${i}` });
     await queue.waitForIdle();
     expect(maxObserved).toBe(1);
+  });
+
+  it("keeps level 2 tasks awaiting approval until approved", async () => {
+    process.env.AGENT_PERMISSION_LEVEL = "2";
+    const queue = new AgentQueue({ runner: instantRunner() });
+    const task = queue.enqueue({ templateId: "pf-comprehensive", target: "A" });
+    expect(task.status).toBe("awaiting_approval");
+    expect(queue.get(task.id)?.status).toBe("awaiting_approval");
+    queue.approve(task.id);
+    await queue.waitForIdle();
+    expect(queue.get(task.id)?.status).toBe("completed");
+  });
+
+  it("rejects level 2 tasks on owner rejection", () => {
+    process.env.AGENT_PERMISSION_LEVEL = "2";
+    const queue = new AgentQueue({ runner: instantRunner() });
+    const task = queue.enqueue({ templateId: "pf-comprehensive", target: "A" });
+    const rejected = queue.reject(task.id);
+    expect(rejected?.status).toBe("rejected");
+  });
+
+  it("auto rejects approval requests after timeout", async () => {
+    process.env.AGENT_PERMISSION_LEVEL = "2";
+    process.env.AGENT_APPROVAL_TIMEOUT_MIN = "0.001";
+    const queue = new AgentQueue({ runner: instantRunner() });
+    const task = queue.enqueue({ templateId: "pf-comprehensive", target: "A" });
+    await new Promise((resolve) => setTimeout(resolve, 90));
+    expect(queue.get(task.id)?.status).toBe("rejected");
   });
 });

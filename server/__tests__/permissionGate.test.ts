@@ -1,16 +1,19 @@
 import { afterEach, describe, expect, it } from "vitest";
-import { checkAgentAction, describeLevel, getPermissionLevel } from "../agents/permissionGate.ts";
+import { checkAgentAction, describeLevel, getAgentApprovalTimeoutMs, getPermissionLevel } from "../agents/permissionGate.ts";
 
 const ORIG = process.env.AGENT_PERMISSION_LEVEL;
+const ORIG_TIMEOUT = process.env.AGENT_APPROVAL_TIMEOUT_MIN;
 afterEach(() => {
   if (ORIG === undefined) delete process.env.AGENT_PERMISSION_LEVEL;
   else process.env.AGENT_PERMISSION_LEVEL = ORIG;
+  if (ORIG_TIMEOUT === undefined) delete process.env.AGENT_APPROVAL_TIMEOUT_MIN;
+  else process.env.AGENT_APPROVAL_TIMEOUT_MIN = ORIG_TIMEOUT;
 });
 
 describe("permissionGate", () => {
-  it("defaults to level 1 (read only)", () => {
+  it("defaults to level 2 (approval required)", () => {
     delete process.env.AGENT_PERMISSION_LEVEL;
-    expect(getPermissionLevel()).toBe(1);
+    expect(getPermissionLevel()).toBe(2);
   });
 
   it("blocks execute action at level 1", () => {
@@ -28,7 +31,26 @@ describe("permissionGate", () => {
 
   it("allows execute at level 2", () => {
     process.env.AGENT_PERMISSION_LEVEL = "2";
-    expect(checkAgentAction("execute").allowed).toBe(true);
+    const decision = checkAgentAction("execute");
+    expect(decision.allowed).toBe(true);
+    expect(decision.requiresApproval).toBe(true);
+  });
+
+  it("does not require approval at level 3", () => {
+    process.env.AGENT_PERMISSION_LEVEL = "3";
+    const decision = checkAgentAction("execute");
+    expect(decision.allowed).toBe(true);
+    expect(decision.requiresApproval).toBeFalsy();
+  });
+
+  it("uses a 5 minute default approval timeout", () => {
+    delete process.env.AGENT_APPROVAL_TIMEOUT_MIN;
+    expect(getAgentApprovalTimeoutMs()).toBe(5 * 60 * 1000);
+  });
+
+  it("reads approval timeout minutes from env", () => {
+    process.env.AGENT_APPROVAL_TIMEOUT_MIN = "1";
+    expect(getAgentApprovalTimeoutMs()).toBe(60 * 1000);
   });
 
   it("describeLevel returns Korean labels", () => {

@@ -1,4 +1,4 @@
-export type AgentStatus = "pending" | "running" | "completed" | "failed" | "cancelled";
+export type AgentStatus = "awaiting_approval" | "pending" | "running" | "completed" | "failed" | "cancelled" | "rejected";
 
 export type AgentTemplateInput = {
   key: string;
@@ -45,6 +45,7 @@ export type CreateAgentTaskInput = {
 };
 
 export type AgentNotifier = {
+  onApprovalRequired?: (task: AgentTask) => Promise<void> | void;
   onStart?: (task: AgentTask) => Promise<void> | void;
   onComplete?: (task: AgentTask) => Promise<void> | void;
   onFail?: (task: AgentTask) => Promise<void> | void;

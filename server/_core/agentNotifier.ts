@@ -9,7 +9,7 @@ function getOwnerChatId(): string | null {
   return null;
 }
 
-async function sendTelegram(text: string): Promise<void> {
+async function sendTelegram(text: string, replyMarkup?: unknown): Promise<void> {
   const token = process.env.TELEGRAM_BOT_TOKEN?.trim();
   const chatId = getOwnerChatId();
   if (!token || !chatId) {
@@ -20,7 +20,7 @@ async function sendTelegram(text: string): Promise<void> {
     const response = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ chat_id: chatId, text, disable_web_page_preview: true }),
+      body: JSON.stringify({ chat_id: chatId, text, disable_web_page_preview: true, reply_markup: replyMarkup }),
     });
     if (!response.ok) {
       const detail = await response.text().catch(() => "");
@@ -29,6 +29,17 @@ async function sendTelegram(text: string): Promise<void> {
   } catch (err) {
     console.error("[agentNotifier] send error:", err);
   }
+}
+
+function formatApproval(task: AgentTask): string {
+  return [
+    "🛡 에이전트 실행 승인 필요",
+    `📋 ${task.templateLabel}`,
+    `🆔 ${task.id}`,
+    `🎯 ${task.target}`,
+    "",
+    "5분 내 응답이 없으면 자동 거부됩니다.",
+  ].join("\n");
 }
 
 function formatStart(task: AgentTask): string {
@@ -67,6 +78,13 @@ function formatFail(task: AgentTask): string {
 }
 
 export const agentTelegramNotifier: AgentNotifier = {
+  onApprovalRequired: async (task) =>
+    sendTelegram(formatApproval(task), {
+      inline_keyboard: [[
+        { text: "✅ 승인", callback_data: `agent_approve:${task.id}` },
+        { text: "❌ 거부", callback_data: `agent_reject:${task.id}` },
+      ]],
+    }),
   onStart: async (task) => sendTelegram(formatStart(task)),
   onComplete: async (task) => sendTelegram(formatComplete(task)),
   onFail: async (task) => sendTelegram(formatFail(task)),

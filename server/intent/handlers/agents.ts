@@ -13,11 +13,13 @@ import {
 import type { HandlerMap, IntentHandler } from "../types.ts";
 
 const STATUS_LABEL: Record<AgentStatus, string> = {
+  awaiting_approval: "🛡 승인 대기",
   pending: "⏳ 대기",
   running: "🚀 진행 중",
   completed: "✅ 완료",
   failed: "❌ 실패",
   cancelled: "⛔ 취소",
+  rejected: "🚫 거부",
 };
 
 function header(): string {
@@ -43,7 +45,7 @@ function formatTaskRow(task: AgentTask): string {
 function formatTaskStatus(): string {
   const tasks = listAgentTasks();
   if (tasks.length === 0) return `${header()}\n\n📭 등록된 작업이 없습니다.`;
-  const active = tasks.filter((task) => task.status === "running" || task.status === "pending");
+  const active = tasks.filter((task) => task.status === "running" || task.status === "pending" || task.status === "awaiting_approval");
   const recent = tasks.filter((task) => !active.includes(task)).slice(0, 5);
   const lines = [header(), ""];
   if (active.length > 0) {

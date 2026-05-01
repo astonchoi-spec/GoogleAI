@@ -234,6 +234,15 @@
 - [ ] 실제 Telegram 화면에서 Gmail/다운로드 인라인 버튼 분류 최종 확인
 - [ ] 딜 목록 8개 초과 시 검색/페이지네이션 UX 개선 검토
 
+# 2026-05-01 딜 마감일/이정표 관리 (Phase B-4)
+
+- [x] DealMeta deadline/milestones 필드 + 자연어 날짜 파싱 + 모닝브리핑 D-day 표시
+  - `server/deals/dateParser.ts` 76줄, 텔레그램 5개 명령 추가, 모닝브리핑 진행 중 딜 섹션 D-day 강조
+  - 검증: `npm run check`, `npm run build`, `npm test` 292 passed
+- [ ] 텔레그램 수동 QA: `딜 마감`, `딜 이정표 추가/완료/삭제`, 모닝브리핑 D-day 출력
+- [ ] D-3/D-7 임박 자동 푸시 알림 (별 작업)
+- [ ] 카톡/Gmail 첨부에서 마감일 자동 추출 (LLM)
+
 # 2026-05-01 딜 브리핑 + Telegram Bot 분할 업데이트
 
 - [x] 모닝브리핑에 `📁 진행 중 딜` 섹션 추가

@@ -433,6 +433,46 @@
 - Telegram 실제 화면에서 Gmail/다운로드 인라인 버튼 최종 QA
 - 딜 후보 8개 초과 시 검색/페이지네이션 개선
 
+## 2026-05-01 딜 마감일/이정표 관리 완료 (Claude Code)
+
+### 완료 내용
+- DealMeta에 deadline/deadlineLabel/milestones 추가, Milestone 타입 신규
+- 자연어 날짜 파싱: 절대(YYYY-MM-DD), 상대(M/D), 키워드(오늘/내일/모레/글피), N일·주·개월 후, 이번주/다음주 X요일 — KST 고정, 외부 의존성 0
+- 텔레그램 명령: `딜 마감 <딜명> <날짜> [라벨]`, `딜 마감 해제 <딜명>`, `딜 이정표 <딜명> <라벨> <날짜>`, `딜 이정표 완료 <딜명> <라벨>`, `딜 이정표 삭제 <딜명> <라벨>`
+- `딜 <딜명>` 상세 응답에 D-day(🚨3/⏰7/📌30/🗓) + 이정표 목록(완료/D-day) 표시
+- 모닝브리핑 `📁 진행 중 딜` 섹션: 마감 ≤30일 D-day 라인 + 미완료 이정표 ≤30일 표시, 미설정 시 `(마감 미설정)`
+
+### 신규 파일
+- `server/deals/dateParser.ts` (76줄)
+- `server/__tests__/dateParser.test.ts` (10개)
+- `docs/tasks/2026-05-01-deal-deadline-management.md`
+
+### 수정 파일
+- `server/deals/dealTypes.ts`, `dealStore.ts`, `dealFileRouter.ts`, `telegramDealFileHandler.ts`, `index.ts`
+- `server/_core/briefingSources.ts`, `server/intelligence/briefing.ts`
+- `server/__tests__/dealStore.test.ts` (+6), `briefing.test.ts` (포맷 갱신)
+
+### 검증
+- `npm run check` ✅ (모듈 경계 위반 0건)
+- `npm run build` ✅
+- `npm test` ✅ 292 passed (276 → +16 신규)
+
+### 텔레그램 수동 QA 체크리스트
+- [ ] `딜 마감 한남동644 2026-06-30 사업협약 체결` → 등록 응답
+- [ ] `딜 마감 한남동644 내일` → D-1 응답
+- [ ] `딜 이정표 한남동644 인허가신청 2026-05-15` → 추가 응답
+- [ ] `딜 이정표 완료 한남동644 인허가` → 완료 응답 (partial 매칭)
+- [ ] `딜 이정표 삭제 한남동644 인허가` → 삭제 응답
+- [ ] `딜 한남동644` → 상세에 마감 + 이정표 표시
+- [ ] `브리핑 테스트` → 진행 중 딜 섹션에 D-day 표시
+- [ ] `딜 마감 해제 한남동644` → 해제 응답
+
+### 다음 작업 후보
+- D-3/D-7 임박 시 자동 푸시 알림 (별도 cron)
+- 카톡/Gmail 첨부에서 마감일 자동 추출 (LLM)
+- Phase 1c MTProto 텔레그램 수집기
+- `server/llm/telegram-bot.ts` 도메인별 추가 정리
+
 ## 2026-05-01 딜 브리핑 + Telegram Bot 분할 완료 (Codex)
 
 ### 완료 내용

@@ -322,6 +322,14 @@
 - HANDOFF.md, TODO.md 갱신
 ## 2026-05-01
 
+### [Claude Code] 딜 마감일/이정표 관리 (Phase B-4)
+- **신규**: `server/deals/dateParser.ts` (76줄) — `parseDealDate`/`calcDday`/`formatKstShortDate`. KST, 절대(YYYY-MM-DD), 상대(M/D 자동 미래 보정), 키워드(오늘/내일/모레/글피), N일·주·개월 후, 이번주/다음주 X요일.
+- **신규**: `server/__tests__/dateParser.test.ts` (10 케이스).
+- **수정**: `dealTypes.ts`(Milestone 타입 + DealMeta 확장), `dealStore.ts`(setDealDeadline/clearDealDeadline/addMilestone/completeMilestone/removeMilestone), `dealFileRouter.ts`(트레일링 날짜 파서 + 5개 신규 액션), `telegramDealFileHandler.ts`(D-day 표시 + 이정표 블록 + 5개 핸들러), `_core/briefingSources.ts`(DealsBriefingItem 확장, urgentMilestones 30일 이하), `intelligence/briefing.ts`(딜 섹션 D-day 강조).
+- **검증**: `npm run check` ✅ / `npm run build` ✅ / `npm test` ✅ (292 passed, 276 → +16 신규)
+- **자율 결정**: 자연어 파싱 자체 구현, Milestone ID 6자 base64url, 과거 날짜 경고만, D-day 임계값 🚨3/⏰7/📌30/🗓.
+- **아카이브**: `docs/tasks/2026-05-01-deal-deadline-management.md`
+
 ### [Codex] 딜 현황 모닝브리핑 통합 + telegram-bot.ts 분할
 - **작업**: 모닝브리핑에 `📁 진행 중 딜` 섹션을 추가해 자료가 있는 진행 딜, 어제 추가 자료 수, NotebookLM 연결 여부를 표시
 - **작업**: `server/llm/telegram-bot.ts`를 기존 import 호환 re-export 파일로 축소하고 `server/llm/telegramBot/` 하위 모듈로 봇 초기화/명령/메시지/콜백/Workspace 처리를 분리

@@ -260,3 +260,32 @@
 - Phase 1b 운영 QA에서 발견되는 오류 수정
 - Phase 1c MTProto 텔레그램 수집기 작업 지시서 작성
 - Yahoo Finance CORS 프록시 (P0)
+
+## 2026-05-01 Telegram 승인 모드 완료 (Claude Code)
+
+### 완료 내용
+- 신규: approvalQueue.ts, orderExecutor.ts (Upbit JWT 직접), handlers/approval.ts, 테스트 2종
+- 수정: types/fallbackIntent/registry, telegram-bot.ts(callback handler 등록), .env.example(MAX_ORDER_KRW/MAX_DAILY_AUTO_TRADES/APPROVAL_TIMEOUT_MS)
+- 검증: check/build/test 모두 통과, 183 passed (160 → +23)
+- 아카이브: `docs/tasks/2026-05-01-telegram-approval-mode.md`
+
+### 텔레그램 수동 검증 체크리스트
+- [ ] "매수 시뮬 BTC 5만원" → 인라인 키보드 메시지 도착
+- [ ] ✅ 승인 → Upbit 시장가 매수 → 평균가/체결량/주문 ID 메시지로 편집
+- [ ] ❌ 거부 → "거부됨" 메시지로 편집
+- [ ] 📊 상세 → 상세 정보 표시
+- [ ] "승인 큐" → 큐 내 항목 목록
+- [ ] OWNER_TELEGRAM_CHAT_ID 가 아닌 사용자가 클릭 → 차단됨 확인
+- [ ] 5분 경과 후 클릭 → "이미 expired 상태입니다" 알림
+- [ ] Risk Guard 잠금 상태에서 ✅ → 차단 메시지
+
+⚠️ **실제 Upbit API 호출 활성화 상태** — 회장님이 소액(5,000~10,000원)으로 매수/매도 1회씩 실거래 검증 필요
+
+### 알려진 이슈 (신규)
+- `server/llm/telegram-bot.ts` 568줄로 500줄 룰 위반 (P1 분리 대상)
+
+### 다음 작업 후보
+- telegram-bot.ts 도메인별 분리
+- preCheckEngine 자동 신호 → 승인 큐 연결 (수동 트리거 → 자동 트리거)
+- 지정가 주문 지원
+- Phase 1c MTProto 텔레그램 수집기

@@ -359,3 +359,39 @@
 - **검증**: `npm run check` ✅ / `npm run build` ✅ / `npm test` ✅ (160 passed, 7 skipped, 2 todo — 회귀 없음)
 - **아카이브**: `docs/tasks/2026-05-01-intent-service-split.md`
 - **잔여이슈**: 텔레그램 수동 회귀 체크리스트 9종 (위키 저장/검색, 브리핑, 잔고, 일정, 메일, pre_check, 리스크 상태) — 운영 검증 대기
+
+## 2026-05-01 Telegram 승인 모드 (1탭 자동 체결)
+
+### [Claude Code] 매매 신호 → 텔레그램 인라인 키보드 → 회장 1탭 승인 → Upbit 자동 주문
+- **신규 파일**:
+  - `server/trading/approvalQueue.ts` (159줄) — 승인 대기 큐, in-memory Map + TTL(기본 5분), 일일 체결 카운터(KST 자정 기준)
+  - `server/trading/orderExecutor.ts` (225줄) — Upbit JWT(HS256) 서명 REST 직접 호출. ccxt 미사용. placeMarketBuy/placeMarketSell/getOrder + Upbit 에러 코드 한국어 매핑
+  - `server/intent/handlers/approval.ts` (346줄) — trading_buy_signal/trading_sell_signal/trading_approval_list 핸들러 + Telegram callback_query 처리(handleApprovalCallback)
+  - `server/__tests__/approvalQueue.test.ts` (141줄) — 12 케이스
+  - `server/__tests__/orderExecutor.test.ts` (154줄) — 11 케이스, fetch 완전 모킹
+- **수정 파일**:
+  - `server/intent/types.ts` — IntentAction 에 trading_buy_signal/trading_sell_signal/trading_approval_list 추가
+  - `server/intent/fallbackIntent.ts` (484줄) — "매수 시뮬"/"매도 시뮬"/"승인 큐" 매처 추가
+  - `server/intent/registry.ts` — approvalHandlers 등록
+  - `server/llm/telegram-bot.ts` (568줄, +22줄) — setupApprovalCallbacks() 추가, bot.action(/^(approve|reject|detail):(.+)$/) 핸들러
+  - `.env.example` — MAX_ORDER_KRW, MAX_DAILY_AUTO_TRADES, APPROVAL_TIMEOUT_MS 추가
+- **보안 제약 구현**:
+  - 승인 클릭자가 OWNER_TELEGRAM_CHAT_ID 일치 검증 → 불일치 시 차단
+  - Upbit API 키는 .env 에서만 로드, 코드/로그 노출 없음
+  - 주문 실행 직전 Risk Guard 재검사 (잠금/손실 한도)
+  - 단일 주문 한도 50만원 (신호 등록 + 승인 직전 이중 검사)
+  - 일일 자동 매매 한도 5건 (KST 자정 기준)
+  - pending 이 아닌 요청 재처리 차단
+- **자율 결정**:
+  - 승인 타임아웃 5분 (env 오버라이드)
+  - 타임아웃 시 자동 거부 (재알림 없음)
+  - 주문 실패 재시도 없음 (잔고 부족 등 재시도 무용)
+  - callback_data: approve:<uuid> / reject:<uuid> / detail:<uuid>
+  - 위키 자동 저장 (체결 후 #trading 태그)
+  - Upbit JWT 서명: Node 내장 crypto HMAC HS256 (의존성 최소화)
+- **검증**: `npm run check` ✅ / `npm run build` ✅ / `npm test` 183 passed (이전 160 → +23 신규), 회귀 0
+- **수동 검증**: "매수 시뮬 BTC 5만원" → 인라인 키보드 → ✅ 탭 → Upbit 주문 → 결과 편집 + 위키 저장. 실제 체결은 회장 소액 테스트 진행
+- **아카이브**: `docs/tasks/2026-05-01-telegram-approval-mode.md`
+- **잔여이슈**:
+  - telegram-bot.ts 568줄로 500줄 룰 위반(이전부터 위반, +22줄 추가). P1 분리 대상
+  - 지정가 주문 미지원, 자동 신호 트리거(preCheckEngine + cron) 연결은 후속 과제

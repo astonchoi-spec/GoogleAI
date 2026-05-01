@@ -9,6 +9,11 @@ export type DealFileMatch = {
   confidence: DealMatchConfidence;
 };
 
+export type DealMatchInput = string | {
+  filename: string;
+  extraText?: string[];
+};
+
 const CATEGORY_KEYWORDS: Array<{ category: DealCategory; patterns: RegExp[] }> = [
   { category: "contract", patterns: [/계약/i, /약정/i, /합의/i, /mou/i] },
   { category: "feasibility", patterns: [/사업계획/i, /사업수지/i, /수익/i, /분양/i, /재무/i] },
@@ -43,14 +48,21 @@ function scorePartial(filenameCompact: string, deal: DealMeta): number {
   return tokens.filter((token) => filenameCompact.includes(token)).length;
 }
 
-export async function findDealCandidates(filename: string, limit = 8): Promise<DealMeta[]> {
+function matchTexts(input: DealMatchInput): string[] {
+  if (typeof input === "string") return [stripExtension(input)];
+  return [stripExtension(input.filename), ...(input.extraText ?? [])].filter(Boolean);
+}
+
+export async function findDealCandidates(input: DealMatchInput, limit = 8): Promise<DealMeta[]> {
   const { all } = await listDeals();
-  const filenameCompact = normalizeForDealMatch(stripExtension(filename));
+  const compactTexts = matchTexts(input).map(normalizeForDealMatch);
   const ranked = all
     .map((deal) => {
       const dealCompact = normalizeForDealMatch(deal.name);
-      const exact = dealCompact.length > 0 && filenameCompact.includes(dealCompact);
-      const score = exact ? 1000 + dealCompact.length : scorePartial(filenameCompact, deal);
+      const exactIndex = compactTexts.findIndex((text) => dealCompact.length > 0 && text.includes(dealCompact));
+      const exact = exactIndex >= 0;
+      const partialScore = Math.max(0, ...compactTexts.map((text) => scorePartial(text, deal)));
+      const score = exact ? 1000 - exactIndex * 100 + dealCompact.length : partialScore;
       return { deal, score };
     })
     .filter((item) => item.score > 0)
@@ -58,21 +70,26 @@ export async function findDealCandidates(filename: string, limit = 8): Promise<D
   return ranked.slice(0, limit).map((item) => item.deal);
 }
 
-export async function findMatchingDeal(filename: string): Promise<DealFileMatch> {
+export async function findMatchingDeal(input: DealMatchInput, extraText: string[] = []): Promise<DealFileMatch> {
+  const normalizedInput: DealMatchInput = typeof input === "string" && extraText.length > 0
+    ? { filename: input, extraText }
+    : input;
   const { all } = await listDeals();
-  const filenameCompact = normalizeForDealMatch(stripExtension(filename));
+  const compactTexts = matchTexts(normalizedInput).map(normalizeForDealMatch);
   const exactMatches = all
-    .filter((deal) => {
+    .map((deal) => {
       const dealCompact = normalizeForDealMatch(deal.name);
-      return dealCompact.length > 0 && filenameCompact.includes(dealCompact);
+      const exactIndex = compactTexts.findIndex((text) => dealCompact.length > 0 && text.includes(dealCompact));
+      return { deal, exactIndex };
     })
-    .sort((a, b) => normalizeForDealMatch(b.name).length - normalizeForDealMatch(a.name).length);
+    .filter((item) => item.exactIndex >= 0)
+    .sort((a, b) => a.exactIndex - b.exactIndex || normalizeForDealMatch(b.deal.name).length - normalizeForDealMatch(a.deal.name).length);
 
   if (exactMatches.length > 0) {
-    return { deal: exactMatches[0], confidence: "exact" };
+    return { deal: exactMatches[0].deal, confidence: "exact" };
   }
 
-  const candidates = await findDealCandidates(filename, 1);
+  const candidates = await findDealCandidates(normalizedInput, 1);
   if (candidates.length > 0) {
     return { deal: candidates[0], confidence: "partial" };
   }

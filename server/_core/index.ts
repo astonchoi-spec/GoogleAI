@@ -7,6 +7,9 @@ import { registerOAuthRoutes } from "./oauth.ts";
 import { registerStorageProxy } from "./storageProxy.ts";
 import { registerProxyRoutes } from "../routers/proxy.ts";
 import { registerTradingRiskRoutes } from "../routers/tradingRisk.ts"; // MODIFIED: Trading Risk Guard endpoints.
+import { registerAgentRoutes } from "../routers/agents.ts"; // MODIFIED: Agent Control endpoints.
+import { setAgentNotifier } from "../agents/index.ts"; // MODIFIED: wire telegram notifier for agent tasks.
+import { agentTelegramNotifier } from "./agentNotifier.ts"; // MODIFIED: telegram notifier for agent tasks.
 import { appRouter } from "../routers.ts";
 import { createContext } from "./context.ts";
 import { serveStatic, setupVite } from "./vite.ts";
@@ -56,6 +59,8 @@ async function startServer() {
   registerOAuthRoutes(app);
   registerProxyRoutes(app);
   registerTradingRiskRoutes(app); // MODIFIED: register Trading Risk Guard /api/trading/risk/* routes.
+  setAgentNotifier(agentTelegramNotifier); // MODIFIED: hook telegram notifications into agent queue.
+  registerAgentRoutes(app); // MODIFIED: register Agent Control /api/agents/* routes.
 
   // TradingView webhook route
   registerTvWebhookRoutes(app); // MODIFIED: POST /api/tv-webhook handler.

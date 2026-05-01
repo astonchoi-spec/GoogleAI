@@ -8,6 +8,8 @@ import { listDeals } from "../deals/dealStore.ts";
 import { calcDday } from "../deals/dateParser.ts";
 import { DEAL_CATEGORIES, DEAL_CATEGORY_DIRS, type DealFileCount, type DealMeta } from "../deals/dealTypes.ts";
 
+export { getAgentResultsSection, type AgentResultsBriefingSection } from "../agents/agentBriefing.ts";
+
 const KIMCHI_FX_RATE = 1380;
 
 export type MarketSnapshot = {

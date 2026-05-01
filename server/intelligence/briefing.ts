@@ -1,11 +1,13 @@
 import cron from "node-cron";
 import {
   collectDartDigest,
+  getAgentResultsSection,
   getDealsSection,
   collectMarketSnapshot,
   collectRiskGuardSnapshot,
   collectWikiDigest,
   saveBriefingArchive,
+  type AgentResultsBriefingSection,
   type DartDigest,
   type DealsBriefingSection,
   type MarketSnapshot,
@@ -24,6 +26,7 @@ export type MorningBriefingData = {
   dart: DartDigest;
   wiki: WikiDigest;
   deals: DealsBriefingSection;
+  agents: AgentResultsBriefingSection | null;
   risk: RiskGuardSnapshot;
 };
 
@@ -185,6 +188,32 @@ function formatDealsSection(deals: DealsBriefingSection): string[] {
   return lines;
 }
 
+function formatAgentResultsSection(agents: AgentResultsBriefingSection): string[] {
+  const total = agents.items.length + agents.extraCount;
+  const lines = [`## 🤖 어제 에이전트 작업 (${total}건)`];
+
+  for (const item of agents.items) {
+    const target = item.target ? ` — ${item.target}` : "";
+    lines.push(`• ${item.icon} ${item.templateLabel}${target}`);
+    if (item.preview) lines.push(`  ${item.preview.slice(0, 80)}`);
+    if (item.wikiPath) lines.push(`  🔗 ${item.wikiPath}`);
+  }
+
+  if (agents.extraCount > 0) {
+    lines.push(`• 외 ${agents.extraCount}건`);
+  }
+
+  if (agents.failedItems.length > 0) {
+    lines.push(`⚠️ 실패 ${agents.failedItems.length}건`);
+    for (const item of agents.failedItems.slice(0, 3)) {
+      const target = item.target ? ` — ${item.target}` : "";
+      lines.push(`  • ${item.templateLabel}${target}: ${item.preview || "오류 내용 없음"}`);
+    }
+  }
+
+  return lines;
+}
+
 function formatRiskSection(risk: RiskGuardSnapshot): string[] {
   const lines = [
     "## 🛡️ Risk Guard",
@@ -227,6 +256,10 @@ export function formatMorningBriefing(data: MorningBriefingData): string {
 
   sections.push("━━━");
   sections.push(...formatDealsSection(data.deals));
+  if (data.agents) {
+    sections.push("━━━");
+    sections.push(...formatAgentResultsSection(data.agents));
+  }
   sections.push("━━━");
   sections.push(...formatRiskSection(data.risk));
   sections.push("━━━");
@@ -236,11 +269,12 @@ export function formatMorningBriefing(data: MorningBriefingData): string {
 }
 
 export async function buildMorningBriefingData(now: Date = new Date()): Promise<MorningBriefingData> {
-  const [market, dart, wiki, deals, risk] = await Promise.all([
+  const [market, dart, wiki, deals, agents, risk] = await Promise.all([
     collectMarketSnapshot(),
     collectDartDigest(now),
     collectWikiDigest(now),
     getDealsSection(now),
+    getAgentResultsSection(now),
     collectRiskGuardSnapshot(),
   ]);
 
@@ -250,6 +284,7 @@ export async function buildMorningBriefingData(now: Date = new Date()): Promise<
     dart,
     wiki,
     deals,
+    agents,
     risk,
   };
 }

@@ -5,6 +5,7 @@ import { riskGuard } from "../trading/riskGuard.ts";
 import { searchWiki } from "../wiki/wikiStore.ts";
 import { getRecentDisclosures } from "../finance/dartAPI.ts";
 import { listDeals } from "../deals/dealStore.ts";
+import { calcDday } from "../deals/dateParser.ts";
 import { DEAL_CATEGORIES, DEAL_CATEGORY_DIRS, type DealFileCount, type DealMeta } from "../deals/dealTypes.ts";
 
 const KIMCHI_FX_RATE = 1380;
@@ -62,6 +63,10 @@ export type DealsBriefingItem = {
   yesterdayFiles: number;
   hasNotebook: boolean;
   updatedAt: string;
+  daysUntilDeadline?: number;
+  deadline?: string;
+  deadlineLabel?: string;
+  urgentMilestones?: { label: string; date: string; daysUntil: number }[];
 };
 
 export type DealsBriefingSection = {
@@ -324,13 +329,27 @@ export async function getDealsSection(now: Date = new Date()): Promise<DealsBrie
       .slice(0, 10);
 
     const items = await Promise.all(
-      activeDeals.map(async (deal) => ({
-        name: deal.name,
-        totalFiles: sumFileCount(deal.fileCount),
-        yesterdayFiles: await countFilesModifiedInRange(deal, range),
-        hasNotebook: Boolean(deal.notebookUrl?.trim()),
-        updatedAt: deal.updatedAt,
-      }))
+      activeDeals.map(async (deal) => {
+        const item: DealsBriefingItem = {
+          name: deal.name,
+          totalFiles: sumFileCount(deal.fileCount),
+          yesterdayFiles: await countFilesModifiedInRange(deal, range),
+          hasNotebook: Boolean(deal.notebookUrl?.trim()),
+          updatedAt: deal.updatedAt,
+        };
+        if (deal.deadline) {
+          item.deadline = deal.deadline;
+          item.daysUntilDeadline = calcDday(deal.deadline, now);
+          if (deal.deadlineLabel) item.deadlineLabel = deal.deadlineLabel;
+        }
+        const urgent = (deal.milestones ?? [])
+          .filter((m) => !m.done)
+          .map((m) => ({ label: m.label, date: m.date, daysUntil: calcDday(m.date, now) }))
+          .filter((m) => m.daysUntil >= 0 && m.daysUntil <= 30)
+          .sort((a, b) => a.daysUntil - b.daysUntil);
+        if (urgent.length > 0) item.urgentMilestones = urgent;
+        return item;
+      })
     );
 
     return { items };

@@ -137,6 +137,27 @@ function formatWikiSection(wiki: WikiDigest): string[] | null {
   return lines;
 }
 
+function ddayBadge(days: number): string {
+  if (days < 0) return "⌛";
+  if (days <= 3) return "🚨";
+  if (days <= 7) return "⏰";
+  if (days <= 30) return "📌";
+  return "🗓";
+}
+
+function ddayText(days: number): string {
+  if (days > 0) return `D-${days}`;
+  if (days === 0) return "D-DAY";
+  return `D+${Math.abs(days)}`;
+}
+
+function shortMd(iso: string): string {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return iso;
+  const k = new Date(d.getTime() + 9 * 60 * 60 * 1000);
+  return `${k.getUTCMonth() + 1}/${k.getUTCDate()}`;
+}
+
 function formatDealsSection(deals: DealsBriefingSection): string[] {
   const lines = [`## 📁 진행 중 딜 (${deals.items.length}건)`];
   if (deals.items.length === 0) {
@@ -145,8 +166,20 @@ function formatDealsSection(deals: DealsBriefingSection): string[] {
   }
 
   for (const deal of deals.items) {
-    const notebook = deal.hasNotebook ? "🔗" : "⚠️ NotebookLM 미연결";
-    lines.push(`- ${deal.name} — 자료 ${deal.totalFiles}건 (어제 +${deal.yesterdayFiles}) ${notebook}`);
+    const notebook = deal.hasNotebook ? "🔗" : "⚠️";
+    lines.push(`• ${deal.name} — 자료 ${deal.totalFiles}건 (어제 +${deal.yesterdayFiles}) ${notebook}`);
+    if (typeof deal.daysUntilDeadline === "number" && deal.daysUntilDeadline <= 30) {
+      const labelText = deal.deadlineLabel ? `: ${deal.deadlineLabel}` : "";
+      lines.push(`  ${ddayBadge(deal.daysUntilDeadline)} ${ddayText(deal.daysUntilDeadline)}${labelText} (${deal.deadline ? shortMd(deal.deadline) : ""})`);
+    }
+    if (deal.urgentMilestones && deal.urgentMilestones.length > 0) {
+      for (const m of deal.urgentMilestones.slice(0, 3)) {
+        lines.push(`  ${ddayBadge(m.daysUntil)} ${ddayText(m.daysUntil)}: ${m.label} (${shortMd(m.date)})`);
+      }
+    }
+    if (!deal.deadline && !deal.urgentMilestones?.length) {
+      lines.push(`  (마감 미설정)`);
+    }
   }
 
   return lines;

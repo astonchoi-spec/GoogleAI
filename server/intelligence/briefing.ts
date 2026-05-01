@@ -1,11 +1,13 @@
 import cron from "node-cron";
 import {
   collectDartDigest,
+  getDealsSection,
   collectMarketSnapshot,
   collectRiskGuardSnapshot,
   collectWikiDigest,
   saveBriefingArchive,
   type DartDigest,
+  type DealsBriefingSection,
   type MarketSnapshot,
   type RiskGuardSnapshot,
   type WikiDigest,
@@ -21,6 +23,7 @@ export type MorningBriefingData = {
   market: MarketSnapshot;
   dart: DartDigest;
   wiki: WikiDigest;
+  deals: DealsBriefingSection;
   risk: RiskGuardSnapshot;
 };
 
@@ -134,6 +137,21 @@ function formatWikiSection(wiki: WikiDigest): string[] | null {
   return lines;
 }
 
+function formatDealsSection(deals: DealsBriefingSection): string[] {
+  const lines = [`## 📁 진행 중 딜 (${deals.items.length}건)`];
+  if (deals.items.length === 0) {
+    lines.push("- 진행 중 딜 없음");
+    return lines;
+  }
+
+  for (const deal of deals.items) {
+    const notebook = deal.hasNotebook ? "🔗" : "⚠️ NotebookLM 미연결";
+    lines.push(`- ${deal.name} — 자료 ${deal.totalFiles}건 (어제 +${deal.yesterdayFiles}) ${notebook}`);
+  }
+
+  return lines;
+}
+
 function formatRiskSection(risk: RiskGuardSnapshot): string[] {
   const lines = [
     "## 🛡️ Risk Guard",
@@ -175,6 +193,8 @@ export function formatMorningBriefing(data: MorningBriefingData): string {
   }
 
   sections.push("━━━");
+  sections.push(...formatDealsSection(data.deals));
+  sections.push("━━━");
   sections.push(...formatRiskSection(data.risk));
   sections.push("━━━");
   sections.push(FOOTER);
@@ -183,10 +203,11 @@ export function formatMorningBriefing(data: MorningBriefingData): string {
 }
 
 export async function buildMorningBriefingData(now: Date = new Date()): Promise<MorningBriefingData> {
-  const [market, dart, wiki, risk] = await Promise.all([
+  const [market, dart, wiki, deals, risk] = await Promise.all([
     collectMarketSnapshot(),
     collectDartDigest(now),
     collectWikiDigest(now),
+    getDealsSection(now),
     collectRiskGuardSnapshot(),
   ]);
 
@@ -195,6 +216,7 @@ export async function buildMorningBriefingData(now: Date = new Date()): Promise<
     market,
     dart,
     wiki,
+    deals,
     risk,
   };
 }

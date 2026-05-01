@@ -4,6 +4,8 @@ import { taEngine } from "../trading/technicalAnalysis.ts";
 import { riskGuard } from "../trading/riskGuard.ts";
 import { searchWiki } from "../wiki/wikiStore.ts";
 import { getRecentDisclosures } from "../finance/dartAPI.ts";
+import { listDeals } from "../deals/dealStore.ts";
+import { DEAL_CATEGORIES, DEAL_CATEGORY_DIRS, type DealFileCount, type DealMeta } from "../deals/dealTypes.ts";
 
 const KIMCHI_FX_RATE = 1380;
 
@@ -54,6 +56,18 @@ export type RiskGuardSnapshot = {
   lockReason?: string;
 };
 
+export type DealsBriefingItem = {
+  name: string;
+  totalFiles: number;
+  yesterdayFiles: number;
+  hasNotebook: boolean;
+  updatedAt: string;
+};
+
+export type DealsBriefingSection = {
+  items: DealsBriefingItem[];
+};
+
 export type BriefingArchiveInput = {
   dateKey: string;
   text: string;
@@ -92,6 +106,16 @@ function toIsoDateKey(date: Date): string {
 
 function previousKstDateKey(date: Date): string {
   return toIsoDateKey(new Date(date.getTime() - 24 * 60 * 60 * 1000));
+}
+
+function getPreviousKstDayBounds(now: Date = new Date()): { start: Date; end: Date } {
+  const kstOffsetMs = 9 * 60 * 60 * 1000;
+  const shifted = new Date(now.getTime() + kstOffsetMs);
+  const todayStartUtc = Date.UTC(shifted.getUTCFullYear(), shifted.getUTCMonth(), shifted.getUTCDate()) - kstOffsetMs;
+  return {
+    start: new Date(todayStartUtc - 24 * 60 * 60 * 1000),
+    end: new Date(todayStartUtc),
+  };
 }
 
 function safeNumber(value: unknown): number | null {
@@ -251,6 +275,69 @@ export async function collectRiskGuardSnapshot(): Promise<RiskGuardSnapshot> {
     locked: state.manualLock.locked,
     lockReason: state.manualLock.reason ?? undefined,
   };
+}
+
+function sumFileCount(fileCount: DealFileCount): number {
+  return DEAL_CATEGORIES.reduce((total, category) => total + (fileCount[category] ?? 0), 0);
+}
+
+function isNotFoundError(error: unknown): boolean {
+  return typeof error === "object" && error !== null && "code" in error && (error as { code?: string }).code === "ENOENT";
+}
+
+async function countFilesModifiedInRange(deal: DealMeta, range: { start: Date; end: Date }): Promise<number> {
+  let total = 0;
+
+  for (const category of DEAL_CATEGORIES) {
+    const dir = path.join(deal.drivePath, DEAL_CATEGORY_DIRS[category]);
+    try {
+      const entries = await fs.readdir(dir, { withFileTypes: true });
+      for (const entry of entries) {
+        if (!entry.isFile()) continue;
+        const filePath = path.join(dir, entry.name);
+        try {
+          const stat = await fs.stat(filePath);
+          if (stat.mtime >= range.start && stat.mtime < range.end) {
+            total += 1;
+          }
+        } catch (error) {
+          console.error("[briefingSources] deal file stat error:", error);
+        }
+      }
+    } catch (error) {
+      if (isNotFoundError(error)) continue;
+      console.error("[briefingSources] deal category read error:", error);
+    }
+  }
+
+  return total;
+}
+
+export async function getDealsSection(now: Date = new Date()): Promise<DealsBriefingSection> {
+  try {
+    const range = getPreviousKstDayBounds(now);
+    const { all } = await listDeals();
+    const activeDeals = all
+      .filter((deal) => deal.status !== "completed" && deal.status !== "rejected")
+      .filter((deal) => sumFileCount(deal.fileCount) > 0)
+      .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))
+      .slice(0, 10);
+
+    const items = await Promise.all(
+      activeDeals.map(async (deal) => ({
+        name: deal.name,
+        totalFiles: sumFileCount(deal.fileCount),
+        yesterdayFiles: await countFilesModifiedInRange(deal, range),
+        hasNotebook: Boolean(deal.notebookUrl?.trim()),
+        updatedAt: deal.updatedAt,
+      }))
+    );
+
+    return { items };
+  } catch (error) {
+    console.error("[briefingSources] deals section error:", error);
+    return { items: [] };
+  }
 }
 
 export async function collectWikiDigest(now: Date = new Date()): Promise<WikiDigest> {

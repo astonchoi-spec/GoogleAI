@@ -433,6 +433,51 @@
 - Telegram 실제 화면에서 Gmail/다운로드 인라인 버튼 최종 QA
 - 딜 후보 8개 초과 시 검색/페이지네이션 개선
 
+## 2026-05-01 Agent Control 골격 완료 (Claude Code, Phase 2)
+
+### 완료 내용
+- `server/agents/` 모듈 신설(agentTypes/agentTemplates/agentQueue/agentExecutor/permissionGate/index)
+- 5개 템플릿: pf-comprehensive, pf-version-compare, pf-legal-risk, trading-decision, notebook-query
+- 인메모리 큐: max 50, 30분 타임아웃, 동시 1건, AbortController 취소
+- 시뮬레이션 모드: OPENCLAW_API_URL 비면 자동 sim, 3-5초 sleep 후 더미 마크다운 + AGENT_WIKI_PATH 저장
+- 텔레그램 명령 5개: `에이전트 목록 / 실행 <템플릿id> <대상> / 상태 / 결과 <id> / 취소 <id>`
+- HTTP API: GET/POST/DELETE /api/agents/templates, /api/agents/tasks(/:id)
+- 클라이언트 페이지 `/agents`: 권한 표시, 빠른 실행 카드 5개, 진행 중·완료 리스트, 입력 모달, 5초 폴링
+- 텔레그램 알림: 시작/완료/실패 자동 push (chat_id = OWNER_TELEGRAM_CHAT_ID || TELEGRAM_CHAT_ID)
+- 권한 게이트: AGENT_PERMISSION_LEVEL 1=read 전용 (실행 차단), 2=실행, 3=자동. 이번 Phase는 1단계 단독 검증
+
+### 검증
+- `npm run check` ✅ (모듈 경계 위반 0건, agents 도메인 추가)
+- `npm run build` ✅
+- `npm test` ✅ 313 passed (292 → +21 신규)
+
+### 환경변수 추가
+- `OPENCLAW_API_URL=` (비면 sim)
+- `OPENCLAW_API_KEY=`
+- `AGENT_PERMISSION_LEVEL=1`
+- `AGENT_WIKI_PATH=G:\Aston-Wiki\agents`
+
+### 텔레그램 수동 QA 체크리스트
+- [ ] `에이전트 목록` → 5개 템플릿 + 권한 표시
+- [ ] `에이전트 실행 pf-comprehensive 한남동644` → 등록 + 작업 시작 알림 + 4초 후 완료 알림
+- [ ] `에이전트 상태` → 진행 중·최근 완료 표시
+- [ ] `에이전트 결과 <id>` → 미리보기 + wiki 경로
+- [ ] `에이전트 취소 <id>` → 취소 응답
+- [ ] `/agents` 페이지에서 카드 클릭 → 모달 입력 → 실행 → 5초 폴링으로 진행 표시
+
+### 다음 Phase에서 회장님이 준비할 정보
+1. OpenClaw API URL (WSL2/Docker 호스트에서 접근 가능한 URL)
+2. OpenClaw API Key
+3. OpenClaw 엔드포인트 스펙 (Postman/curl 예제)
+4. WSL2/Docker 네트워크: `curl <URL>/health` 200 확인
+5. 권한 단계 결정 (2단계 승인 vs 3단계 자동)
+6. NotebookLM 연동 방식 (OpenClaw 경유 vs 별도)
+
+### 다음 작업 후보
+- OpenClaw 실 API 연동 (Phase 3)
+- D-3/D-7 임박 자동 푸시 (별 작업)
+- 모닝브리핑에 어제 에이전트 결과 통합
+
 ## 2026-05-01 딜 마감일/이정표 관리 완료 (Claude Code)
 
 ### 완료 내용

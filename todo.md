@@ -234,6 +234,17 @@
 - [ ] 실제 Telegram 화면에서 Gmail/다운로드 인라인 버튼 분류 최종 확인
 - [ ] 딜 목록 8개 초과 시 검색/페이지네이션 UX 개선 검토
 
+# 2026-05-01 Agent Control 골격 (Phase 2)
+
+- [x] `server/agents/` 모듈 + 5개 템플릿 + 시뮬레이션 모드 완성
+  - 큐(max 50, 30분 timeout, 동시 1), 텔레그램 5명령, HTTP API 4개, /agents UI
+  - 검증: `npm run check`, `npm run build`, `npm test` 313 passed
+- [ ] 텔레그램 수동 QA: 5개 명령 + 작업 시작/완료 알림
+- [ ] `/agents` UI 수동 QA: 카드 → 모달 → 진행 표시
+- [ ] OpenClaw 실제 API 연동 (Phase 3)
+- [ ] 권한 단계 2/3 구현
+- [ ] 모닝브리핑에 어제 에이전트 결과 통합
+
 # 2026-05-01 딜 마감일/이정표 관리 (Phase B-4)
 
 - [x] DealMeta deadline/milestones 필드 + 자연어 날짜 파싱 + 모닝브리핑 D-day 표시

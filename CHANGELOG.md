@@ -322,6 +322,17 @@
 - HANDOFF.md, TODO.md 갱신
 ## 2026-05-01
 
+### [Claude Code] Agent Control 골격 (Phase 2 — 시뮬레이션 모드)
+- **신규 모듈**: `server/agents/` (agentTypes/agentTemplates/agentQueue/agentExecutor/permissionGate/index + README) — 인메모리 큐(max 50, 30분 timeout, 동시 1건), 5개 템플릿(pf-comprehensive, pf-version-compare, pf-legal-risk, trading-decision, notebook-query), AGENT_WIKI_PATH에 결과 마크다운 저장
+- **신규**: `server/intent/handlers/agents.ts`(129줄, 5개 텔레그램 명령), `server/routers/agents.ts`(68줄, GET/POST/DELETE /api/agents/*), `server/_core/agentNotifier.ts`(텔레그램 시작/완료/실패 알림)
+- **신규 UI**: `client/src/pages/AgentControl.tsx`(240줄) — 권한 표시, 빠른 실행 카드 5개, 진행 중·완료 리스트, 입력 모달, 5초 폴링. Sidebar에 Bot 아이콘 추가
+- **수정**: `intent/types.ts`(IntentDomain `agents` + agent_command), `fallbackIntent.ts`(^에이전트 prefix 0.99), `registry.ts`, `_core/index.ts`(setAgentNotifier + registerAgentRoutes), `App.tsx`(/agents 라우트), `Sidebar.tsx`, `scripts/check-module-boundaries.ts`(agents 추가), `.env.example`(OPENCLAW_API_URL/KEY, AGENT_PERMISSION_LEVEL/WIKI_PATH)
+- **신규 테스트**: agentTemplates(3), permissionGate(5), agentQueue(7), agentExecutor(6) — 21개
+- **검증**: `npm run check` ✅ / `npm run build` ✅ / `npm test` ✅ 313 passed (292 → +21)
+- **자율 결정**: 큐는 Map+배열 조합, 알림자는 `_core/`에서 주입 — `server/agents/`는 텔레그램 의존 0, 시뮬 sleep 3-5초 랜덤, 권한 게이트는 단독 검증 후 다음 Phase에서 OpenClaw 호출 직전 적용
+- **아카이브**: `docs/tasks/2026-05-01-agent-control-skeleton.md`
+- **범위 밖**: OpenClaw 실제 API 연동, WSL2/Docker 검증, 권한 2·3단계 구현 — 다음 Phase
+
 ### [Claude Code] 딜 마감일/이정표 관리 (Phase B-4)
 - **신규**: `server/deals/dateParser.ts` (76줄) — `parseDealDate`/`calcDday`/`formatKstShortDate`. KST, 절대(YYYY-MM-DD), 상대(M/D 자동 미래 보정), 키워드(오늘/내일/모레/글피), N일·주·개월 후, 이번주/다음주 X요일.
 - **신규**: `server/__tests__/dateParser.test.ts` (10 케이스).

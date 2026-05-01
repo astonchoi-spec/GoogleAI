@@ -335,3 +335,27 @@
 - **작업**: `HANDOFF.md`에 Phase 1b 현재 상태, 원격 push 상태, 내일 첫 확인 순서 추가
 - **작업**: `todo.md`에 내일 텔레그램 수동 QA와 07:00 KST cron 확인 항목 추가
 - **상태**: 코드 변경 없음, 문서 정리만 수행
+
+## 2026-05-01 intentService 분할 리팩토링
+
+### [Claude Code] intentService.ts 도메인별 분할
+- **작업**: 1511줄 단일 파일을 도메인별 핸들러로 분리하여 CLAUDE.md/AGENTS.md §9 "단일 파일 500줄 이하" 룰 준수
+- **수정 파일**: `server/intent/intentService.ts` (1511줄 → 192줄)
+- **신규 파일**:
+  - `server/intent/types.ts` (171줄) — IntentDomain·Action·Result 타입, asString/asNumber/yyyymmdd 등 헬퍼, getGoogleAuth, GOOGLE_REAUTH_MSG
+  - `server/intent/fallbackIntent.ts` (452줄) — 키워드 기반 1차 분류, 우선순위 보존
+  - `server/intent/registry.ts` (16줄) — 도메인별 핸들러 맵 병합
+  - `server/intent/handlers/trading.ts` (274줄) — balance/positions/TA/risk_*/pre_check/add_alert/analysis_*
+  - `server/intent/handlers/realestate.ts` (201줄) — portfolio/feasibility/land_*/deals_*
+  - `server/intent/handlers/google.ts` (197줄) — calendar/sheet/drive/gmail
+  - `server/intent/handlers/finance.ts` (20줄) — DART
+  - `server/intent/handlers/intelligence.ts` (20줄) — morning_briefing
+  - `server/intent/handlers/wiki.ts` (17줄) — wiki.ts executor 래핑
+- **공개 API 보존**: `classifyIntent`, `routeIntentMessage`, `formatIntentRouteMessage`, `normalizeIntent`, `IntentResult` 타입을 `intentService.ts`에서 동일 경로로 export. `wiki.ts`/`telegram-bot.ts`/`routers/intent.ts`/`routers/llm.ts`/`chat-dedup.test.ts`/`briefing.test.ts` import 변경 없음
+- **자율 결정**:
+  - registry 패턴 도입 (`Partial<Record<IntentAction, IntentHandler>>`) — 핸들러 맵 병합, action 키 조회로 디스패치
+  - fallbackIntent는 단일 함수 유지 — 키워드 매칭 우선순위가 도메인 사이에 미묘하게 얽혀 있어 보존
+  - types.ts에 helpers 통합 — 모든 도메인 공유 유틸을 분산하지 않음
+- **검증**: `npm run check` ✅ / `npm run build` ✅ / `npm test` ✅ (160 passed, 7 skipped, 2 todo — 회귀 없음)
+- **아카이브**: `docs/tasks/2026-05-01-intent-service-split.md`
+- **잔여이슈**: 텔레그램 수동 회귀 체크리스트 9종 (위키 저장/검색, 브리핑, 잔고, 일정, 메일, pre_check, 리스크 상태) — 운영 검증 대기

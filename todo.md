@@ -28,11 +28,10 @@
 
 ## P1 Core Modules (이번 주 처리)
 
-- [ ] **intentService.ts 도메인별 분리** (CLAUDE.md §9)
-  - 현재 900줄+ — 단일 파일 500줄 상한 위반
-  - 분리 대상: `intent/trading.ts`, `intent/google.ts`, `intent/general.ts`
-  - `IntentAction` 유니온 타입은 `intent/types.ts`로 이동
-  - `parseXxxMessage()`/`formatXxx()`는 해당 도메인 모듈로 이동
+- [x] **intentService.ts 도메인별 분리** (CLAUDE.md §9) — 완료 2026-05-01
+  - 1511줄 → 192줄 (intentService.ts), 6개 도메인 핸들러 + types/registry/fallback 분리
+  - `server/intent/handlers/{trading,realestate,finance,google,intelligence,wiki}.ts`
+  - 모든 신규 파일 500줄 이하, 160 tests passed
 
 - [ ] **Gemini Grounding 소스/인용 UI**
   - 임시 citation 텍스트를 구조화된 메시지 메타데이터로 이동
@@ -171,4 +170,4 @@
 ### 다음 작업 후보
 - [ ] Phase 1b 운영 QA에서 발견되는 오류 수정
 - [ ] Phase 1c MTProto 텔레그램 수집기 작업 지시서 작성
-- [ ] `server/intent/intentService.ts` 도메인별 분리
+- [x] `server/intent/intentService.ts` 도메인별 분리 (2026-05-01 완료)

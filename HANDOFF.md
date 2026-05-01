@@ -233,3 +233,30 @@
   - Phase 1b 운영 QA 결과 반영
   - Phase 1c MTProto 텔레그램 수집기 착수 전 CURRENT_TASK.md 작성
   - `intentService.ts` 도메인 분리
+
+## 2026-05-01 intentService 분할 리팩토링 완료 (Claude Code)
+
+### 완료 내용
+- `server/intent/intentService.ts` 1511줄 → 192줄로 축소
+- 도메인별 핸들러를 `server/intent/handlers/{trading,realestate,finance,google,intelligence,wiki}.ts`로 분리
+- `types.ts` (타입+헬퍼+Google 인증), `fallbackIntent.ts` (키워드 매칭), `registry.ts` (핸들러 맵) 신규
+- 모든 신규 파일 500줄 이하 (최대 fallbackIntent.ts 452줄, trading.ts 274줄)
+- `classifyIntent`/`routeIntentMessage`/`formatIntentRouteMessage`/`normalizeIntent`/`IntentResult` 공개 API 보존 — 외부 import 경로 변경 없음
+- 검증: `npm run check` / `npm run build` / `npm test` (160 passed, 7 skipped, 2 todo)
+- 아카이브: `docs/tasks/2026-05-01-intent-service-split.md`
+
+### 텔레그램 수동 회귀 QA 체크리스트 (운영 검증 대기)
+- [ ] "위키 저장 테스트 #테스트"
+- [ ] "위키 검색 테스트"
+- [ ] "브리핑 테스트"
+- [ ] "브리핑"
+- [ ] "잔고 조회" / "업비트 잔고"
+- [ ] "오늘 일정"
+- [ ] "최근 메일"
+- [ ] "BTC 숏 77000 손절 78500 목표 74000" (pre_check)
+- [ ] "리스크 상태"
+
+### 다음 작업 후보
+- Phase 1b 운영 QA에서 발견되는 오류 수정
+- Phase 1c MTProto 텔레그램 수집기 작업 지시서 작성
+- Yahoo Finance CORS 프록시 (P0)

@@ -27,9 +27,23 @@ export function isDealIntentMessage(message: string): boolean {
   return /^딜(?:\s+|$)/.test(message.trim());
 }
 
+export function isAgentIntentMessage(message: string): boolean {
+  return /^에이전트(?:\s+|$)/.test(message.trim());
+}
+
 export function fallbackIntent(message: string): IntentResult {
   const lower = message.toLowerCase();
   const compact = lower.replace(/\s+/g, "");
+
+  if (isAgentIntentMessage(message)) {
+    return {
+      domain: "agents",
+      action: "agent_command",
+      type: "query",
+      confidence: 0.99,
+      params: {},
+    };
+  }
 
   if (isDealIntentMessage(message)) {
     return {

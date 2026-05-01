@@ -6,6 +6,7 @@ import { intelligenceHandlers } from "./handlers/intelligence.ts";
 import { wikiHandlers } from "./handlers/wiki.ts";
 import { approvalHandlers } from "./handlers/approval.ts";
 import { dealHandlers } from "./handlers/deals.ts";
+import { agentHandlers } from "./handlers/agents.ts";
 import type { IntentAction, IntentHandler } from "./types.ts";
 
 export const handlerRegistry: Partial<Record<IntentAction, IntentHandler>> = {
@@ -17,4 +18,5 @@ export const handlerRegistry: Partial<Record<IntentAction, IntentHandler>> = {
   ...wikiHandlers,
   ...approvalHandlers,
   ...dealHandlers,
+  ...agentHandlers,
 };

@@ -208,6 +208,20 @@ client/src/components/UnifiedChatInterface.tsx  → 메인 AI 채팅 UI
 
 ---
 
+## 6-1. 모듈 독립성 원칙 (Modular Monolith)
+
+Aston Workstation은 별도 앱/레포로 쪼개지 않는 **Modular Monolith**다. 회장님께는 텔레그램 1개 인터페이스로 보이고, 내부 구현은 도메인 모듈 단위로 분리한다.
+
+- 각 도메인 모듈(`server/wiki`, `server/deals`, `server/trading`, `server/intelligence`, `server/google`, `server/finance`, `server/realestate`)은 다른 도메인 모듈을 직접 import하지 않는다.
+- 모듈 간 데이터 공유는 파일 시스템 경로를 통해서만 한다. 예: `WIKI_ROOT`, `DEALS_ROOT`, Google Drive/Sheets 경로.
+- 공유 유틸리티, 공통 타입, 공통 인프라는 `server/_core/`에만 둔다.
+- `server/intent/`는 라우팅 레이어이므로 도메인 모듈을 호출할 수 있다. 반대로 도메인 모듈은 `server/intent/`를 import하지 않는다.
+- 각 모듈은 자체 `README.md`를 보유하고 책임, 비책임, 데이터 경로, 명령, 의존성, 환경 변수를 명시한다.
+- 새 기능 추가 시 기존 모듈에 추가할지 신규 모듈을 만들지 결정하고, 해당 모듈 `README.md`에 판단 근거를 짧게 기록한다.
+- `npm run check`는 `scripts/check-module-boundaries.ts`를 실행해 도메인 간 직접 import 위반을 검사한다.
+
+---
+
 ## 7. 코딩 컨벤션
 
 - **파일명**: camelCase (예: `preCheckEngine.ts`, `riskGuard.ts`, `exchangeConnector.ts`)

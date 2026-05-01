@@ -509,6 +509,30 @@
 - Phase 1c MTProto 텔레그램 수집기
 - PF Google Sheets 동기화
 
+## 2026-05-01 모닝브리핑 에이전트 결과 통합 완료 (Codex, Phase 4)
+
+### 완료 내용
+- `server/agents/agentResultLoader.ts`: `AGENT_WIKI_PATH`의 `YYYY-MM-DD-<template>-<id>.md` 파일 스캔, 전일 KST 필터링, 핵심 지표/미리보기/시뮬레이션 여부 추출
+- `server/agents/agentBriefing.ts`: 메모리 큐 결과와 wiki fallback 결과를 task id 기준 병합, 완료 최대 5건 + 실패 별도 표시 데이터 생성
+- `server/intelligence/briefing.ts`: 딜 섹션 다음, Risk Guard 앞에 `🤖 어제 에이전트 작업` 섹션 삽입
+- `server/agents/agentQueue.ts`: `getTasksByDate(dateISO)` 추가. 완료/실패/취소만 반환하고 진행 중 작업은 제외
+
+### 검증
+- `npm run check` ✅ (모듈 경계 위반 0건)
+- `npm run build` ✅
+- `npm test` ✅ (340 passed, 7 skipped, 2 todo)
+- 임시 `AGENT_WIKI_PATH` 파일 기반 수동 스모크로 브리핑 내 에이전트 섹션 삽입 확인
+
+### 자율 결정
+- 완료 결과는 최대 5건 표시, 초과분은 `외 N건`으로 축약
+- 시뮬레이션 결과는 템플릿 아이콘보다 `🧪`를 우선 표시
+- 사용자가 취소한 작업은 브리핑에서 제외, 실패 작업은 `⚠️ 실패 N건`으로 같은 섹션 하단에 짧게 표시
+
+### 다음 후보
+- MTProto 텔레그램 수집기
+- PF Google Sheets 동기화
+- 주간/월간 에이전트 누적 보고
+
 ## 2026-05-01 딜 마감일/이정표 관리 완료 (Claude Code)
 
 ### 완료 내용

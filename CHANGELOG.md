@@ -462,6 +462,18 @@
   - telegram-bot.ts 568줄로 500줄 룰 위반(이전부터 위반, +22줄 추가). P1 분리 대상
   - 지정가 주문 미지원, 자동 신호 트리거(preCheckEngine + cron) 연결은 후속 과제
 
+# 2026-05-01 모닝브리핑 에이전트 결과 통합
+
+### [Codex] Phase 4 — 전일 에이전트 작업 요약 섹션 추가
+- **작업**: `server/agents/agentResultLoader.ts` 신규 추가. `AGENT_WIKI_PATH`에서 `YYYY-MM-DD-<template>-<id>.md` 파일을 스캔하고 전일 KST 기준 결과, 핵심 지표, 미리보기, 시뮬레이션 여부를 추출
+- **작업**: `server/agents/agentBriefing.ts` 신규 추가. 메모리 큐 결과와 wiki fallback 결과를 병합하고 완료/실패 표시 데이터를 생성
+- **작업**: `server/agents/agentQueue.ts`에 `getTasksByDate(dateISO)` 추가. 완료/실패/취소 작업만 반환하고 진행 중 작업은 제외
+- **작업**: 모닝브리핑에서 딜 섹션 다음, Risk Guard 앞에 `🤖 어제 에이전트 작업` 섹션 삽입
+- **출력 정책**: 완료 최대 5건 표시, 초과분은 `외 N건`, 실패는 `⚠️ 실패 N건`, 시뮬레이션은 `🧪` 아이콘으로 구분
+- **신규/보강 테스트**: `agentResultLoader.test.ts` 5개, `briefingSources.test.ts` 3개, `briefing.test.ts` 1개, `agentQueue.test.ts` 1개
+- **검증**: `npm run check` ✅ / `npm run build` ✅ / `npm test` ✅ (340 passed, 7 skipped, 2 todo)
+- **아카이브**: `docs/tasks/2026-05-01-briefing-agent-integration.md`
+
 ## 2026-05-01 Telegram 검토 모드 전환
 
 ### [Codex] 실주문 잠금 + 의사결정 리포트 강화

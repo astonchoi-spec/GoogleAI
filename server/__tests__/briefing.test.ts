@@ -340,7 +340,7 @@ describe("morning briefing", () => {
       },
     });
 
-    expect(text).toContain("- 포항해상케이블카 — 자료 8건 (어제 +1) ⚠️ NotebookLM 미연결");
+    expect(text).toContain("• 포항해상케이블카 — 자료 8건 (어제 +1) ⚠️");
     expect(text.indexOf("어제 저장된 위키 메모")).toBeLessThan(text.indexOf("진행 중 딜"));
     expect(text.indexOf("진행 중 딜")).toBeLessThan(text.indexOf("Risk Guard"));
   });

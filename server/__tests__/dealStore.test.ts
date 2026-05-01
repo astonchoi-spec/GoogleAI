@@ -4,14 +4,20 @@ import path from "node:path";
 import os from "node:os";
 import {
   DEAL_CATEGORY_DIRS,
+  addMilestone,
+  clearDealDeadline,
+  completeMilestone,
   createDeal,
   ensureDealFolder,
   findDealByPartialName,
   getDeal,
   listDeals,
+  removeMilestone,
   saveFile,
+  setDealDeadline,
   updateDealMeta,
 } from "../deals/index.ts";
+import { parseDealDate } from "../deals/dateParser.ts";
 
 let tmpDir: string;
 
@@ -96,5 +102,54 @@ describe("dealStore", () => {
     expect(result.all).toHaveLength(2);
     expect(result.grouped.reviewing).toHaveLength(1);
     expect(result.grouped.active).toHaveLength(1);
+  });
+
+  it("sets and clears deal deadline", async () => {
+    await createDeal("한남동644");
+    const iso = parseDealDate("2026-06-30")!;
+    const updated = await setDealDeadline("한남동644", iso, "사업협약 체결");
+    expect(updated.deadline).toBe(iso);
+    expect(updated.deadlineLabel).toBe("사업협약 체결");
+
+    const cleared = await clearDealDeadline("한남동644");
+    expect(cleared.deadline).toBeUndefined();
+    expect(cleared.deadlineLabel).toBeUndefined();
+  });
+
+  it("adds milestones sorted by date and persists across reads", async () => {
+    await createDeal("한남동644");
+    const a = parseDealDate("2026-06-30")!;
+    const b = parseDealDate("2026-05-15")!;
+    await addMilestone("한남동644", "사업협약", a);
+    await addMilestone("한남동644", "인허가신청", b);
+    const meta = await getDeal("한남동644");
+    expect(meta.milestones).toHaveLength(2);
+    expect(meta.milestones![0].label).toBe("인허가신청");
+    expect(meta.milestones![1].label).toBe("사업협약");
+  });
+
+  it("completes a milestone by partial label match", async () => {
+    await createDeal("한남동644");
+    const iso = parseDealDate("2026-05-15")!;
+    await addMilestone("한남동644", "인허가 신청", iso);
+    const { milestone } = await completeMilestone("한남동644", "인허가");
+    expect(milestone.done).toBe(true);
+    expect(milestone.completedAt).toBeTruthy();
+    const meta = await getDeal("한남동644");
+    expect(meta.milestones![0].done).toBe(true);
+  });
+
+  it("removes a milestone", async () => {
+    await createDeal("한남동644");
+    await addMilestone("한남동644", "심의 의결", parseDealDate("2026-06-01")!);
+    await removeMilestone("한남동644", "심의");
+    const meta = await getDeal("한남동644");
+    expect(meta.milestones).toHaveLength(0);
+  });
+
+  it("rejects milestone operations on missing labels", async () => {
+    await createDeal("한남동644");
+    await addMilestone("한남동644", "인허가", parseDealDate("2026-05-15")!);
+    await expect(completeMilestone("한남동644", "존재안함")).rejects.toThrow();
   });
 });

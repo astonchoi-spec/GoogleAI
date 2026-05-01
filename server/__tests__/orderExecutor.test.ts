@@ -1,7 +1,20 @@
-import { describe, it, expect, vi } from "vitest";
-import { OrderExecutor } from "../trading/orderExecutor.ts";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { OrderExecutor, REVIEW_MODE_MESSAGE } from "../trading/orderExecutor.ts";
 
 const fakeCreds = { accessKey: "test_key", secret: "test_secret_with_enough_length_for_hmac" };
+const originalEnableRealOrders = process.env.ENABLE_REAL_ORDERS;
+
+beforeEach(() => {
+  process.env.ENABLE_REAL_ORDERS = "true";
+});
+
+afterEach(() => {
+  if (originalEnableRealOrders === undefined) {
+    delete process.env.ENABLE_REAL_ORDERS;
+  } else {
+    process.env.ENABLE_REAL_ORDERS = originalEnableRealOrders;
+  }
+});
 
 function mockJsonResponse(body: any, init: { status?: number } = {}): Response {
   return new Response(JSON.stringify(body), {
@@ -11,6 +24,15 @@ function mockJsonResponse(body: any, init: { status?: number } = {}): Response {
 }
 
 describe("OrderExecutor.placeMarketBuy", () => {
+  it("ENABLE_REAL_ORDERS 기본 false 상태에서는 실주문 fetch 를 호출하지 않는다", async () => {
+    delete process.env.ENABLE_REAL_ORDERS;
+    const fetchMock = vi.fn();
+    const executor = new OrderExecutor({ fetch: fetchMock as any, getCredentials: () => fakeCreds });
+    await expect(executor.placeMarketBuy({ market: "KRW-BTC", amountKrw: 50_000 }))
+      .rejects.toThrow(REVIEW_MODE_MESSAGE);
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
   it("KRW 마켓 검증 — KRW- prefix 가 없으면 실패한다", async () => {
     const fetchMock = vi.fn();
     const executor = new OrderExecutor({ fetch: fetchMock as any, getCredentials: () => fakeCreds });

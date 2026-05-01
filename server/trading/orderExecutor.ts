@@ -31,7 +31,14 @@ export type ExecutorDeps = {
   fetch?: typeof fetch;
   now?: () => number;
   getCredentials?: () => { accessKey: string; secret: string };
+  realOrdersEnabled?: () => boolean;
 };
+
+export const REVIEW_MODE_MESSAGE = "🔒 검토 모드: 실주문 비활성화 상태입니다.";
+
+export function isRealOrdersEnabled(): boolean {
+  return process.env.ENABLE_REAL_ORDERS === "true";
+}
 
 function defaultGetCredentials(): { accessKey: string; secret: string } {
   const accessKey = process.env.UPBIT_API_KEY?.trim();
@@ -71,6 +78,14 @@ export class OrderExecutor {
     return (this.deps.getCredentials ?? defaultGetCredentials)();
   }
 
+  private assertRealOrdersEnabled(): void {
+    const enabled = (this.deps.realOrdersEnabled ?? isRealOrdersEnabled)();
+    if (!enabled) {
+      throw new Error(REVIEW_MODE_MESSAGE);
+    }
+    console.warn("[orderExecutor] ENABLE_REAL_ORDERS=true — real Upbit orders are enabled.");
+  }
+
   async placeMarketBuy(input: { market: string; amountKrw: number }): Promise<OrderResult> {
     if (!input.market || !input.market.startsWith("KRW-")) {
       throw new Error("시장가 매수 실패: KRW 마켓만 지원합니다 (예: KRW-BTC)");
@@ -79,6 +94,7 @@ export class OrderExecutor {
       throw new Error("시장가 매수 실패: amountKrw 는 양수여야 합니다");
     }
 
+    this.assertRealOrdersEnabled();
     return this.postOrder({
       market: input.market,
       side: "bid",
@@ -95,6 +111,7 @@ export class OrderExecutor {
       throw new Error("시장가 매도 실패: volume 은 양수여야 합니다");
     }
 
+    this.assertRealOrdersEnabled();
     return this.postOrder({
       market: input.market,
       side: "ask",

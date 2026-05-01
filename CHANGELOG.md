@@ -322,6 +322,14 @@
 - HANDOFF.md, TODO.md 갱신
 ## 2026-05-01
 
+### [Codex] 딜 현황 모닝브리핑 통합 + telegram-bot.ts 분할
+- **작업**: 모닝브리핑에 `📁 진행 중 딜` 섹션을 추가해 자료가 있는 진행 딜, 어제 추가 자료 수, NotebookLM 연결 여부를 표시
+- **작업**: `server/llm/telegram-bot.ts`를 기존 import 호환 re-export 파일로 축소하고 `server/llm/telegramBot/` 하위 모듈로 봇 초기화/명령/메시지/콜백/Workspace 처리를 분리
+- **수정 파일**: `server/_core/briefingSources.ts`, `server/intelligence/briefing.ts`, `server/llm/telegram-bot.ts`, `server/llm/telegramBot/*`
+- **신규/보강 테스트**: 브리핑 딜 섹션과 TelegramBot legacy import 호환 테스트 추가
+- **검증**: `npm run check` ✅ / `npm run build` ✅ / `npm test` ✅ (276 passed, 7 skipped, 2 todo)
+- **아카이브**: `docs/tasks/2026-05-01-deals-briefing-and-bot-split.md`
+
 ### [Codex] Gmail 자동 분류 + 다운로드 폴더 감시 Phase B-2/B-3
 - **작업**: 카톡/Gmail/다운로드 3채널이 공통 `fileClassifier`를 사용하도록 분류 엔진을 통합
 - **신규 파일**:

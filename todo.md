@@ -233,3 +233,16 @@
 - [ ] 실제 Gmail inbox에서 `Aston-Deals` 라벨 메일 1건으로 운영 QA
 - [ ] 실제 Telegram 화면에서 Gmail/다운로드 인라인 버튼 분류 최종 확인
 - [ ] 딜 목록 8개 초과 시 검색/페이지네이션 UX 개선 검토
+
+# 2026-05-01 딜 브리핑 + Telegram Bot 분할 업데이트
+
+- [x] 모닝브리핑에 `📁 진행 중 딜` 섹션 추가
+  - 자료 0건, completed/rejected 딜 제외
+  - KST 기준 어제 추가된 파일 수를 카테고리 폴더 mtime으로 계산
+  - NotebookLM 연결 여부 표시
+- [x] `server/llm/telegram-bot.ts` 분할
+  - legacy 파일은 2줄 re-export로 유지
+  - `telegramBot/index.ts`, `commands.ts`, `messageRouter.ts`, `callbackRouter.ts`, `workspaceCommands.ts`, `utils.ts` 추가
+- [x] 검증 완료: `npm run check`, `npm run build`, `npm test` (276 passed)
+- [ ] 실제 Telegram에서 `브리핑 테스트` 입력 후 딜 섹션 운영 화면 확인
+- [ ] 실제 Telegram에서 딜/카톡/Gmail/다운로드 콜백/승인 콜백 각 1회 수동 QA

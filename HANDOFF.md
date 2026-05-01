@@ -432,3 +432,32 @@
 - 실제 Gmail inbox에서 `Aston-Deals` 라벨 메일 운영 QA
 - Telegram 실제 화면에서 Gmail/다운로드 인라인 버튼 최종 QA
 - 딜 후보 8개 초과 시 검색/페이지네이션 개선
+
+## 2026-05-01 딜 브리핑 + Telegram Bot 분할 완료 (Codex)
+
+### 완료 내용
+- 모닝브리핑에 `📁 진행 중 딜` 섹션 추가
+- 자료 0건, completed/rejected 딜은 제외하고 `updatedAt` 최신순 최대 10건 표시
+- 어제 추가 자료 수는 KST 기준 전일 00:00-23:59에 수정된 카테고리 폴더 파일 mtime으로 계산
+- NotebookLM 연결됨은 `🔗`, 미연결은 `⚠️ NotebookLM 미연결`로 표시
+- `server/llm/telegram-bot.ts`를 2줄 re-export로 축소하고 실제 구현을 `server/llm/telegramBot/`로 분리
+- 기존 import 경로 `server/llm/telegram-bot.ts` 호환 유지
+- 아카이브: `docs/tasks/2026-05-01-deals-briefing-and-bot-split.md`
+
+### 라인 수
+- `server/llm/telegram-bot.ts`: 2줄
+- `server/llm/telegramBot/index.ts`: 61줄
+- `server/llm/telegramBot/commands.ts`: 134줄
+- `server/llm/telegramBot/messageRouter.ts`: 133줄
+- `server/llm/telegramBot/callbackRouter.ts`: 27줄
+- `server/llm/telegramBot/workspaceCommands.ts`: 141줄
+- `server/llm/telegramBot/utils.ts`: 38줄
+
+### 검증
+- `npm run check` 통과, 모듈 경계 위반 0건
+- `npm run build` 통과
+- `npm test` 통과: 276 passed, 7 skipped, 2 todo
+
+### 다음 작업 후보
+- 실제 Telegram 화면에서 `브리핑 테스트`로 딜 섹션 출력 확인
+- 딜/카톡/Gmail/다운로드 콜백/승인 콜백 운영 QA 각 1회

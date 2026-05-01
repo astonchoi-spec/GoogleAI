@@ -3,7 +3,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 // MODIFIED: Modular Monolith 도메인 간 직접 import를 검증한다.
-const DOMAIN_MODULES = ["wiki", "deals", "trading", "intelligence", "google", "finance", "realestate"] as const;
+const DOMAIN_MODULES = ["wiki", "deals", "trading", "intelligence", "google", "finance", "realestate", "agents"] as const;
 const PROHIBITED_TARGETS = [...DOMAIN_MODULES, "intent"] as const;
 
 type DomainModule = (typeof DOMAIN_MODULES)[number];

@@ -171,3 +171,8 @@
 - [ ] Phase 1b 운영 QA에서 발견되는 오류 수정
 - [ ] Phase 1c MTProto 텔레그램 수집기 작업 지시서 작성
 - [x] `server/intent/intentService.ts` 도메인별 분리 (2026-05-01 완료)
+- [x] Telegram 승인 모드 + Upbit 1탭 자동 체결 (2026-05-01 완료)
+- [ ] `server/llm/telegram-bot.ts` 도메인별 분리 (568줄, P1)
+- [ ] preCheckEngine 자동 신호 → 승인 큐 연결
+- [ ] Upbit 지정가 주문 지원
+- [ ] Telegram 승인 모드 실거래 소액 검증 (회장)

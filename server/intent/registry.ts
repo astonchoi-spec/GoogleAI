@@ -1,0 +1,16 @@
+import { tradingHandlers } from "./handlers/trading.ts";
+import { realestateHandlers } from "./handlers/realestate.ts";
+import { financeHandlers } from "./handlers/finance.ts";
+import { googleHandlers } from "./handlers/google.ts";
+import { intelligenceHandlers } from "./handlers/intelligence.ts";
+import { wikiHandlers } from "./handlers/wiki.ts";
+import type { IntentAction, IntentHandler } from "./types.ts";
+
+export const handlerRegistry: Partial<Record<IntentAction, IntentHandler>> = {
+  ...tradingHandlers,
+  ...realestateHandlers,
+  ...financeHandlers,
+  ...googleHandlers,
+  ...intelligenceHandlers,
+  ...wikiHandlers,
+};

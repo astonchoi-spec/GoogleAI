@@ -68,7 +68,11 @@ function buildQueryHash(params: Record<string, string>): string {
 }
 
 export class OrderExecutor {
-  constructor(private deps: ExecutorDeps = {}) {}
+  private deps: ExecutorDeps;
+
+  constructor(deps: ExecutorDeps = {}) {
+    this.deps = deps;
+  }
 
   private getFetch(): typeof fetch {
     return this.deps.fetch ?? globalThis.fetch;

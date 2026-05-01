@@ -49,6 +49,38 @@ export function fallbackIntent(message: string): IntentResult {
     };
   }
 
+  // 매수/매도 시뮬레이션 신호 — 텔레그램 1탭 승인 플로우 트리거
+  // 패턴: "매수 시뮬 [종목] [금액]" / "매도 시뮬 [종목] [수량]"
+  // - 종목 미지정 시 BTC, 매수 금액 미지정 시 50000, 매도 수량 미지정 시 0.0001
+  const buySim = message.match(/^매수\s*시뮬(?:\s+([A-Za-z가-힣]+))?(?:\s+([0-9][\d,\.]*)\s*(만원|원|krw)?)?/i);
+  if (buySim) {
+    const symbol = (buySim[1] || "BTC").toUpperCase();
+    let amount = buySim[2] ? Number(buySim[2].replace(/,/g, "")) : 50_000;
+    if (buySim[3] === "만원") amount = amount * 10_000;
+    return {
+      domain: "trading",
+      action: "trading_buy_signal",
+      type: "execute",
+      confidence: 0.95,
+      params: { market: `KRW-${symbol}`, amountKrw: amount, reason: "수동 트리거 — 매수 시뮬" },
+    };
+  }
+  const sellSim = message.match(/^매도\s*시뮬(?:\s+([A-Za-z가-힣]+))?(?:\s+([0-9][\d\.]*))?/i);
+  if (sellSim) {
+    const symbol = (sellSim[1] || "BTC").toUpperCase();
+    const volume = sellSim[2] ? Number(sellSim[2]) : 0.0001;
+    return {
+      domain: "trading",
+      action: "trading_sell_signal",
+      type: "execute",
+      confidence: 0.95,
+      params: { market: `KRW-${symbol}`, volume, reason: "수동 트리거 — 매도 시뮬" },
+    };
+  }
+  if (compact.includes("승인큐") || compact.includes("승인목록") || lower.includes("approval list")) {
+    return { domain: "trading", action: "trading_approval_list", type: "query", confidence: 0.9, params: {} };
+  }
+
   // 모닝 브리핑 수동 트리거
   if (isBriefingTestMessage(message)) {
     return {

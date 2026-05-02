@@ -738,3 +738,16 @@
 - `.env`의 `OPENCLAW_API_URL=http://openclaw.local`이 실제 유효 URL인지 확인
 - 실제 OpenClaw gateway 또는 HTTP auth 방식 확인 후 `npx tsx scripts/smoke-openclaw.ts` 재실행
 - 성공 시 `data/openclaw-smoke.json`의 1차/2차 preview 확인
+
+## 2026-05-02 작업 종료 정리 (Codex)
+
+- 오늘 완료
+  - OpenClaw 재탐지 보강
+  - Aston Gemini 키 재사용 경로 보강
+  - `AgentControl.tsx` health 응답 옵셔널 체이닝 회귀 수정
+- 미완 이슈
+  - OpenClaw URL이 `openclaw.local`로 잘못 탐지됨
+  - 실제 연결 URL은 `http://127.0.0.1:8000`
+- 내일 작업
+  - `.env`의 `OPENCLAW_API_URL`을 `http://127.0.0.1:8000`으로 수정
+  - `npx tsx scripts/smoke-openclaw.ts` 재실행 후 실제 응답 확인

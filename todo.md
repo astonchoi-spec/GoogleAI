@@ -281,3 +281,15 @@
 - [x] 검증 완료: `npm run check`, `npm run build`, `npm test` (276 passed)
 - [ ] 실제 Telegram에서 `브리핑 테스트` 입력 후 딜 섹션 운영 화면 확인
 - [ ] 실제 Telegram에서 딜/카톡/Gmail/다운로드 콜백/승인 콜백 각 1회 수동 QA
+# 2026-05-02 PF Google Sheets Sync
+
+- [x] 진행 중 PF 딜 Google Sheets 대시보드 동기화 구현 완료
+  - `server/_core/googleSheets.ts` 추가
+  - `server/deals/dealSheetSync.ts` 추가
+  - 06:30 KST 스케줄러 등록
+  - 딜 변경 시 fire-and-forget 동기화 트리거 연결
+  - `딜 시트` 텔레그램 명령 추가
+  - 실제 Google Sheets API 동기화 성공 확인
+- [ ] 텔레그램 실사용 화면에서 `딜 시트` 응답 확인
+- [ ] 시트 조건부 서식(D-day 색상) 필요 시 후속 Phase에서 추가
+- [ ] 완료/거절 딜 분리 아카이브 시트는 다음 Phase로 보류

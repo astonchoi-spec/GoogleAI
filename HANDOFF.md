@@ -124,7 +124,7 @@
 
 | 도구 | 작업 중인 파일 | 내용 |
 |------|----------------|------|
-| 없음 | — | 현재 진행 중인 작업 없음 |
+| Codex | `CURRENT_TASK.md`, `server/_core/googleSheets.ts`, `server/deals/dealSheetSync.ts`, `server/deals/*`, `server/intent/*`, `server/__tests__/*` | Phase 5 PF 구글시트 동기화 구현 중 |
 
 ## 2026-05-01 작업 종료 인수인계 (Codex)
 
@@ -609,3 +609,28 @@
 ### 다음 작업 후보
 - 실제 Telegram 화면에서 `브리핑 테스트`로 딜 섹션 출력 확인
 - 딜/카톡/Gmail/다운로드 콜백/승인 콜백 운영 QA 각 1회
+## 2026-05-02 PF Google Sheets Sync 인수인계 (Codex)
+
+- 완료:
+  - `server/_core/googleSheets.ts`
+  - `server/_core/agentResultLookup.ts`
+  - `server/deals/dealSheetSync.ts`
+  - `server/deals/dealStore.ts`
+  - `server/deals/dealFileRouter.ts`
+  - `server/deals/telegramDealFileHandler.ts`
+  - `server/_core/index.ts`
+  - `server/__tests__/googleSheets.test.ts`
+  - `server/__tests__/dealSheetSync.test.ts`
+  - `.env.example`
+- 검증:
+  - `npm run check` 통과
+  - `npm run build` 통과
+  - `npm test` 통과: 353 passed, 7 skipped, 2 todo
+  - 실제 Google Sheets API 동기화 성공: 3건
+  - 시트 URL: https://docs.google.com/spreadsheets/d/1kX_l2bQw8II4LZCwdS9_QEQ9JQ4HfpXYGpDoIF9F8b0/edit
+- 현재 진행 작업:
+  - 없음
+- 다음 Phase 후보:
+  - 완료/거절 딜 아카이브 시트 분리
+  - 시트 조건부 서식(D-day 색상)
+  - 시트 역방향 동기화

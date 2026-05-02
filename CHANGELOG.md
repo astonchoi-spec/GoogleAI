@@ -522,3 +522,20 @@
 - **수동 스모크**: `딜 추가`, `딜 목록`, `딜 한남동644`, `딜 노트북`, PDF 저장 핸들러 로컬 실행 및 `G:\내 드라이브\Aston-Deals\한남동644\01_계약서` 파일 생성 확인
 - **아카이브**: `docs/tasks/2026-05-01-deal-routing-priority-fix.md`
 - **잔여이슈**: 실제 Telegram 화면에서 동일 5개 명령 최종 확인 필요
+## 2026-05-02 PF Google Sheets Sync
+
+### [Codex] Phase 5 PF 딜 시트 동기화 완료
+- `server/_core/googleSheets.ts` 추가: 시트 생성/재사용, `data/google-sheets.json` 저장, 401 재인증 재시도, 429 backoff
+- `server/deals/dealSheetSync.ts` 추가: 활성 딜만 동기화, 헤더/행 업서트, NotebookLM/D-day/이정표/최근 에이전트 결과 표시
+- `server/_core/agentResultLookup.ts` 추가: 모듈 경계 위반 없이 최근 에이전트 결과 브리지
+- `server/deals/dealStore.ts` 수정: `createDeal`, `updateDealMeta`, `saveFile` 이후 비동기 동기화 트리거
+- `server/deals/dealFileRouter.ts`, `server/deals/telegramDealFileHandler.ts` 수정: `딜 시트` 명령 추가
+- `server/_core/index.ts` 수정: 06:30 KST 스케줄러 등록
+- `.env.example` 수정: `GOOGLE_SHEETS_ENABLED`, `GOOGLE_SHEETS_SYNC_HOUR`, `GOOGLE_SHEETS_SYNC_MINUTE`, `GOOGLE_SHEETS_USER_ID`
+- 테스트 추가: `dealSheetSync.test.ts` 7개, `googleSheets.test.ts` 6개
+- 검증:
+  - `npm run check` 통과
+  - `npm run build` 통과
+  - `npm test` 통과: 353 passed, 7 skipped, 2 todo
+  - 실제 Google Sheets API 호출 성공: 3건 동기화
+  - 시트 URL: https://docs.google.com/spreadsheets/d/1kX_l2bQw8II4LZCwdS9_QEQ9JQ4HfpXYGpDoIF9F8b0/edit

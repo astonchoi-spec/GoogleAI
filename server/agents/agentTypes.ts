@@ -15,6 +15,7 @@ export type AgentTemplate = {
   description: string;
   category: AgentTemplateCategory;
   inputs: AgentTemplateInput[];
+  instructions?: string;
 };
 
 export type AgentResult = {

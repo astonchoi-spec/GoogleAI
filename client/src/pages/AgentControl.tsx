@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { Bot, Play, X, Clock, CheckCircle2, AlertCircle, ShieldCheck } from "lucide-react";
+import { AlertCircle, Bot, CheckCircle2, Clock, Play, ShieldCheck, X } from "lucide-react";
 
 type AgentTemplateInput = {
   key: string;
@@ -41,10 +41,25 @@ type TemplatesResponse = {
 };
 
 type HealthResponse = {
-  openclaw: { available: boolean; simulationMode: boolean; url: string | null; authType: string; taskEndpoint: string | null; lastProbeAt: string | null; reason?: string };
+  openclaw: {
+    available: boolean;
+    simulationMode: boolean;
+    url: string | null;
+    authType: string;
+    taskEndpoint: string | null;
+    lastProbeAt: string | null;
+    modelHint: string | null;
+    reason?: string;
+  };
+  openclawDetected: boolean;
+  openclawUrl: string | null;
+  simulationMode: boolean;
+  modelHint: string | null;
+  lastSmokeAt: string | null;
+  lastSmokeStatus: "passed" | "failed" | "skipped" | "never";
   permissionLevel: number;
   permissionLabel: string;
-  queue: { total: number; active: number; completed: number; failed: number };
+  queueStatus: { total: number; active: number; completed: number; failed: number };
 };
 
 const STATUS_TEXT: Record<AgentStatus, string> = {
@@ -54,7 +69,7 @@ const STATUS_TEXT: Record<AgentStatus, string> = {
   completed: "완료",
   failed: "실패",
   cancelled: "취소",
-  rejected: "거부",
+  rejected: "거절",
 };
 
 const STATUS_ICON: Record<AgentStatus, React.ReactElement> = {
@@ -66,6 +81,13 @@ const STATUS_ICON: Record<AgentStatus, React.ReactElement> = {
   cancelled: <X size={16} />,
   rejected: <X size={16} />,
 };
+
+function renderStatusBadge(health: HealthResponse | null): { label: string; color: string } {
+  if (!health) return { label: "대기 중", color: "#94a3b8" };
+  if (health.openclawDetected) return { label: "🟢 OpenClaw 실제 연동", color: "#34d399" };
+  if (health.openclawUrl) return { label: "🟡 시뮬레이션 fallback", color: "#facc15" };
+  return { label: "🔴 OpenClaw 미탐지", color: "#f87171" };
+}
 
 export default function AgentControl(): React.ReactElement {
   const [meta, setMeta] = useState<TemplatesResponse | null>(null);
@@ -79,11 +101,11 @@ export default function AgentControl(): React.ReactElement {
     let cancelled = false;
     fetch("/api/agents/templates")
       .then((r) => r.json())
-      .then((data: TemplatesResponse) => {
-        if (!cancelled) setMeta(data);
-      })
+      .then((data: TemplatesResponse) => !cancelled && setMeta(data))
       .catch((err) => console.error("[AgentControl] templates:", err));
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   useEffect(() => {
@@ -91,14 +113,15 @@ export default function AgentControl(): React.ReactElement {
     const tick = () => {
       fetch("/api/agents/health")
         .then((r) => r.json())
-        .then((data: HealthResponse) => {
-          if (!cancelled) setHealth(data);
-        })
+        .then((data: HealthResponse) => !cancelled && setHealth(data))
         .catch((err) => console.error("[AgentControl] health:", err));
     };
     tick();
     const interval = setInterval(tick, 5000);
-    return () => { cancelled = true; clearInterval(interval); };
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+    };
   }, []);
 
   useEffect(() => {
@@ -106,18 +129,20 @@ export default function AgentControl(): React.ReactElement {
     const tick = () => {
       fetch("/api/agents/tasks")
         .then((r) => r.json())
-        .then((data: { tasks: AgentTask[] }) => {
-          if (!cancelled) setTasks(data.tasks);
-        })
+        .then((data: { tasks: AgentTask[] }) => !cancelled && setTasks(data.tasks))
         .catch((err) => console.error("[AgentControl] tasks:", err));
     };
     tick();
     const interval = setInterval(tick, 5000);
-    return () => { cancelled = true; clearInterval(interval); };
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+    };
   }, []);
 
-  const active = useMemo(() => tasks.filter((t) => t.status === "awaiting_approval" || t.status === "pending" || t.status === "running"), [tasks]);
-  const recent = useMemo(() => tasks.filter((t) => t.status !== "awaiting_approval" && t.status !== "pending" && t.status !== "running").slice(0, 10), [tasks]);
+  const active = useMemo(() => tasks.filter((task) => ["awaiting_approval", "pending", "running"].includes(task.status)), [tasks]);
+  const recent = useMemo(() => tasks.filter((task) => !["awaiting_approval", "pending", "running"].includes(task.status)).slice(0, 10), [tasks]);
+  const statusBadge = renderStatusBadge(health);
 
   function openModal(template: AgentTemplate): void {
     setModalTemplate(template);
@@ -129,7 +154,7 @@ export default function AgentControl(): React.ReactElement {
     if (!modalTemplate) return;
     const target = formValues.target?.trim();
     if (!target) {
-      setSubmitError("대상을 입력해주세요.");
+      setSubmitError("대상을 입력해 주세요.");
       return;
     }
     const inputs: Record<string, string> = {};
@@ -164,19 +189,29 @@ export default function AgentControl(): React.ReactElement {
   }
 
   return (
-    <div style={{ padding: "24px", color: "#e2e8f0" }}>
+    <div style={{ padding: 24, color: "#e2e8f0" }}>
       <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 16 }}>
         <Bot size={28} style={{ color: "#22d3ee" }} />
         <h1 style={{ fontSize: 24, fontWeight: 600 }}>Agent Control</h1>
       </div>
+
       <div style={panelStyle}>
-        <div style={{ fontSize: 13, color: "#94a3b8" }}>권한 단계</div>
-        <div style={{ fontSize: 16, fontWeight: 500 }}>{meta?.permissionLabel ?? "로딩 중..."}</div>
-        <div style={{ fontSize: 12, color: health?.openclaw.available ? "#34d399" : "#facc15", marginTop: 4 }}>
-          {health?.openclaw.available ? `🛰 OpenClaw 연결됨 · ${health.openclaw.url}` : "🧪 시뮬레이션 모드 (OpenClaw 미탐지)"}
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 12 }}>
+          <Badge label={statusBadge.label} color={statusBadge.color} />
+          <Badge label={`🛡 권한 ${health?.permissionLevel ?? meta?.permissionLevel ?? 2}단계 승인 필요`} color="#93c5fd" />
+        </div>
+        <div style={{ fontSize: 14, fontWeight: 600 }}>{health?.permissionLabel ?? meta?.permissionLabel ?? "로딩 중"}</div>
+        <div style={{ fontSize: 12, color: "#94a3b8", marginTop: 6 }}>
+          {health?.openclawUrl ? `URL: ${health.openclawUrl}` : "URL: 미탐지"}
         </div>
         <div style={{ fontSize: 12, color: "#94a3b8", marginTop: 4 }}>
-          큐 {health?.queue.total ?? tasks.length}건 · 실행 {health?.queue.active ?? active.length}건 · 인증 {health?.openclaw.authType ?? "unknown"}
+          {health?.modelHint ? `모델 힌트: ${health.modelHint}` : "모델 힌트: 미확인"}
+        </div>
+        <div style={{ fontSize: 12, color: "#94a3b8", marginTop: 4 }}>
+          Smoke: {health?.lastSmokeStatus ?? "never"}{health?.lastSmokeAt ? ` · ${new Date(health.lastSmokeAt).toLocaleString("ko-KR")}` : ""}
+        </div>
+        <div style={{ fontSize: 12, color: "#94a3b8", marginTop: 4 }}>
+          Queue: 총 {health?.queueStatus.total ?? tasks.length}건 · 진행 {health?.queueStatus.active ?? active.length}건 · 실패 {health?.queueStatus.failed ?? 0}건
         </div>
       </div>
 
@@ -191,35 +226,32 @@ export default function AgentControl(): React.ReactElement {
         ))}
       </div>
 
-      <h2 style={sectionTitleStyle}>진행 중·대기 ({active.length})</h2>
+      <h2 style={sectionTitleStyle}>진행 중 작업 ({active.length})</h2>
       <div style={listStyle}>
-        {active.length === 0 ? <div style={emptyStyle}>진행 중 작업이 없습니다.</div> : active.map((task) => (
-          <TaskRow key={task.id} task={task} onCancel={() => cancelTask(task.id)} />
-        ))}
+        {active.length === 0 ? <div style={emptyStyle}>진행 중 작업이 없습니다.</div> : active.map((task) => <TaskRow key={task.id} task={task} onCancel={() => cancelTask(task.id)} />)}
       </div>
 
       <h2 style={sectionTitleStyle}>최근 완료 (최대 10건)</h2>
       <div style={listStyle}>
-        {recent.length === 0 ? <div style={emptyStyle}>완료된 작업이 없습니다.</div> : recent.map((task) => (
-          <TaskRow key={task.id} task={task} onCancel={() => cancelTask(task.id)} />
-        ))}
+        {recent.length === 0 ? <div style={emptyStyle}>완료된 작업이 없습니다.</div> : recent.map((task) => <TaskRow key={task.id} task={task} onCancel={() => cancelTask(task.id)} />)}
       </div>
 
       {modalTemplate && (
         <div style={modalOverlayStyle} onClick={() => setModalTemplate(null)}>
-          <div style={modalStyle} onClick={(e) => e.stopPropagation()}>
+          <div style={modalStyle} onClick={(event) => event.stopPropagation()}>
             <div style={{ fontSize: 18, fontWeight: 600, marginBottom: 4 }}>{modalTemplate.label}</div>
             <div style={{ fontSize: 13, color: "#94a3b8", marginBottom: 16 }}>{modalTemplate.description}</div>
             {modalTemplate.inputs.map((input) => (
               <label key={input.key} style={{ display: "block", marginBottom: 12 }}>
                 <div style={{ fontSize: 12, color: "#cbd5e1", marginBottom: 4 }}>
-                  {input.label}{input.required ? " *" : ""}
+                  {input.label}
+                  {input.required ? " *" : ""}
                 </div>
                 <input
                   type="text"
                   placeholder={input.placeholder}
                   value={formValues[input.key] ?? ""}
-                  onChange={(e) => setFormValues((prev) => ({ ...prev, [input.key]: e.target.value }))}
+                  onChange={(event) => setFormValues((prev) => ({ ...prev, [input.key]: event.target.value }))}
                   style={inputStyle}
                 />
               </label>
@@ -236,6 +268,10 @@ export default function AgentControl(): React.ReactElement {
   );
 }
 
+function Badge({ label, color }: { label: string; color: string }): React.ReactElement {
+  return <div style={{ ...badgeStyle, color, borderColor: `${color}55` }}>{label}</div>;
+}
+
 function TaskRow({ task, onCancel }: { task: AgentTask; onCancel: () => void }): React.ReactElement {
   const seconds = task.durationMs ? (task.durationMs / 1000).toFixed(1) : null;
   return (
@@ -250,7 +286,7 @@ function TaskRow({ task, onCancel }: { task: AgentTask; onCancel: () => void }):
       </div>
       {task.resultPreview && <div style={{ fontSize: 12, color: "#cbd5e1", marginTop: 6, whiteSpace: "pre-wrap" }}>{task.resultPreview}</div>}
       {task.error && <div style={{ fontSize: 12, color: "#f87171", marginTop: 6 }}>{task.error}</div>}
-      {(task.status === "awaiting_approval" || task.status === "pending" || task.status === "running") && (
+      {["awaiting_approval", "pending", "running"].includes(task.status) && (
         <button style={{ ...btnSecondary, marginTop: 8 }} onClick={onCancel}>취소</button>
       )}
     </div>
@@ -268,3 +304,4 @@ const modalStyle: React.CSSProperties = { background: "#0f172a", border: "1px so
 const inputStyle: React.CSSProperties = { width: "100%", padding: "8px 10px", background: "#1e293b", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 6, color: "#e2e8f0", fontSize: 14 };
 const btnPrimary: React.CSSProperties = { padding: "8px 14px", background: "#22d3ee", border: "none", borderRadius: 6, color: "#0f172a", fontWeight: 600, cursor: "pointer" };
 const btnSecondary: React.CSSProperties = { padding: "6px 12px", background: "transparent", border: "1px solid rgba(255,255,255,0.2)", borderRadius: 6, color: "#cbd5e1", cursor: "pointer", fontSize: 13 };
+const badgeStyle: React.CSSProperties = { display: "inline-flex", alignItems: "center", gap: 6, padding: "6px 10px", border: "1px solid", borderRadius: 999, background: "rgba(15,23,42,0.45)", fontSize: 12, fontWeight: 600 };

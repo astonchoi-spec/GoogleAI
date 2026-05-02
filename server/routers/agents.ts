@@ -1,15 +1,14 @@
 import type { Express, Request, Response } from "express";
 import {
   cancelAgentTask,
-  describeLevel,
   enqueueAgentTask,
   getAgentTask,
-  getOpenClawClient,
-  getPermissionLevel,
   isSimulationMode,
   listAgentTasks,
   listTemplates,
 } from "../agents/index.ts";
+import { getAgentHealthSnapshot } from "../agents/agentHealth.ts";
+import { describeLevel, getPermissionLevel } from "../agents/permissionGate.ts";
 
 function bad(res: Response, msg: string, status = 400): void {
   res.status(status).json({ error: msg });
@@ -29,19 +28,12 @@ export function registerAgentRoutes(app: Express): void {
     res.json({ tasks: listAgentTasks() });
   });
 
-  app.get("/api/agents/health", (_req: Request, res: Response) => {
-    const tasks = listAgentTasks();
-    const active = tasks.filter((task) => task.status === "awaiting_approval" || task.status === "pending" || task.status === "running");
+  app.get("/api/agents/health", async (_req: Request, res: Response) => {
+    // MODIFIED: expose flattened OpenClaw health fields so UI and Telegram can render explicit badges.
+    const health = await getAgentHealthSnapshot();
     res.json({
-      openclaw: getOpenClawClient().getStatus(),
-      permissionLevel: getPermissionLevel(),
-      permissionLabel: describeLevel(),
-      queue: {
-        total: tasks.length,
-        active: active.length,
-        completed: tasks.filter((task) => task.status === "completed").length,
-        failed: tasks.filter((task) => task.status === "failed").length,
-      },
+      ...health,
+      queue: health.queueStatus,
     });
   });
 

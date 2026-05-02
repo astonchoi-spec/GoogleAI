@@ -629,3 +629,12 @@
   - `docs/ARCHITECTURE.md`, `AGENTS.md`, `CLAUDE.md`, 운영 문서 링크
   - 현재 제약 요약과 비공개 운영 안내
 - **검증**: `npm run check`, `npm run build`, `README.md` 줄 수 확인 예정
+
+### [Codex] `Aston Workstation` 3계층 구조 정의 반영
+- **작업**: `Command Channel` / `Knowledge Core` / `Execution Modules`를 기준 구조로 문서화
+- **수정 파일**: `docs/ARCHITECTURE.md`, `README.md`, `AGENTS.md`, `CLAUDE.md`
+- **포함 내용**:
+  - `AI 채팅`을 단일 진입점으로 두는 3계층 정의 추가
+  - `NotebookLM`, `Aston Wiki`, `Aston-Deals Folder`, `Google Drive`, `Google Sheets`를 `Knowledge Core`로 명시
+  - 직원 구현보다 `1·2계층` 안정화를 우선한다는 운영 원칙 추가
+- **검증**: `npm run check`, `npm run build`, 4개 문서 공통 키워드 확인 예정

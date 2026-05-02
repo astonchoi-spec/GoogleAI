@@ -126,6 +126,18 @@
 |------|----------------|------|
 | Codex | - | 현재 진행 작업 없음 |
 
+## 2026-05-02 3계층 구조 문서 반영 종료 (Codex)
+
+- 오늘 완료
+  - `docs/ARCHITECTURE.md`, `README.md`, `AGENTS.md`, `CLAUDE.md`에 `3계층 구조` 반영
+  - `Command Channel` / `Knowledge Core` / `Execution Modules`를 공통 중심축으로 고정
+- 운영 기준
+  - 모든 업무는 `AI 채팅`에서 시작
+  - `NotebookLM`, `Aston Wiki`, `Aston-Deals Folder`, `Google Drive`, `Google Sheets`를 지식 코어로 사용
+  - `1·2계층`이 안정화되기 전에는 `3계층` 직원 구현을 우선하지 않음
+- 다음 작업
+  - `AI 채팅` 라우팅 점검: `server/intent/intentService.ts` 라우팅 매핑 정리, 화면 빠른 명령 5개 작동 검증
+
 ## 2026-05-02 작업 종료 인수인계 (Codex)
 
 - 오늘 완료
@@ -181,21 +193,23 @@
 ## 다음 추천 작업
 
 ### 즉시 (운영 검증)
-0. **PF 분석 직원 1호 JD 작성** — `docs/employees/pf-analyst.md`에 역할, 책임, 산출물, 운영 규칙 정의
-1. **.env에 `WIKI_ROOT=G:\내 드라이브\Aston-Wiki` 추가** — 서버 재시작 후 텔레그램에서 `위키 저장 테스트 #트레이딩` 전송해 동작 확인
+0. **AI 채팅 라우팅 점검** — `server/intent/intentService.ts` 라우팅 매핑 정리, 화면 빠른 명령 5개 작동 검증
+1. **Wiki 검색 명령 연결** — `AI 채팅` → `Knowledge Core` 경로 재확인
+2. **NotebookLM 질의 명령 연결** — `AI 채팅` 단일 진입점에서 `NotebookLM` 호출 흐름 점검
+3. **PF 분석 직원 1호 JD 작성** — `docs/employees/pf-analyst.md`에 역할, 책임, 산출물, 운영 규칙 정의
 
 ### 즉시 (P0)
-2. **Yahoo Finance CORS 프록시** — `server/routers/proxy.ts` 생성, `/api/yahoo-proxy` 엔드포인트 추가
+4. **Yahoo Finance CORS 프록시** — `server/routers/proxy.ts` 생성, `/api/yahoo-proxy` 엔드포인트 추가
    - 수정 파일: `server/routers/proxy.ts`, `server/routers.ts`
-3. **Upbit 잔고 Telegram 검증** — 텔레그램에서 "업비트 잔고" 메시지 전송 후 응답 확인
+5. **Upbit 잔고 Telegram 검증** — 텔레그램에서 "업비트 잔고" 메시지 전송 후 응답 확인
    - 코드 수정 없음, 운영 테스트만 필요
 
 ### 이번 주 (P1)
-4. **Telegram 운영 검증** — webhook 상태 엔드포인트 + UI 뱃지
-5. **대시보드 실시간 KPI** — mock 값 → 실제 서비스 카운트
+6. **Telegram 운영 검증** — webhook 상태 엔드포인트 + UI 뱃지
+7. **대시보드 실시간 KPI** — mock 값 → 실제 서비스 카운트
 
 ### Intelligence System 다음 Phase
-6. **Phase 1b** — `node-cron` + `server/intelligence/briefing.ts` (07:00 모닝 브리핑, 기존 Bot API 활용)
+8. **Phase 1b** — `node-cron` + `server/intelligence/briefing.ts` (07:00 모닝 브리핑, 기존 Bot API 활용)
 
 ---
 
@@ -775,5 +789,6 @@
 - 내일 작업
   - `.env`의 `OPENCLAW_API_URL`을 `http://127.0.0.1:8000`으로 수정
   - `npx tsx scripts/smoke-openclaw.ts` 재실행 후 실제 응답 확인
+
 
 

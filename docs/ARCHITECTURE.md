@@ -9,7 +9,49 @@
 
 ---
 
-## 2. 앱 정체성
+## 2. 앱 중심축 — 3계층 구조
+
+`Aston Workstation`의 중심축은 개별 메뉴나 개별 직원이 아니라 `AI 채팅`이다. 모든 업무는 `1계층 Command Channel`에서 시작되고, `2계층 Knowledge Core`에서 근거를 찾은 뒤, `3계층 Execution Modules`가 실제 작업을 처리한다.
+
+### 1계층 `Command Channel` (`관제탑`)
+
+- `Web AI Chat`
+- `Telegram Chat Sync`
+- `Quick Command Buttons`
+- `Natural Language Intent Routing`
+
+### 2계층 `Knowledge Core` (`두뇌·기억`)
+
+- `NotebookLM`
+- `Aston Wiki` (`G:\Aston-Wiki\`)
+- `Aston-Deals Folder` (`G:\Aston-Deals\`)
+- `Google Drive`
+- `Google Sheets`
+
+### 3계층 `Execution Modules` (`손발`)
+
+- `Real Estate PF`
+- `Trading`
+- `Google Workspace`
+- `Agent Control`
+- `Monitoring`
+- `Mail Writing`
+- `Calendar Creation`
+- `Position Check`
+- `Employee Agents` (`PF 분석`, `법률 검토`, `시장 조사`, `트레이딩 검토`, `자료 비서`, `모닝 브리핑`, `기록 관리`)
+
+원칙: 모든 업무는 `1계층`(`AI 채팅`)을 통해 시작되고, `2계층`(`지식 코어`)에서 근거를 찾아, `3계층`(`실행 모듈`)이 처리한다. 직원이나 세부 기능 구현보다 `1·2계층` 안정화가 우선한다.
+
+```mermaid
+flowchart TD
+    C["회장님"] --> L1["Layer 1: Command Channel<br/>Web AI Chat + Telegram Sync"]
+    L1 --> L2["Layer 2: Knowledge Core<br/>NotebookLM + Aston Wiki + Deals Folder + Drive + Sheets"]
+    L2 --> L3["Layer 3: Execution Modules<br/>PF + Trading + Workspace + Agents + Monitoring + ..."]
+```
+
+---
+
+## 3. 앱 정체성
 
 - 레포명: `astonchoi-spec/GoogleAI`
 - 지향: Aston Workstation, 회장님 전용 AI 업무 관제탑
@@ -19,7 +61,7 @@
 
 ---
 
-## 3. 전체 시스템 구조
+## 4. 전체 시스템 구조
 
 ```mermaid
 flowchart LR
@@ -48,7 +90,7 @@ flowchart LR
 
 ---
 
-## 4. 프론트엔드 구조
+## 5. 프론트엔드 구조
 
 - 핵심 파일: `client/src/App.tsx`
 - 실제 래핑 순서: `ErrorBoundary` → `ThemeProvider` → `TooltipProvider` → `Toaster` + `GlobalToastBridge` → `Router`
@@ -117,7 +159,7 @@ flowchart LR
 
 ---
 
-## 5. 서버 구조
+## 6. 서버 구조
 
 - 핵심 파일: `server/_core/index.ts`
 - 역할 요약
@@ -143,7 +185,7 @@ flowchart LR
 
 ---
 
-## 6. tRPC 라우터 구조
+## 7. tRPC 라우터 구조
 
 - 핵심 파일: `server/routers.ts`
 
@@ -185,7 +227,7 @@ flowchart LR
 
 ---
 
-## 7. LLM 구조
+## 8. LLM 구조
 
 - 핵심 파일
   - `server/routers/llm.ts`
@@ -243,7 +285,7 @@ flowchart LR
 
 ---
 
-## 8. Google Workspace 구조
+## 9. Google Workspace 구조
 
 - 핵심 파일: `server/routers/google-workspace.ts`
 - 연결 클래스
@@ -288,7 +330,7 @@ flowchart LR
 
 ---
 
-## 9. API Key Settings 구조
+## 10. API Key Settings 구조
 
 - 핵심 파일
   - `server/routers/api-settings.ts`
@@ -316,7 +358,7 @@ flowchart LR
 
 ---
 
-## 10. DB 구조
+## 11. DB 구조
 
 - 핵심 파일
   - `server/db.ts`
@@ -373,7 +415,7 @@ flowchart LR
 
 ---
 
-## 11. Chat Sync / Telegram 구조
+## 12. Chat Sync / Telegram 구조
 
 - 핵심 파일
   - `server/routers/chat-sync.ts`
@@ -425,7 +467,7 @@ flowchart LR
 
 ---
 
-## 12. 도메인 모듈
+## 13. 도메인 모듈
 
 ### `server/agents/`
 
@@ -494,7 +536,7 @@ flowchart LR
 
 ---
 
-## 13. 외부 연동 현황
+## 14. 외부 연동 현황
 
 | 연동 | 상태 | 근거 |
 |---|---|---|
@@ -518,7 +560,7 @@ flowchart LR
 
 ---
 
-## 14. 운영 트리거
+## 15. 운영 트리거
 
 - 06:30 모닝브리핑: `registerMorningBriefingScheduler()`
 - 06:30 Sheets 동기화: `registerDealSheetSyncScheduler()`
@@ -532,7 +574,7 @@ flowchart LR
 
 ---
 
-## 15. 지식 저장소 경로
+## 16. 지식 저장소 경로
 
 - `./data/chat.db`
 - `data/google-sheets.json`
@@ -550,7 +592,7 @@ flowchart LR
 
 ---
 
-## 16. 환경 변수 전체
+## 17. 환경 변수 전체
 
 ### Telegram
 
@@ -651,7 +693,7 @@ flowchart LR
 
 ---
 
-## 17. Security Notes
+## 18. Security Notes
 
 - `admin/admin123` 하드코딩 로그인 제거 필요
 - `protectedProcedure` 적용 범위 재점검 필요
@@ -661,7 +703,7 @@ flowchart LR
 
 ---
 
-## 18. Known Weaknesses
+## 19. Known Weaknesses
 
 - `README.md`가 구조 문서 역할을 충분히 하지 못함
 - 현재 제품 인상은 Google↔Telegram 데모 성격이 강하고 Aston 운영체제 정체성이 약함
@@ -673,7 +715,7 @@ flowchart LR
 
 ---
 
-## 19. Aston Workstation 확장 방향
+## 20. Aston Workstation 확장 방향
 
 ### 직원 7명 조직 구상
 
@@ -707,6 +749,8 @@ flowchart LR
 6. 승인제 유지
 7. 검증된 자동화만 승격
 
+직원 구현은 `1·2계층` 안정화 이후 진행한다. `1·2계층`이 작동하지 않는 상태에서 `3계층` 직원만 만들면 입력·출력 경로가 끊긴 직원이 된다.
+
 ### Phase 로드맵
 
 - Phase 1: 현재 Google/Telegram/Chat/DB 안정화
@@ -717,7 +761,7 @@ flowchart LR
 
 ---
 
-## 20. Mermaid 다이어그램 모음
+## 21. Mermaid 다이어그램 모음
 
 ### 20-1. 전체 시스템 구조도
 
@@ -788,4 +832,4 @@ flowchart TD
 
 ---
 
-이 문서는 코드 변경 없이 작성되었으며, 다음 갱신 시점은 `master` 브랜치 머지 직후다.
+이 문서는 코드 변경 없이 작성되었으며, `3계층 구조 반영` 상태로 유지된다. 다음 갱신 시점은 `master` 브랜치 머지 직후다.

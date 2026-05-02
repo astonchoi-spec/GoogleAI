@@ -149,6 +149,12 @@ client/src/components/UnifiedChatInterface.tsx  → 메인 AI 채팅 UI
 - 커밋 전 `git status`로 포함 파일을 확인하고, 사용자 변경분을 임의로 되돌리지 않는다
 - 커밋 메시지 형식: `feat|fix|docs|chore: 한글 설명`
 
+### 3계층 우선순위
+
+- 세부 직원 구현 전, `Command Channel`(`1계층`)인 `AI 채팅` 라우팅과 `Knowledge Core`(`2계층`) 연결 안정화를 우선한다.
+- 신규 작업 지시를 받으면 그 작업이 `Command Channel` / `Knowledge Core` / `Execution Modules` 중 어디에 해당하는지 먼저 식별하고, `1·2계층` 미완성 상태에서 `3계층` 직원 작업을 시작하지 않는다.
+- 모든 업무는 `AI 채팅`을 단일 진입점으로 가정하고 설계한다.
+
 ---
 
 ## 5. Claude Code-specific Rules

@@ -657,3 +657,34 @@
   - 완료/거절 딜 아카이브 시트 분리
   - D-day 조건부 서식 색상 미세조정
   - 시트 역방향 동기화
+## 2026-05-02 OpenClaw 실제 연동 활성화 인수인계 (Codex)
+
+- 완료 파일:
+  - `server/agents/openclawRuntime.ts`
+  - `server/agents/openclawClient.ts`
+  - `server/agents/openclawDiscovery.ts`
+  - `server/agents/agentExecutor.ts`
+  - `scripts/detect-openclaw.ts`
+  - `server/__tests__/openclawClient.test.ts`
+  - `server/__tests__/agentExecutor.test.ts`
+- 실제 연결 상태:
+  - Gateway URL: `http://127.0.0.1:8000`
+  - Browser control: `http://127.0.0.1:8002`
+  - MCP endpoint: `http://127.0.0.1:52108/mcp`
+  - Aston health 기준 인증: Bearer token
+  - `/api/agents/health` live 확인: `available=true`, `simulationMode=false`, `transport=gateway-rpc`
+- `.env` 반영 완료:
+  - `OPENCLAW_API_URL`
+  - `OPENCLAW_API_KEY`
+  - `OPENCLAW_REQUEST_TIMEOUT_MS=60000`
+  - `AGENT_PERMISSION_LEVEL=2`
+- smoke test 결과:
+  - 실제 Gateway RPC 호출 수락 확인
+  - `agent.wait`는 60초 내 `timeout`
+  - 따라서 현재 Aston은 실연동 우선, timeout 시 시뮬레이션 fallback 유지
+- 회장님 추가 작업:
+  - 없음
+- 다음 Phase 후보:
+  - OpenClaw 응답 timeout 원인 확인
+  - 텔레그램 실요청 1건으로 end-to-end 응답 재검증
+  - Browser control/token 기반 NotebookLM 실작업 smoke

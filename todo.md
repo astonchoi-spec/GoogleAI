@@ -306,3 +306,13 @@
   - 완료/거절 딜 아카이브 시트 분리
   - D-day 조건부 서식 색상 미세조정
   - 시트 역방향 동기화
+# 2026-05-02 OpenClaw 실제 연동 활성화 (Phase 7)
+
+- [x] OpenClaw 자동 재탐지 및 `data/openclaw-discovery.json` 갱신
+- [x] `~/.openclaw/openclaw.json`에서 gateway token 자동 발견
+- [x] `.env`에 `OPENCLAW_API_URL`, `OPENCLAW_API_KEY`, `OPENCLAW_REQUEST_TIMEOUT_MS=60000`, `AGENT_PERMISSION_LEVEL=2` 반영
+- [x] `gateway-rpc` 기반 실제 연동 경로 구현 (`sessions.create -> sessions.send -> agent.wait -> chat.history`)
+- [x] `/api/agents/health`에서 실연동 상태 노출 확인
+- [x] 앱 재기동 후 live `/api/agents/health`가 `available=true`, `simulationMode=false` 응답
+- [ ] OpenClaw 모델 응답 timeout 원인 추가 확인
+- [ ] 실제 텔레그램 에이전트 요청 1건으로 60초 내 응답 완료 재검증

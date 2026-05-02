@@ -559,3 +559,27 @@
   - 컬럼 너비 자동 조정 포함
   - 기존 조건부 서식은 Dashboard 시트 기준 전부 삭제 후 재생성
 - **후속 후보**: 완료/거절 딜 아카이브 시트 분리, 색상 미세조정, 시트 역방향 동기화
+## 2026-05-02 OpenClaw 실제 연동 활성화
+
+### [Codex] Phase 7 OpenClaw 실연동 전환
+- `server/agents/openclawRuntime.ts` 추가: `~/.openclaw/openclaw.json`에서 gateway token/model 자동 탐색, `.env`의 `OPENCLAW_API_URL`, `OPENCLAW_API_KEY`, `OPENCLAW_REQUEST_TIMEOUT_MS`, `AGENT_PERMISSION_LEVEL` 자동 동기화
+- `server/agents/openclawClient.ts` 전환: 기존 추정 HTTP task endpoint 우선 방식에서 `gateway-rpc` 우선 방식으로 변경
+- 실제 연결 경로 확정:
+  - URL: `http://127.0.0.1:8000`
+  - 인증: Bearer token
+  - 전송 패턴: `sessions.create -> sessions.send -> agent.wait -> chat.history`
+- `scripts/detect-openclaw.ts` 확장: 탐지 성공 시 `.env` 자동 반영, `data/openclaw-discovery.json` 갱신
+- `server/agents/openclawDiscovery.ts` 확장: 후보 포트에 `8002`, `52108` 추가
+- `server/agents/agentExecutor.ts` 수정: 실연동 실패 시에만 시뮬레이션 fallback 판단
+- 테스트 보강:
+  - `server/__tests__/openclawClient.test.ts` 재작성
+  - `server/__tests__/agentExecutor.test.ts` 갱신
+- 검증:
+  - `npm run check` 통과
+  - `npm run build` 통과
+  - `npm test` 통과: `359 passed, 7 skipped, 2 todo`
+  - live `/api/agents/health` 확인: `available=true`, `simulationMode=false`, `transport=gateway-rpc`
+- smoke test:
+  - 실제 Gateway RPC 작업 수락까지 확인
+  - `github-copilot/gpt-4.1` 응답은 60초 내 완료되지 않아 `OpenClaw 응답 timeout`
+  - Aston 쪽은 실제 호출 후 timeout 시 시뮬레이션 fallback 유지

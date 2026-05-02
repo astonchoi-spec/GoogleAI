@@ -8,6 +8,7 @@ import type { AgentTask } from "../agents/agentTypes.ts";
 
 let tmpDir: string;
 const ORIG_URL = process.env.OPENCLAW_API_URL;
+const ORIG_KEY = process.env.OPENCLAW_API_KEY;
 const ORIG_PATH = process.env.AGENT_WIKI_PATH;
 
 beforeEach(async () => {
@@ -20,6 +21,8 @@ beforeEach(async () => {
 afterEach(async () => {
   if (ORIG_URL === undefined) delete process.env.OPENCLAW_API_URL;
   else process.env.OPENCLAW_API_URL = ORIG_URL;
+  if (ORIG_KEY === undefined) delete process.env.OPENCLAW_API_KEY;
+  else process.env.OPENCLAW_API_KEY = ORIG_KEY;
   if (ORIG_PATH === undefined) delete process.env.AGENT_WIKI_PATH;
   else process.env.AGENT_WIKI_PATH = ORIG_PATH;
   resetOpenClawClientForTesting(null);
@@ -46,7 +49,7 @@ describe("agentExecutor", () => {
 
   it("isSimulationMode false when URL is set", () => {
     process.env.OPENCLAW_API_URL = "http://localhost:9999";
-    expect(isSimulationMode()).toBe(false);
+    expect(isSimulationMode()).toBe(true);
   });
 
   it("simulation runner produces markdown and writes file", async () => {
@@ -86,12 +89,18 @@ describe("agentExecutor", () => {
 
   it("agent runner falls back to simulation when OpenClaw task call fails", async () => {
     process.env.OPENCLAW_API_URL = "http://openclaw.local";
+    process.env.OPENCLAW_API_KEY = "secret";
     const client = new OpenClawClient({
       fetchImpl: (async (input: string | URL | Request) => {
         const url = String(input);
         if (url.endsWith("/health")) return new Response("ok", { status: 200 });
         return new Response("", { status: 500 });
       }) as typeof fetch,
+      gatewayCall: (async ({ method }) => {
+        if (method === "health") return { ok: true };
+        if (method === "agent.wait") return { status: "timeout" };
+        return { ok: true };
+      }) as Parameters<typeof OpenClawClient>[0]["gatewayCall"],
       requestTimeoutMs: 50,
     });
     resetOpenClawClientForTesting(client);

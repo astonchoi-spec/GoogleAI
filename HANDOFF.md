@@ -1,5 +1,5 @@
 ﻿# HANDOFF.md — 에스턴 워크스테이션
-> 업데이트: 2026-05-02 | 브랜치: codex-google-workspace-expansion
+> 업데이트: 2026-05-03 | 브랜치: codex-google-workspace-expansion
 
 ---
 
@@ -8,8 +8,8 @@
 | 항목 | 상태 |
 |------|------|
 | 서버 | 정상 기동 (포트 4000) |
-| 빌드 | `npm run check` ✅ / `npm run build` ✅ (2026-05-01) |
-| 테스트 | 330 passed, 7 skipped, 2 todo |
+| 빌드 | `npm run check` ✅ / `npm run build` ✅ (2026-05-02) |
+| 테스트 | 369 passed, 7 skipped, 2 todo |
 | 브랜치 | `codex-google-workspace-expansion` |
 | Redis | 선택적 (없어도 부팅됨, BullMQ lazy init) |
 | Google OAuth | 정상 연결 시 작동 |
@@ -124,7 +124,7 @@
 
 | 도구 | 작업 중인 파일 | 내용 |
 |------|----------------|------|
-| Codex | ?? | ?? |
+| Codex | 없음 | 없음 |
 
 ## 2026-05-02 3계층 구조 문서 반영 종료 (Codex)
 
@@ -805,5 +805,13 @@
 
 
 
-## 2026-05-02 Home quick command completion (Codex)
-- next: NotebookLM and Sheets natural-language routing
+## 2026-05-03 작업일지 정리 (Codex)
+
+- 오늘 정리
+  - `CHANGELOG.md`, `TODO.md`, `HANDOFF.md` 상태값과 다음 작업을 2026-05-03 기준으로 갱신
+  - 현재 진행 작업 표를 `없음`으로 정리
+  - `Home` 빠른 명령 즉시 실행화 이후 우선순위를 `NotebookLM` / `Sheets` 자연어 라우팅 보완으로 고정
+- 다음 작업
+  - `NotebookLM` 자연어 라우팅 연결
+  - `Sheets` 자연어 라우팅 연결
+  - `오늘 일정 브리핑` 라우팅 수정

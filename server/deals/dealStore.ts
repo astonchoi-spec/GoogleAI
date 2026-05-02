@@ -17,6 +17,13 @@ import { normalizeDealName, sanitizeFileName } from "./dealFileRouter.ts";
 
 const META_FILE = "_deal.json";
 
+function fireAndForgetDealSheetSync(reason: string): void {
+  if (process.env.GOOGLE_SHEETS_ENABLED === "false") return;
+  void import("./dealSheetSync.ts")
+    .then(({ triggerDealSheetSync }) => triggerDealSheetSync(reason))
+    .catch((err) => console.error("[dealStore] fireAndForgetDealSheetSync:", err));
+}
+
 function nowIso(): string {
   return new Date().toISOString();
 }
@@ -117,7 +124,9 @@ export async function createDeal(dealName: string): Promise<DealMeta> {
     recentFiles: [],
   };
   try {
-    return await writeMeta(meta);
+    const created = await writeMeta(meta);
+    fireAndForgetDealSheetSync("createDeal");
+    return created;
   } catch (err) {
     console.error("[dealStore] createDeal:", err);
     throw new Error("딜 메타 정보를 생성하지 못했습니다.");
@@ -174,7 +183,9 @@ export async function updateDealMeta(dealName: string, patch: Partial<Omit<DealM
       recentFiles: patch.recentFiles ?? current.recentFiles,
       updatedAt: nowIso(),
     };
-    return await writeMeta(updated);
+    const saved = await writeMeta(updated);
+    fireAndForgetDealSheetSync("updateDealMeta");
+    return saved;
   } catch (err) {
     console.error("[dealStore] updateDealMeta:", err);
     throw new Error("딜 메타 정보를 갱신하지 못했습니다.");
@@ -234,6 +245,7 @@ export async function saveFile(dealName: string, category: DealCategory, fileNam
         ...(meta.recentFiles ?? []),
       ].slice(0, 20),
     });
+    fireAndForgetDealSheetSync("saveFile");
     return { meta: updated, savedName, filePath };
   } catch (err) {
     console.error("[dealStore] saveFile:", err);

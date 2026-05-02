@@ -19,6 +19,7 @@ import { googleAuthManager } from "../routers/google-workspace.ts";
 import { installDeploymentGuards, logStartupSummary } from "./deployment.ts"; // MODIFIED: add production bootstrap checks and persistent error logging.
 import { registerTvWebhookRoutes } from "../alerts/tvWebhookServer.ts"; // MODIFIED: register TradingView webhook endpoint.
 import { registerMorningBriefingScheduler } from "../intelligence/briefing.ts";
+import { registerDealSheetSyncScheduler } from "../deals/dealSheetSync.ts";
 import { startKakaoFolderWatcher, stopKakaoFolderWatcher } from "../deals/folderWatcher.ts"; // MODIFIED: watch KakaoTalk downloads for deal file classification.
 import { startGmailWatcher, stopGmailWatcher } from "../deals/gmailWatcher.ts"; // MODIFIED: poll Gmail deal attachments.
 import { startDownloadWatcher, stopDownloadWatcher } from "../deals/downloadWatcher.ts"; // MODIFIED: watch browser downloads for deal file classification.
@@ -49,6 +50,7 @@ async function startServer() {
   }
 
   registerMorningBriefingScheduler();
+  registerDealSheetSyncScheduler();
 
   const app = express();
   const server = createServer(app);

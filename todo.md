@@ -316,3 +316,21 @@
 - [x] 앱 재기동 후 live `/api/agents/health`가 `available=true`, `simulationMode=false` 응답
 - [ ] OpenClaw 모델 응답 timeout 원인 추가 확인
 - [ ] 실제 텔레그램 에이전트 요청 1건으로 60초 내 응답 완료 재검증
+
+# 2026-05-02 OpenClaw 재탐지 + Gemini 재사용 보강
+
+- [x] OpenClaw 재탐지/설정 파일 스캔/Smoke 결과 저장 구조 보강 완료
+  - `data/openclaw-discovery.json`, `data/openclaw-smoke.json` 저장 구조 확장
+  - `.openclaw/openclaw.json`, `.openclaw/config.json` 존재 여부와 모델 힌트 기록
+  - 수동 URL 실패 시 자동 재탐지 재시도
+- [x] Aston `GEMINI_API_KEY` 재사용 경로 보강 완료
+  - OpenClaw HTTP payload에만 메모리 전달, 로그/텔레그램/UI/결과 파일 노출 금지
+  - `GOOGLE_API_KEY`는 예비 fallback로만 확인
+- [x] Agent Health / Telegram / Agent UI 상태 표시 보강 완료
+- [x] NotebookLM `notebook-query` 템플릿 지시문 보강 완료
+- [ ] OpenClaw 실제 실행 환경에서 인증 방식 정리
+  - 현재 `.env`의 `OPENCLAW_API_URL=http://openclaw.local` 기준 `health 인증 확인 실패`
+  - 실제 Gateway/HTTP auth 방식과 유효 URL 재확인 필요
+- [ ] OpenClaw 실제 응답 성공 후 smoke 재실행
+  - 1차 `1+1은?`
+  - 2차 `한남동 부동산 시세를 한 줄로 요약해줘`

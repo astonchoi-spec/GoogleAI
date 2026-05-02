@@ -1,4 +1,4 @@
-# HANDOFF.md — 에스턴 워크스테이션
+﻿# HANDOFF.md — 에스턴 워크스테이션
 > 업데이트: 2026-04-30 | 브랜치: codex-google-workspace-expansion
 
 ---
@@ -124,7 +124,7 @@
 
 | 도구 | 작업 중인 파일 | 내용 |
 |------|----------------|------|
-| Codex | `CURRENT_TASK.md`, `server/_core/googleSheets.ts`, `server/deals/dealSheetSync.ts`, `server/deals/*`, `server/intent/*`, `server/__tests__/*` | Phase 5 PF 구글시트 동기화 구현 중 |
+| Codex | - | 현재 진행 작업 없음 |
 
 ## 2026-05-01 작업 종료 인수인계 (Codex)
 
@@ -688,3 +688,53 @@
   - OpenClaw 응답 timeout 원인 확인
   - 텔레그램 실요청 1건으로 end-to-end 응답 재검증
   - Browser control/token 기반 NotebookLM 실작업 smoke
+
+
+## 2026-05-02 OpenClaw 재탐지 + Gemini 재사용 보강 인수인계 (Codex)
+
+### 완료 내용
+- `scripts/detect-openclaw.ts`, `scripts/smoke-openclaw.ts` 추가/보강
+- `server/agents/openclawRuntime.ts`, `openclawDiscovery.ts`, `openclawClient.ts` 보강
+  - `.openclaw/openclaw.json`, `.openclaw/config.json` 존재 여부와 모델 힌트 기록
+  - 수동 `OPENCLAW_API_URL` 인증 실패 시 자동 재탐지 재시도
+  - Aston `GEMINI_API_KEY` 또는 `GOOGLE_API_KEY`를 OpenClaw HTTP payload에만 메모리 재사용
+- `server/agents/agentHealth.ts`, `server/routers/agents.ts`, `server/intent/handlers/agents.ts`, `client/src/pages/AgentControl.tsx` 보강
+  - `/api/agents/health`에 flattened 상태 필드 추가
+  - 텔레그램 상태 문구와 `/agents` 상단 배지 반영
+- `server/agents/agentTemplates.ts` 보강
+  - `notebook-query` 템플릿에 NotebookLM URL, `dealStore.getDeal(dealName)`, 출처 기록, Aston Wiki 저장 지시 추가
+- 테스트 보강
+  - `detect-openclaw.test.ts`, `openclawClient.test.ts`, `openclawRuntime.test.ts`, `agentHealth.test.ts`, `agentTemplates.test.ts`
+
+### 검증
+- `npm run check` 통과
+- `npm test` 통과: `365 passed, 7 skipped, 2 todo`
+- `npm run build` 통과
+- 모듈 경계 위반 0건 유지
+
+### 실제 상태
+- discovery 저장값
+  - `detected=true`
+  - `url=http://openclaw.local`
+  - `modelHint=gpt-4`
+  - 설정 파일: `C:\Users\user\.openclaw\openclaw.json` 존재, `config.json` 없음
+- smoke 저장값
+  - `available=false`
+  - `status=skipped`
+  - `errorReason=OpenClaw health 인증 확인 실패`
+- Aston Gemini 키 상태
+  - `.env`: `GEMINI_API_KEY=SET`
+  - `.env`: `GOOGLE_API_KEY=MISSING`
+  - 키 값은 코드/로그/JSON/UI/텔레그램에 출력하지 않음
+
+### OpenClaw 운영 가이드
+- OpenClaw 설정이 꼬이면 기존 `.openclaw` 폴더를 삭제하지 말고 반드시 이름 변경 백업 후 재생성
+- 예시: `.openclaw` → `.openclaw_backup_YYYYMMDD`
+- 재실행 후 Gemini 모델을 다시 등록
+- Aston의 `GEMINI_API_KEY`와 동일한 키를 OpenClaw 설정에 사용할 수 있음
+- 키와 토큰은 코드/로그/스크린샷/결과 파일에 노출하지 말 것
+
+### 다음 액션
+- `.env`의 `OPENCLAW_API_URL=http://openclaw.local`이 실제 유효 URL인지 확인
+- 실제 OpenClaw gateway 또는 HTTP auth 방식 확인 후 `npx tsx scripts/smoke-openclaw.ts` 재실행
+- 성공 시 `data/openclaw-smoke.json`의 1차/2차 preview 확인

@@ -583,3 +583,26 @@
   - 실제 Gateway RPC 작업 수락까지 확인
   - `github-copilot/gpt-4.1` 응답은 60초 내 완료되지 않아 `OpenClaw 응답 timeout`
   - Aston 쪽은 실제 호출 후 timeout 시 시뮬레이션 fallback 유지
+
+## 2026-05-02 OpenClaw 재탐지 + Gemini 재사용 보강
+
+### [Codex] OpenClaw 재탐지, 상태 노출, NotebookLM 지시 보강
+- `scripts/detect-openclaw.ts`, `scripts/smoke-openclaw.ts` 추가/보강
+  - discovery 결과에 `candidates`, `configFiles`, `modelHint`를 함께 기록
+  - 수동 `OPENCLAW_API_URL` 인증 실패 시 자동 재탐지를 다시 시도하도록 보강
+  - smoke 결과를 `data/openclaw-smoke.json`에 `checkedAt`, `available`, `url`, `modelHint`, `responsePreview`, `errorReason`, `status`로 저장
+- `server/agents/openclawRuntime.ts`, `openclawDiscovery.ts`, `openclawClient.ts` 보강
+  - `.openclaw/openclaw.json`, `.openclaw/config.json` 존재 여부와 모델 힌트 스캔
+  - Aston `GEMINI_API_KEY` 또는 `GOOGLE_API_KEY`를 OpenClaw HTTP payload의 `providerApiKey`로만 메모리 재사용
+  - 키/토큰은 discovery JSON, smoke JSON, 텔레그램, UI 결과에 기록하지 않음
+- `server/agents/agentHealth.ts`, `server/routers/agents.ts`, `server/intent/handlers/agents.ts`, `client/src/pages/AgentControl.tsx` 보강
+  - `/api/agents/health`에 `openclawDetected`, `openclawUrl`, `simulationMode`, `modelHint`, `lastSmokeAt`, `lastSmokeStatus`, `permissionLevel`, `queueStatus` 포함
+  - `/agents` 상단 상태 배지와 텔레그램 `에이전트 목록/상태` 응답에 OpenClaw, Gemini, 권한 상태 반영
+- `server/agents/agentTemplates.ts` 보강
+  - `notebook-query` 템플릿에 NotebookLM URL 진입, `dealStore.getDeal(dealName)` 참조, `notebookUrl` 미연결 안내, 출처 기록, Aston Wiki 저장, 시뮬레이션 fallback 유지 지시 추가
+- 테스트
+  - 신규/보강: `detect-openclaw.test.ts`, `openclawClient.test.ts`, `openclawRuntime.test.ts`, `agentHealth.test.ts`, `agentTemplates.test.ts`
+  - 검증: `npm run check`, `npm test` (`365 passed, 7 skipped, 2 todo`), `npm run build`
+- 실제 smoke
+  - 결과: `OpenClaw health 인증 확인 실패`
+  - 현재 저장값: `available=false`, `url=http://openclaw.local`, `modelHint=gpt-4`, `status=skipped`

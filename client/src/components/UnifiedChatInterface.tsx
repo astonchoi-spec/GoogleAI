@@ -19,6 +19,10 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { trpc } from "@/lib/trpc";
+import {
+  readChatCommandParams,
+  resolveAssistantResponse,
+} from "@/chat/quickCommand";
 import { useAuth } from "@/_core/hooks/useAuth";
 import ApiSettingsModal from "./ApiSettingsModal";
 import ConversationPinToggle from "./ConversationPinToggle"; // MODIFIED: add favorite toggle for the active conversation.
@@ -93,6 +97,7 @@ export default function UnifiedChatInterface() {
   const [messageLimit, setMessageLimit] = useState(50); // MODIFIED: paginate older messages in fixed-size batches for better chat performance.
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const sendInFlightRef = useRef(false); // MODIFIED: block duplicate sends from overlapping form/button/keyboard events.
+  const lastAutoSubmitRef = useRef<string | null>(null); // MODIFIED: prevent duplicate query-driven auto submits for the same quick-command request.
   const utils = trpc.useUtils(); // MODIFIED: reuse tRPC cache helpers after mutation-driven timeline changes.
 
   // tRPC queries and mutations
@@ -397,23 +402,13 @@ export default function UnifiedChatInterface() {
         );
       }
 
-      // Get AI response (intent route first, fallback to generic LLM chat)
-      let aiResponseText = ""; // MODIFIED: unify downstream persistence/rendering regardless of response source.
-      if (isAuthenticated) { // MODIFIED: intent.route is protected, so call only for authenticated users.
-        try { // MODIFIED: do not fail entire send flow if intent routing endpoint errors.
-          const routed = await intentRouteMutation.mutateAsync({ message: userMessage });
-          if (routed.handled || routed.requiresConfirmation) {
-            aiResponseText = (routed as any).formattedMessage || routed.response || "";
-          }
-        } catch (intentError) {
-          console.warn("Intent route failed, fallback to llm.chat:", intentError); // MODIFIED: explicit fallback diagnostics for intent path failures.
-        }
-      }
-
-      if (!aiResponseText) { // MODIFIED: preserve original chat behavior for unmatched intents or anonymous mode.
-        const result = await chatMutation.mutateAsync({ message: userMessage });
-        aiResponseText = result.response;
-      }
+      const assistantResult = await resolveAssistantResponse({
+        userMessage,
+        isAuthenticated,
+        intentRoute: (payload) => intentRouteMutation.mutateAsync(payload),
+        llmChat: (payload) => chatMutation.mutateAsync(payload),
+      });
+      const aiResponseText = assistantResult.text;
 
       // Save AI response to DB only if logged in
       const aiMsg: UnifiedMessage = {
@@ -446,9 +441,21 @@ export default function UnifiedChatInterface() {
       }
 
       setLastSyncTime(new Date());
+      if (assistantResult.failed) {
+        toast.error(aiResponseText);
+      }
       tts.speak(aiResponseText); // MODIFIED: speak intent-routed response or LLM fallback response.
     } catch (error) {
-      toast.error("메시지 전송에 실패했습니다.");
+      const errorText = "요청을 처리하지 못했습니다. 잠시 후 다시 시도해주세요.";
+      const errorMsg: UnifiedMessage = {
+        id: `temp-error-${Date.now()}`,
+        role: "assistant",
+        content: errorText,
+        source: "web",
+        timestamp: new Date(),
+      };
+      setMessages((prev) => [...prev, errorMsg]);
+      toast.error(errorText);
       console.error("Error sending message:", error);
     } finally {
       sendInFlightRef.current = false;
@@ -467,24 +474,38 @@ export default function UnifiedChatInterface() {
   });
 
   useEffect(() => { // ADDED: accept quick commands and status-bar actions via /chat query params.
-    const params = new URLSearchParams(window.location.search);
-    const command = params.get("command");
-    const source = params.get("source");
-    const openApiSettings = params.get("openApiSettings");
+    const {
+      command,
+      source,
+      openApiSettings,
+      autoSubmit,
+      requestId,
+    } = readChatCommandParams(window.location.search);
 
     if (command) {
       setInput(command);
+    }
+
+    if (!autoSubmit) {
+      lastAutoSubmitRef.current = null;
+    }
+
+    const autoSubmitCommand = autoSubmit ? command : null;
+    const autoSubmitKey = autoSubmitCommand ? requestId || autoSubmitCommand : null;
+    if (autoSubmitCommand && autoSubmitKey && lastAutoSubmitRef.current !== autoSubmitKey) {
+      lastAutoSubmitRef.current = autoSubmitKey;
+      void sendMessageText(autoSubmitCommand);
     }
 
     if (source === "telegram") {
       setSearchFilters((current) => ({ ...current, source: "telegram" })); // MODIFIED: Telegram shortcuts prime the source filter instead of doing nothing.
     }
 
-    if (openApiSettings === "1") {
+    if (openApiSettings) {
       setShowApiSettings(true); // MODIFIED: API shortcuts open the existing API settings modal directly.
     }
 
-    if (command || source || openApiSettings) {
+    if (command || source || openApiSettings || autoSubmit) {
       window.history.replaceState({}, "", "/chat");
     }
   }, [location]);

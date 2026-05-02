@@ -17,15 +17,8 @@ import { Link, useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import WorkspaceWidgets from "@/components/home/WorkspaceWidgets";
+import { buildQuickCommandPath, HOME_QUICK_COMMANDS } from "@/chat/quickCommand";
 import { trpc } from "@/lib/trpc";
-
-const quickCommands = [
-  "오늘 메일 요약",
-  "BTC 포지션 확인",
-  "한남 PF 진행상황",
-  "오늘 일정 브리핑",
-  "Telegram 최근 메시지",
-];
 
 type KPIConfig = {
   label: string;
@@ -291,6 +284,10 @@ export default function Home() {
     navigate(`/chat?command=${encodeURIComponent(trimmedCommand)}`);
   };
 
+  const handleQuickCommandClick = (commandText: string) => {
+    navigate(buildQuickCommandPath(commandText, Date.now()));
+  };
+
   return (
     <div className="space-y-6 px-4 py-5 sm:px-6 lg:px-8">
       <motion.section
@@ -367,12 +364,12 @@ export default function Home() {
           </div>
 
           <div className="flex flex-wrap gap-2">
-            {quickCommands.map((label) => (
+            {HOME_QUICK_COMMANDS.map((label) => (
               <Button
                 key={label}
                 type="button"
                 variant="outline"
-                onClick={() => navigate(`/chat?command=${encodeURIComponent(label)}`)}
+                onClick={() => handleQuickCommandClick(label)}
                 className="rounded-full border-white/10 bg-white/5 px-4 text-xs text-[var(--aston-text)] hover:bg-white/10"
               >
                 {label}

@@ -648,3 +648,20 @@
   - `1계층 → 2계층`, `1계층 → 3계층` 연결 현황과 누락 지점 기록
   - `chatSync`, `routeIntentMessage()`, `handleWorkspaceCommand()` 실제 흐름과 문제점 정리
 - **검증**: `npm run check`, `npm run build`, `git diff --stat`로 문서 범위만 확인 예정
+
+### [Codex] Home 빠른 명령 5개 즉시 실행화
+- **작업**: `Home` 화면의 빠른 명령 5개를 `prefill` 전용에서 `한 번 클릭 → 즉시 실행` 흐름으로 변경
+- **수정 파일**:
+  - `client/src/pages/Home.tsx`
+  - `client/src/components/UnifiedChatInterface.tsx`
+  - `client/src/chat/quickCommand.ts`
+  - `server/__tests__/quickCommandFlow.test.ts`
+- **포함 내용**:
+  - 빠른 명령 클릭 시 `/chat` 이동과 함께 자동 제출 query param 전달
+  - `UnifiedChatInterface`에서 query param을 읽어 기존 전송 흐름으로 즉시 실행
+  - `intent.route` 결과를 웹 채팅에서도 목록형 메시지까지 포맷해 일반 메시지처럼 표시
+  - 라우팅 실패 시 채팅창에 사용자용 에러 메시지 추가
+- **검증**:
+  - `npm run check` ✅
+  - `npm run build` ✅
+  - `npm test` ✅ (`server/__tests__/quickCommandFlow.test.ts` 4개 포함)

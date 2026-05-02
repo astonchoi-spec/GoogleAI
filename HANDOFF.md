@@ -124,7 +124,7 @@
 
 | 도구 | 작업 중인 파일 | 내용 |
 |------|----------------|------|
-| Codex | - | 현재 진행 작업 없음 |
+| Codex | ?? | ?? |
 
 ## 2026-05-02 3계층 구조 문서 반영 종료 (Codex)
 
@@ -805,3 +805,5 @@
 
 
 
+## 2026-05-02 Home quick command completion (Codex)
+- next: NotebookLM and Sheets natural-language routing

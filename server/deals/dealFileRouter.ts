@@ -5,6 +5,7 @@ export type DealCommand =
   | { action: "create"; dealName: string }
   | { action: "list" }
   | { action: "sheet" }
+  | { action: "sheet_format" }
   | { action: "detail"; dealName: string }
   | { action: "save"; dealName: string; category: DealCategory }
   | { action: "notebook"; dealName: string; notebookUrl: string }
@@ -81,6 +82,7 @@ export function parseDealCommand(text: string): DealCommand {
   if (!message.startsWith(DEAL_PREFIX)) return { action: "unknown", reason: "\uB51C \uBA85\uB839\uC5B4\uAC00 \uC544\uB2D9\uB2C8\uB2E4" };
 
   if (/^\uB51C\s*\uBAA9\uB85D\s*$/.test(message)) return { action: "list" };
+  if (/^\uB51C\s*\uC2DC\uD2B8\s*\uC11C\uC2DD\s*$/.test(message)) return { action: "sheet_format" };
   if (/^\uB51C\s*\uC2DC\uD2B8\s*$/.test(message)) return { action: "sheet" };
 
   const createMatch = message.match(/^\uB51C\s*\uCD94\uAC00\s+(.+)$/);

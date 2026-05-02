@@ -1,11 +1,24 @@
 import cron from "node-cron";
-import { clearSheet, ensureSpreadsheet, getSpreadsheetUrl, upsertRow } from "../_core/googleSheets.ts";
+import {
+  applyConditionalFormat,
+  clearSheet,
+  ensureSpreadsheet,
+  getSheetRecord,
+  getSpreadsheetUrl,
+  markSheetFormatApplied,
+  upsertRow,
+} from "../_core/googleSheets.ts";
 import { loadRecentAgentResultLabelsByTarget } from "../_core/agentResultLookup.ts";
 import { listDeals } from "./dealStore.ts";
 import { calcDday } from "./dateParser.ts";
 
 const SHEET_NAME = "Aston-Deals-Dashboard";
 const HEADERS = ["딜명", "폴더 경로", "자료 건수", "마감일", "D-day", "이정표 진행", "NotebookLM", "최근 에이전트 결과", "마지막 업데이트"];
+const DDAY_RULES = [
+  { formula: '=AND(LEFT($E2,2)="D-",VALUE(MID($E2,3,99))<=30)', background: [1, 0.976, 0.769] as [number, number, number] },
+  { formula: '=AND(LEFT($E2,2)="D-",VALUE(MID($E2,3,99))<=7)', background: [1, 0.878, 0.698] as [number, number, number] },
+  { formula: '=OR($E2="D-DAY",LEFT($E2,2)="D+",AND(LEFT($E2,2)="D-",VALUE(MID($E2,3,99))<=3))', background: [1, 0.804, 0.824] as [number, number, number], bold: true },
+];
 let schedulerRegistered = false;
 let lastNotifiedAt = 0;
 
@@ -41,6 +54,13 @@ async function notifySyncFailure(error: unknown): Promise<void> {
   }
 }
 
+async function applySheetFormatting(spreadsheetId: string, force = false): Promise<void> {
+  const record = await getSheetRecord(SHEET_NAME);
+  if (!force && record?.spreadsheetId === spreadsheetId && record.formatAppliedAt) return;
+  await applyConditionalFormat(spreadsheetId, DDAY_RULES);
+  await markSheetFormatApplied(SHEET_NAME, spreadsheetId);
+}
+
 export async function syncDealsToSheet(): Promise<{ url: string; count: number }> {
   try {
     const spreadsheetId = await ensureSpreadsheet(SHEET_NAME);
@@ -63,12 +83,23 @@ export async function syncDealsToSheet(): Promise<{ url: string; count: number }
         deal.updatedAt,
       ]);
     }
+    try {
+      await applySheetFormatting(spreadsheetId);
+    } catch (formatError) {
+      console.error("[dealSheetSync] format:", formatError);
+    }
     return { url: getSpreadsheetUrl(spreadsheetId), count: deals.length };
   } catch (error) {
     console.error("[dealSheetSync] sync:", error);
     await notifySyncFailure(error);
     throw error;
   }
+}
+
+export async function applyDealSheetFormatting(): Promise<{ url: string }> {
+  const spreadsheetId = await ensureSpreadsheet(SHEET_NAME);
+  await applySheetFormatting(spreadsheetId, true);
+  return { url: getSpreadsheetUrl(spreadsheetId) };
 }
 
 export function triggerDealSheetSync(reason: string): void {

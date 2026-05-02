@@ -22,7 +22,7 @@ import {
   toFileUrl,
   updateDealMeta,
 } from "./dealStore.ts";
-import { syncDealsToSheet } from "./dealSheetSync.ts";
+import { applyDealSheetFormatting, syncDealsToSheet } from "./dealSheetSync.ts";
 import { parseDealCommand } from "./dealFileRouter.ts";
 import { calcDday, formatKstShortDate, parseDealDate } from "./dateParser.ts";
 
@@ -184,6 +184,15 @@ async function executeDealCommandText(text: string): Promise<string> {
     } catch (err) {
       console.error("[telegramDealFileHandler] sheet:", err);
       return "⚠️ PF 딜 시트 동기화에 실패했습니다.";
+    }
+  }
+  if (command.action === "sheet_format") {
+    try {
+      const result = await applyDealSheetFormatting();
+      return `🎨 시트 서식 적용 완료\n🚨 D-3 빨강\n⚠️ D-7 주황\n📌 D-30 노랑\n🔗 ${result.url}`;
+    } catch (err) {
+      console.error("[telegramDealFileHandler] sheet_format:", err);
+      return "⚠️ 딜 시트 서식 적용에 실패했습니다.";
     }
   }
   if (command.action === "detail") {

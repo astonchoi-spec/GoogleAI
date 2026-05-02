@@ -138,6 +138,19 @@
 - 다음 작업
   - `AI 채팅` 라우팅 점검: `server/intent/intentService.ts` 라우팅 매핑 정리, 화면 빠른 명령 5개 작동 검증
 
+## 2026-05-02 AI 채팅 라우팅 점검 종료 (Codex)
+
+- 오늘 완료
+  - `docs/diagnostics/ai-chat-routing.md` 신규 작성
+  - `웹 채팅`, `Telegram` webhook, `Home` 빠른 명령 5개의 실제 코드 경로 정리
+  - `1계층 → 2계층`, `1계층 → 3계층` 연결 현황과 누락 지점 기록
+- 핵심 진단
+  - `Home` 빠른 명령 5개는 클릭 즉시 실행이 아니라 `/chat` 입력창 prefill만 수행
+  - `Telegram`은 `handleWorkspaceCommand()` 우회 경로와 `routeIntentMessage()`를 함께 사용
+  - `NotebookLM`, `Monitoring`, `Google Sheets` 읽기 경로는 AI 채팅 자연어 라우팅에 직접 연결되지 않음
+- 다음 작업
+  - 진단서 `8절`·`10절`을 기준으로 우선 보완 작업 선정
+
 ## 2026-05-02 작업 종료 인수인계 (Codex)
 
 - 오늘 완료
@@ -193,23 +206,23 @@
 ## 다음 추천 작업
 
 ### 즉시 (운영 검증)
-0. **AI 채팅 라우팅 점검** — `server/intent/intentService.ts` 라우팅 매핑 정리, 화면 빠른 명령 5개 작동 검증
+0. **진단서 결과 기반 보완 작업 선정** — `docs/diagnostics/ai-chat-routing.md`의 `8절`, `10절` 기준 우선순위 확정
 1. **Wiki 검색 명령 연결** — `AI 채팅` → `Knowledge Core` 경로 재확인
 2. **NotebookLM 질의 명령 연결** — `AI 채팅` 단일 진입점에서 `NotebookLM` 호출 흐름 점검
 3. **PF 분석 직원 1호 JD 작성** — `docs/employees/pf-analyst.md`에 역할, 책임, 산출물, 운영 규칙 정의
 
 ### 즉시 (P0)
-4. **Yahoo Finance CORS 프록시** — `server/routers/proxy.ts` 생성, `/api/yahoo-proxy` 엔드포인트 추가
+5. **Yahoo Finance CORS 프록시** — `server/routers/proxy.ts` 생성, `/api/yahoo-proxy` 엔드포인트 추가
    - 수정 파일: `server/routers/proxy.ts`, `server/routers.ts`
-5. **Upbit 잔고 Telegram 검증** — 텔레그램에서 "업비트 잔고" 메시지 전송 후 응답 확인
+6. **Upbit 잔고 Telegram 검증** — 텔레그램에서 "업비트 잔고" 메시지 전송 후 응답 확인
    - 코드 수정 없음, 운영 테스트만 필요
 
 ### 이번 주 (P1)
-6. **Telegram 운영 검증** — webhook 상태 엔드포인트 + UI 뱃지
-7. **대시보드 실시간 KPI** — mock 값 → 실제 서비스 카운트
+7. **Telegram 운영 검증** — webhook 상태 엔드포인트 + UI 뱃지
+8. **대시보드 실시간 KPI** — mock 값 → 실제 서비스 카운트
 
 ### Intelligence System 다음 Phase
-8. **Phase 1b** — `node-cron` + `server/intelligence/briefing.ts` (07:00 모닝 브리핑, 기존 Bot API 활용)
+9. **Phase 1b** — `node-cron` + `server/intelligence/briefing.ts` (07:00 모닝 브리핑, 기존 Bot API 활용)
 
 ---
 

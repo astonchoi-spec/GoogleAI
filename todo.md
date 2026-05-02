@@ -343,9 +343,11 @@
   - Aston Workstation 정체성, Quick Start, 명령어, 문서 링크, 제약 요약 반영
 - [x] `Aston Workstation` 3계층 구조 문서 반영
   - `Command Channel` / `Knowledge Core` / `Execution Modules` 정의를 `docs/ARCHITECTURE.md`, `README.md`, `AGENTS.md`, `CLAUDE.md`에 동기화
-- [ ] `AI 채팅` 라우팅 점검
-  - `server/intent/intentService.ts` 라우팅 매핑 정리, 화면 빠른 명령 5개 작동 검증
+- [x] `AI 채팅` 라우팅 점검
+  - `docs/diagnostics/ai-chat-routing.md`에 웹/Telegram/빠른 명령 실제 코드 경로 진단 기록
 - [ ] `Wiki` 검색 명령 연결
 - [ ] `NotebookLM` 질의 명령 연결
 - [ ] PF 분석 직원 1호 JD 작성
   - 대상 파일: `docs/employees/pf-analyst.md`
+- [ ] 진단서 결과 기반 보완 작업 선정
+  - `docs/diagnostics/ai-chat-routing.md`의 8절, 10절 기준으로 우선 보완 작업 확정

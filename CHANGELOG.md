@@ -638,3 +638,13 @@
   - `NotebookLM`, `Aston Wiki`, `Aston-Deals Folder`, `Google Drive`, `Google Sheets`를 `Knowledge Core`로 명시
   - 직원 구현보다 `1·2계층` 안정화를 우선한다는 운영 원칙 추가
 - **검증**: `npm run check`, `npm run build`, 4개 문서 공통 키워드 확인 예정
+
+### [Codex] `AI 채팅` 라우팅 진단서 작성
+- **작업**: `1계층 Command Channel`의 실제 코드 흐름 진단 문서 작성
+- **신규 파일**: `docs/diagnostics/ai-chat-routing.md`
+- **포함 내용**:
+  - `UnifiedChatInterface`, `Home` 빠른 명령, `Telegram` webhook의 실제 진입점 매핑
+  - 빠른 명령 5개 입력 방식과 `intent` 라우팅 결과 진단
+  - `1계층 → 2계층`, `1계층 → 3계층` 연결 현황과 누락 지점 기록
+  - `chatSync`, `routeIntentMessage()`, `handleWorkspaceCommand()` 실제 흐름과 문제점 정리
+- **검증**: `npm run check`, `npm run build`, `git diff --stat`로 문서 범위만 확인 예정

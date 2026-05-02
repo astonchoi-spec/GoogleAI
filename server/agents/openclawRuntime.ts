@@ -3,10 +3,20 @@ import os from "node:os";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 
+export type OpenClawConfigFileStatus = {
+  path: string;
+  exists: boolean;
+  modelHint: string | null;
+};
+
 export type OpenClawLocalConfig = {
   apiKey: string | null;
   authSource: "env" | "openclaw-config" | "none";
+  geminiApiKey: string | null;
+  geminiKeySource: "gemini_api_key" | "google_api_key" | "none";
   model: string | null;
+  modelHint: string | null;
+  configFiles: OpenClawConfigFileStatus[];
 };
 
 type GatewayCall = (options: {
@@ -17,8 +27,98 @@ type GatewayCall = (options: {
   token?: string;
 }) => Promise<unknown>;
 
-function openClawConfigPath(): string {
-  return path.join(os.homedir(), ".openclaw", "openclaw.json");
+const OPENCLAW_FILENAMES = ["openclaw.json", "config.json"];
+const MODEL_HINT_RE = /(google\/gemini|gemini|gpt[\w-]*)/i;
+
+function compactString(value: unknown): string | null {
+  return typeof value === "string" && value.trim() ? value.trim() : null;
+}
+
+function unique<T>(values: T[]): T[] {
+  return [...new Set(values)];
+}
+
+function getOpenClawConfigPaths(): string[] {
+  const home = os.homedir();
+  const userProfile = process.env.USERPROFILE?.trim() || "";
+  const homeDrivePath = `${process.env.HOMEDRIVE ?? ""}${process.env.HOMEPATH ?? ""}`.trim();
+  const bases = unique([home, userProfile, homeDrivePath].filter(Boolean));
+  return bases.flatMap((base) => OPENCLAW_FILENAMES.map((name) => path.join(base, ".openclaw", name)));
+}
+
+function findModelHint(value: unknown): string | null {
+  if (typeof value === "string") {
+    const match = value.match(MODEL_HINT_RE);
+    return match?.[1]?.toLowerCase() ?? null;
+  }
+  if (Array.isArray(value)) {
+    for (const entry of value) {
+      const found = findModelHint(entry);
+      if (found) return found;
+    }
+    return null;
+  }
+  if (value && typeof value === "object") {
+    for (const nested of Object.values(value as Record<string, unknown>)) {
+      const found = findModelHint(nested);
+      if (found) return found;
+    }
+  }
+  return null;
+}
+
+function parseConfig(raw: string): {
+  token: string | null;
+  model: string | null;
+  modelHint: string | null;
+} {
+  const parsed = JSON.parse(raw) as {
+    gateway?: { auth?: { token?: string }; token?: string };
+    auth?: { token?: string };
+    agents?: { defaults?: { model?: { primary?: string } } };
+    model?: string;
+  };
+  return {
+    token:
+      compactString(parsed.gateway?.auth?.token) ??
+      compactString(parsed.gateway?.token) ??
+      compactString(parsed.auth?.token) ??
+      null,
+    model:
+      compactString(parsed.agents?.defaults?.model?.primary) ??
+      compactString(parsed.model) ??
+      null,
+    modelHint: findModelHint(parsed),
+  };
+}
+
+export function resolveAstonGeminiKey(): { value: string | null; source: OpenClawLocalConfig["geminiKeySource"] } {
+  const gemini = compactString(process.env.GEMINI_API_KEY);
+  if (gemini) return { value: gemini, source: "gemini_api_key" };
+  const google = compactString(process.env.GOOGLE_API_KEY);
+  if (google) return { value: google, source: "google_api_key" };
+  return { value: null, source: "none" };
+}
+
+export async function inspectOpenClawConfigFiles(): Promise<OpenClawConfigFileStatus[]> {
+  const statuses: OpenClawConfigFileStatus[] = [];
+  for (const filePath of getOpenClawConfigPaths()) {
+    try {
+      const raw = await fs.readFile(filePath, "utf-8");
+      statuses.push({
+        path: filePath,
+        exists: true,
+        modelHint: parseConfig(raw).modelHint,
+      });
+    } catch {
+      statuses.push({
+        path: filePath,
+        exists: false,
+        modelHint: null,
+      });
+    }
+  }
+  return statuses;
 }
 
 export function toGatewayWsUrl(url: string): string {
@@ -29,51 +129,47 @@ export function toGatewayWsUrl(url: string): string {
 }
 
 export async function loadOpenClawLocalConfig(): Promise<OpenClawLocalConfig> {
-  const envKey = process.env.OPENCLAW_API_KEY?.trim();
-  if (envKey) {
-    return {
-      apiKey: envKey,
-      authSource: "env",
-      model: process.env.OPENCLAW_MODEL?.trim() || null,
-    };
-  }
-  try {
-    const raw = await fs.readFile(openClawConfigPath(), "utf-8");
-    const parsed = JSON.parse(raw) as {
-      gateway?: { auth?: { token?: string } };
-      agents?: { defaults?: { model?: { primary?: string } } };
-    };
-    return {
-      apiKey: parsed.gateway?.auth?.token?.trim() || null,
-      authSource: parsed.gateway?.auth?.token ? "openclaw-config" : "none",
-      model: parsed.agents?.defaults?.model?.primary?.trim() || null,
-    };
-  } catch (err) {
-    console.error("[openclawRuntime] loadOpenClawLocalConfig:", err);
-    return { apiKey: null, authSource: "none", model: null };
-  }
-}
+  const envKey = compactString(process.env.OPENCLAW_API_KEY);
+  const envModel = compactString(process.env.OPENCLAW_DEFAULT_MODEL) ?? compactString(process.env.OPENCLAW_MODEL);
+  const gemini = resolveAstonGeminiKey();
+  const configFiles = await inspectOpenClawConfigFiles();
+  const defaultConfig: OpenClawLocalConfig = {
+    apiKey: envKey ?? null,
+    authSource: envKey ? "env" : "none",
+    geminiApiKey: gemini.value,
+    geminiKeySource: gemini.source,
+    model: envModel ?? null,
+    modelHint: envModel ? findModelHint(envModel) : configFiles.find((file) => file.exists && file.modelHint)?.modelHint ?? null,
+    configFiles,
+  };
 
-export async function syncOpenClawEnv(values: Record<string, string>): Promise<void> {
-  const envPath = path.resolve(process.cwd(), ".env");
-  try {
-    const raw = await fs.readFile(envPath, "utf-8").catch(() => "");
-    let next = raw;
-    for (const [key, value] of Object.entries(values)) {
-      const line = `${key}=${value}`;
-      const pattern = new RegExp(`^${key}=.*$`, "m");
-      next = pattern.test(next) ? next.replace(pattern, line) : `${next.trimEnd()}\n${line}\n`;
+  if (envKey) return defaultConfig;
+
+  for (const file of configFiles) {
+    if (!file.exists) continue;
+    try {
+      const raw = await fs.readFile(file.path, "utf-8");
+      const parsed = parseConfig(raw);
+      return {
+        apiKey: parsed.token,
+        authSource: parsed.token ? "openclaw-config" : "none",
+        geminiApiKey: gemini.value,
+        geminiKeySource: gemini.source,
+        model: parsed.model ?? envModel ?? null,
+        modelHint: parsed.modelHint ?? file.modelHint ?? null,
+        configFiles,
+      };
+    } catch (err) {
+      console.error("[openclawRuntime] loadOpenClawLocalConfig:", err);
     }
-    if (next !== raw) await fs.writeFile(envPath, next, "utf-8");
-    for (const [key, value] of Object.entries(values)) process.env[key] = value;
-  } catch (err) {
-    console.error("[openclawRuntime] syncOpenClawEnv:", err);
   }
+
+  return defaultConfig;
 }
 
 export async function loadGatewayCaller(): Promise<GatewayCall> {
+  // MODIFIED: reuse the installed OpenClaw gateway client instead of duplicating RPC transport code.
   const moduleUrl = pathToFileURL(path.join(process.env.APPDATA ?? "", "npm", "node_modules", "openclaw", "dist", "call-DS_a955m.js")).href;
   const mod = (await import(moduleUrl)) as { callGateway: GatewayCall };
   return mod.callGateway;
 }
-

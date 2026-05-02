@@ -2,8 +2,16 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
+import type { OpenClawConfigFileStatus } from "./openclawRuntime.ts";
 
 export type OpenClawAuthType = "none" | "bearer" | "x-api-key" | "unknown";
+
+export type OpenClawDiscoveryCandidate = {
+  url: string;
+  endpoint: string;
+  marker: string;
+  source: "scan" | "docker";
+};
 
 export type OpenClawDiscoveryResult = {
   found: boolean;
@@ -14,6 +22,9 @@ export type OpenClawDiscoveryResult = {
   detectedAt: string;
   source: "scan" | "docker" | "env" | "cache" | "none";
   reason?: string;
+  candidates?: OpenClawDiscoveryCandidate[];
+  modelHint?: string | null;
+  configFiles?: OpenClawConfigFileStatus[];
 };
 
 export type DiscoveryOptions = {
@@ -22,11 +33,13 @@ export type DiscoveryOptions = {
   timeoutMs?: number;
   fetchImpl?: typeof fetch;
   execDockerPs?: () => Promise<string>;
+  ignoreEnv?: boolean;
 };
 
 const DEFAULT_HOSTS = ["localhost", "127.0.0.1", "host.docker.internal"];
-const DEFAULT_PORTS = [8000, 8002, 52108, 8080, 8888, 3000, 5000, 7860, 11434];
+const DEFAULT_PORTS = [8000, 8080, 8888, 3000, 5000, 7860, 11434];
 const HEALTH_ENDPOINTS = ["/health", "/api/health", "/v1/health", "/"];
+const BODY_MARKERS = ["openclaw", "claw", "agent", "api"];
 const execFileAsync = promisify(execFile);
 
 export function getDiscoveryPath(): string {
@@ -42,11 +55,14 @@ function buildUrl(host: string, port: number): string {
   return `http://${host}:${port}`;
 }
 
-function isOpenClawBody(body: string, endpoint: string): boolean {
+function detectMarker(body: string, endpoint: string): string | null {
   const lower = body.toLowerCase();
-  if (lower.includes("openclaw")) return true;
-  if (endpoint === "/") return false;
-  return /"?(status|ok|healthy)"?\s*:?\s*"?\s*(ok|true|healthy|up)/i.test(body);
+  const bodyMarker = BODY_MARKERS.find((marker) => lower.includes(marker));
+  if (bodyMarker) return bodyMarker;
+  if (endpoint !== "/" && /"?(status|ok|healthy)"?\s*:?\s*"?\s*(ok|true|healthy|up)/i.test(body)) {
+    return "health";
+  }
+  return null;
 }
 
 async function fetchText(url: string, fetchImpl: typeof fetch, ms: number): Promise<{ ok: boolean; text: string }> {
@@ -90,27 +106,20 @@ async function scanCandidates(
   fetchImpl: typeof fetch,
   ms: number,
   source: "scan" | "docker",
-): Promise<OpenClawDiscoveryResult | null> {
+): Promise<OpenClawDiscoveryCandidate[]> {
+  const matches: OpenClawDiscoveryCandidate[] = [];
   for (const host of hosts) {
     for (const port of ports) {
       const baseUrl = buildUrl(host, port);
       for (const endpoint of HEALTH_ENDPOINTS) {
         const { ok, text } = await fetchText(`${baseUrl}${endpoint}`, fetchImpl, ms);
-        if (ok && isOpenClawBody(text, endpoint)) {
-          return {
-            found: true,
-            url: baseUrl,
-            healthEndpoint: endpoint,
-            taskEndpoint: null,
-            authType: "unknown",
-            detectedAt: new Date().toISOString(),
-            source,
-          };
-        }
+        const marker = ok ? detectMarker(text, endpoint) : null;
+        if (!ok || !marker) continue;
+        matches.push({ url: baseUrl, endpoint, marker, source });
       }
     }
   }
-  return null;
+  return matches;
 }
 
 export async function discoverOpenClaw(options: DiscoveryOptions = {}): Promise<OpenClawDiscoveryResult> {
@@ -119,20 +128,62 @@ export async function discoverOpenClaw(options: DiscoveryOptions = {}): Promise<
   const basePorts = options.ports ?? DEFAULT_PORTS;
   const ms = options.timeoutMs ?? timeoutMs();
   const envUrl = process.env.OPENCLAW_API_URL?.trim();
-  if (envUrl) {
-    return { found: true, url: envUrl, healthEndpoint: null, taskEndpoint: null, authType: "unknown", detectedAt: new Date().toISOString(), source: "env" };
+  if (envUrl && !options.ignoreEnv) {
+    return {
+      found: true,
+      url: envUrl,
+      healthEndpoint: null,
+      taskEndpoint: null,
+      authType: "unknown",
+      detectedAt: new Date().toISOString(),
+      source: "env",
+      candidates: [{ url: envUrl, endpoint: "(env)", marker: "env", source: "scan" }],
+    };
   }
 
   const dockerOutput = await (options.execDockerPs ?? defaultDockerPs)();
   const dockerPorts = parseDockerPorts(dockerOutput);
-  if (dockerPorts.length > 0) {
-    const dockerResult = await scanCandidates(hosts, dockerPorts, fetchImpl, ms, "docker");
-    if (dockerResult) return dockerResult;
+  const dockerMatches = dockerPorts.length > 0 ? await scanCandidates(hosts, dockerPorts, fetchImpl, ms, "docker") : [];
+  if (dockerMatches.length > 0) {
+    const best = dockerMatches[0];
+    return {
+      found: true,
+      url: best.url,
+      healthEndpoint: best.endpoint,
+      taskEndpoint: null,
+      authType: "unknown",
+      detectedAt: new Date().toISOString(),
+      source: "docker",
+      candidates: dockerMatches,
+    };
   }
 
-  const scanResult = await scanCandidates(hosts, basePorts, fetchImpl, ms, "scan");
-  if (scanResult) return scanResult;
-  return { found: false, url: null, healthEndpoint: null, taskEndpoint: null, authType: "none", detectedAt: new Date().toISOString(), source: "none", reason: "후보 포트와 Docker 컨테이너에서 OpenClaw 응답을 찾지 못했습니다." };
+  const scanMatches = await scanCandidates(hosts, basePorts, fetchImpl, ms, "scan");
+  if (scanMatches.length > 0) {
+    const best = scanMatches[0];
+    return {
+      found: true,
+      url: best.url,
+      healthEndpoint: best.endpoint,
+      taskEndpoint: null,
+      authType: "unknown",
+      detectedAt: new Date().toISOString(),
+      source: "scan",
+      candidates: scanMatches,
+    };
+  }
+
+  return {
+    found: false,
+    url: null,
+    healthEndpoint: null,
+    taskEndpoint: null,
+    authType: "none",
+    detectedAt: new Date().toISOString(),
+    source: "none",
+    reason: "후보 포트와 Docker 컨테이너에서 OpenClaw 응답을 찾지 못했습니다.",
+    candidates: [],
+  };
 }
 
 export async function saveDiscovery(result: OpenClawDiscoveryResult): Promise<void> {

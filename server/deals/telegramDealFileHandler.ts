@@ -22,6 +22,7 @@ import {
   toFileUrl,
   updateDealMeta,
 } from "./dealStore.ts";
+import { syncDealsToSheet } from "./dealSheetSync.ts";
 import { parseDealCommand } from "./dealFileRouter.ts";
 import { calcDday, formatKstShortDate, parseDealDate } from "./dateParser.ts";
 
@@ -175,6 +176,15 @@ async function executeDealCommandText(text: string): Promise<string> {
   if (command.action === "list") {
     const { all } = await listDeals();
     return formatDealList(all);
+  }
+  if (command.action === "sheet") {
+    try {
+      const result = await syncDealsToSheet();
+      return `📊 PF 딜 시트\n📋 동기화 완료 (${result.count}건)\n🔗 ${result.url}`;
+    } catch (err) {
+      console.error("[telegramDealFileHandler] sheet:", err);
+      return "⚠️ PF 딜 시트 동기화에 실패했습니다.";
+    }
   }
   if (command.action === "detail") {
     const resolved = await resolveDeal(command.dealName);

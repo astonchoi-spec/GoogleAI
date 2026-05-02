@@ -59,7 +59,8 @@ type HealthResponse = {
   lastSmokeStatus: "passed" | "failed" | "skipped" | "never";
   permissionLevel: number;
   permissionLabel: string;
-  queueStatus: { total: number; active: number; completed: number; failed: number };
+  queueStatus?: { total?: number; active?: number; completed?: number; failed?: number };
+  queue?: { total?: number; active?: number; completed?: number; failed?: number };
 };
 
 const STATUS_TEXT: Record<AgentStatus, string> = {
@@ -143,6 +144,7 @@ export default function AgentControl(): React.ReactElement {
   const active = useMemo(() => tasks.filter((task) => ["awaiting_approval", "pending", "running"].includes(task.status)), [tasks]);
   const recent = useMemo(() => tasks.filter((task) => !["awaiting_approval", "pending", "running"].includes(task.status)).slice(0, 10), [tasks]);
   const statusBadge = renderStatusBadge(health);
+  const queueSummary = health?.queueStatus ?? health?.queue;
 
   function openModal(template: AgentTemplate): void {
     setModalTemplate(template);
@@ -211,7 +213,7 @@ export default function AgentControl(): React.ReactElement {
           Smoke: {health?.lastSmokeStatus ?? "never"}{health?.lastSmokeAt ? ` · ${new Date(health.lastSmokeAt).toLocaleString("ko-KR")}` : ""}
         </div>
         <div style={{ fontSize: 12, color: "#94a3b8", marginTop: 4 }}>
-          Queue: 총 {health?.queueStatus.total ?? tasks.length}건 · 진행 {health?.queueStatus.active ?? active.length}건 · 실패 {health?.queueStatus.failed ?? 0}건
+          Queue: 총 {queueSummary?.total ?? tasks.length}건 · 진행 {queueSummary?.active ?? active.length}건 · 실패 {queueSummary?.failed ?? 0}건
         </div>
       </div>
 

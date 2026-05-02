@@ -1,5 +1,5 @@
 ﻿# TODO.md — 에스턴 워크스테이션
-> 업데이트: 2026-04-30 | 브랜치: codex-google-workspace-expansion
+> 업데이트: 2026-05-03 | 브랜치: codex-google-workspace-expansion
 
 ---
 
@@ -362,4 +362,14 @@
 - [ ] `?? ?? ???` ??? ??
 - [ ] `fallbackIntent` ?? ?? ??
 - [ ] `Monitoring` ??? ??
+
+## 2026-05-03 운영 문서 정리
+
+- [x] 작업일지 / TODO / 인수인계 최신화
+  - `Home` 빠른 명령 5개 즉시 실행화 작업을 기준으로 오늘 상태 재정리
+- [ ] `NotebookLM` 자연어 라우팅 연결
+- [ ] `Sheets` 자연어 라우팅 연결
+- [ ] `오늘 일정 브리핑` 라우팅 수정
+- [ ] `fallbackIntent` 명시 규칙 정리
+- [ ] `Monitoring` 라우팅 연결
 

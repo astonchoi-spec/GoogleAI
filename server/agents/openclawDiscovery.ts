@@ -25,7 +25,7 @@ export type DiscoveryOptions = {
 };
 
 const DEFAULT_HOSTS = ["localhost", "127.0.0.1", "host.docker.internal"];
-const DEFAULT_PORTS = [8000, 8080, 8888, 3000, 5000, 7860, 11434];
+const DEFAULT_PORTS = [8000, 8002, 52108, 8080, 8888, 3000, 5000, 7860, 11434];
 const HEALTH_ENDPOINTS = ["/health", "/api/health", "/v1/health", "/"];
 const execFileAsync = promisify(execFile);
 

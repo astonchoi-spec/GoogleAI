@@ -13,8 +13,7 @@ export type ExecutorOptions = {
 };
 
 export function isSimulationMode(): boolean {
-  const envUrl = process.env.OPENCLAW_API_URL?.trim();
-  return !envUrl && !getOpenClawClient().getStatus().available;
+  return !getOpenClawClient().getStatus().available;
 }
 
 export function getAgentWikiRoot(override?: string): string | null {

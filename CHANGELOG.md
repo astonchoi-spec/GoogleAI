@@ -606,3 +606,16 @@
 - 실제 smoke
   - 결과: `OpenClaw health 인증 확인 실패`
   - 현재 저장값: `available=false`, `url=http://openclaw.local`, `modelHint=gpt-4`, `status=skipped`
+
+## 2026-05-02 문서화
+
+### [Codex] `docs/ARCHITECTURE.md` 신규 작성
+- **작업**: 현재 코드 기준 전체 구조 문서 작성
+- **신규 파일**: `docs/ARCHITECTURE.md`
+- **포함 내용**:
+  - 프론트엔드 실제 라우트와 사이드바 메뉴 구조
+  - Express/tRPC/LLM/Google Workspace/DB/Chat Sync 구조
+  - 작업 브랜치 추가 모듈(`agents`, `deals`, `intent`, `intelligence`, `_core`) 요약
+  - Mermaid 다이어그램 5개
+  - 요청서와 실제 코드의 불일치 항목 명시(App 라우트 수, appRouter 범위, RiskGuard 위치, data JSON 수)
+- **검증**: 문서 외 코드 변경 없음 확인 예정, `npm run check` / `git diff --stat` 수행 예정

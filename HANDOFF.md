@@ -1,5 +1,5 @@
 ﻿# HANDOFF.md — 에스턴 워크스테이션
-> 업데이트: 2026-04-30 | 브랜치: codex-google-workspace-expansion
+> 업데이트: 2026-05-02 | 브랜치: codex-google-workspace-expansion
 
 ---
 
@@ -126,6 +126,18 @@
 |------|----------------|------|
 | Codex | - | 현재 진행 작업 없음 |
 
+## 2026-05-02 작업 종료 인수인계 (Codex)
+
+- 오늘 완료
+  - `docs/ARCHITECTURE.md` 신규 작성
+  - `TODO.md`, `CHANGELOG.md`, `HANDOFF.md` 문서 작업 이력 반영
+- 문서 기준
+  - 실제 코드 기준으로 프론트 라우트, `appRouter`, LLM, Google Workspace, DB, Chat Sync, Agent/Deal 모듈 구조 정리
+  - 요청서와 실제 구현 불일치 항목 명시: App 라우트 수, `appRouter` 범위, `RiskGuard` 위치, `data/*.json` 수
+  - Mermaid 다이어그램 5개 포함
+- 다음 작업 후보
+  - `README.md` 재정비
+
 ## 2026-05-01 작업 종료 인수인계 (Codex)
 
 - 오늘 완료: Phase 1 골격 ~ Phase 4 모닝브리핑 에이전트 통합까지 10개 작업 완료 (테스트 192 → 340)
@@ -158,20 +170,21 @@
 ## 다음 추천 작업
 
 ### 즉시 (운영 검증)
-0. **.env에 `WIKI_ROOT=G:\내 드라이브\Aston-Wiki` 추가** — 서버 재시작 후 텔레그램에서 `위키 저장 테스트 #트레이딩` 전송해 동작 확인
+0. **`README.md` 재정비** — 앱 정체성, 실행 방법, 현재 라우트/모듈, 운영 전제를 코드 기준으로 다시 정리
+1. **.env에 `WIKI_ROOT=G:\내 드라이브\Aston-Wiki` 추가** — 서버 재시작 후 텔레그램에서 `위키 저장 테스트 #트레이딩` 전송해 동작 확인
 
 ### 즉시 (P0)
-1. **Yahoo Finance CORS 프록시** — `server/routers/proxy.ts` 생성, `/api/yahoo-proxy` 엔드포인트 추가
+2. **Yahoo Finance CORS 프록시** — `server/routers/proxy.ts` 생성, `/api/yahoo-proxy` 엔드포인트 추가
    - 수정 파일: `server/routers/proxy.ts`, `server/routers.ts`
-2. **Upbit 잔고 Telegram 검증** — 텔레그램에서 "업비트 잔고" 메시지 전송 후 응답 확인
+3. **Upbit 잔고 Telegram 검증** — 텔레그램에서 "업비트 잔고" 메시지 전송 후 응답 확인
    - 코드 수정 없음, 운영 테스트만 필요
 
 ### 이번 주 (P1)
-3. **Telegram 운영 검증** — webhook 상태 엔드포인트 + UI 뱃지
-4. **대시보드 실시간 KPI** — mock 값 → 실제 서비스 카운트
+4. **Telegram 운영 검증** — webhook 상태 엔드포인트 + UI 뱃지
+5. **대시보드 실시간 KPI** — mock 값 → 실제 서비스 카운트
 
 ### Intelligence System 다음 Phase
-5. **Phase 1b** — `node-cron` + `server/intelligence/briefing.ts` (07:00 모닝 브리핑, 기존 Bot API 활용)
+6. **Phase 1b** — `node-cron` + `server/intelligence/briefing.ts` (07:00 모닝 브리핑, 기존 Bot API 활용)
 
 ---
 
@@ -751,3 +764,4 @@
 - 내일 작업
   - `.env`의 `OPENCLAW_API_URL`을 `http://127.0.0.1:8000`으로 수정
   - `npx tsx scripts/smoke-openclaw.ts` 재실행 후 실제 응답 확인
+

@@ -5,6 +5,9 @@ const mocks = vi.hoisted(() => ({
   clearSheet: vi.fn(),
   upsertRow: vi.fn(),
   getSpreadsheetUrl: vi.fn(),
+  getSheetRecord: vi.fn(),
+  markSheetFormatApplied: vi.fn(),
+  applyConditionalFormat: vi.fn(),
   listDeals: vi.fn(),
   loadRecentAgentResultLabelsByTarget: vi.fn(),
   calcDday: vi.fn(),
@@ -16,21 +19,15 @@ vi.mock("../_core/googleSheets.ts", () => ({
   clearSheet: mocks.clearSheet,
   upsertRow: mocks.upsertRow,
   getSpreadsheetUrl: mocks.getSpreadsheetUrl,
+  getSheetRecord: mocks.getSheetRecord,
+  markSheetFormatApplied: mocks.markSheetFormatApplied,
+  applyConditionalFormat: mocks.applyConditionalFormat,
 }));
+vi.mock("../deals/dealStore.ts", () => ({ listDeals: mocks.listDeals }));
+vi.mock("../_core/agentResultLookup.ts", () => ({ loadRecentAgentResultLabelsByTarget: mocks.loadRecentAgentResultLabelsByTarget }));
+vi.mock("../deals/dateParser.ts", () => ({ calcDday: mocks.calcDday }));
 
-vi.mock("../deals/dealStore.ts", () => ({
-  listDeals: mocks.listDeals,
-}));
-
-vi.mock("../_core/agentResultLookup.ts", () => ({
-  loadRecentAgentResultLabelsByTarget: mocks.loadRecentAgentResultLabelsByTarget,
-}));
-
-vi.mock("../deals/dateParser.ts", () => ({
-  calcDday: mocks.calcDday,
-}));
-
-import { syncDealsToSheet } from "../deals/dealSheetSync.ts";
+import { applyDealSheetFormatting, syncDealsToSheet } from "../deals/dealSheetSync.ts";
 
 beforeEach(() => {
   vi.resetAllMocks();
@@ -39,6 +36,9 @@ beforeEach(() => {
   mocks.clearSheet.mockResolvedValue(undefined);
   mocks.upsertRow.mockResolvedValue(undefined);
   mocks.getSpreadsheetUrl.mockReturnValue("https://docs.google.com/spreadsheets/d/sheet-1/edit");
+  mocks.getSheetRecord.mockResolvedValue(null);
+  mocks.markSheetFormatApplied.mockResolvedValue(undefined);
+  mocks.applyConditionalFormat.mockResolvedValue(undefined);
   mocks.loadRecentAgentResultLabelsByTarget.mockResolvedValue(new Map());
   mocks.calcDday.mockReturnValue(5);
   mocks.fetchMock.mockResolvedValue({ ok: true });
@@ -94,9 +94,9 @@ describe("dealSheetSync", () => {
   it("renders missing deadline and notebook as fallback text", async () => {
     mocks.listDeals.mockResolvedValue({
       all: [{
-        name: "부산88",
+        name: "부산8",
         status: "reviewing",
-        drivePath: "G:/Deals/부산88",
+        drivePath: "G:/Deals/부산8",
         fileCount: { contract: 0, feasibility: 0, legal: 0, market: 0, disclosure: 0, misc: 0 },
         milestones: [],
         updatedAt: "2026-05-02T00:00:00.000Z",
@@ -105,17 +105,17 @@ describe("dealSheetSync", () => {
     await syncDealsToSheet();
     expect(mocks.upsertRow).toHaveBeenLastCalledWith(
       "sheet-1",
-      "부산88",
-      ["부산88", "G:/Deals/부산88", "0", "-", "-", "0/0", "⚠️ 미연결", "-", "2026-05-02T00:00:00.000Z"],
+      "부산8",
+      ["부산8", "G:/Deals/부산8", "0", "-", "-", "0/0", "⚠️ 미연결", "-", "2026-05-02T00:00:00.000Z"],
     );
   });
 
   it("uses calcDday result for D-day formatting", async () => {
     mocks.listDeals.mockResolvedValue({
       all: [{
-        name: "서울11",
+        name: "수원11",
         status: "active",
-        drivePath: "G:/Deals/서울11",
+        drivePath: "G:/Deals/수원11",
         fileCount: { contract: 0, feasibility: 1, legal: 0, market: 0, disclosure: 0, misc: 0 },
         deadline: "2026-05-02T00:00:00.000Z",
         milestones: [],
@@ -126,8 +126,8 @@ describe("dealSheetSync", () => {
     await syncDealsToSheet();
     expect(mocks.upsertRow).toHaveBeenLastCalledWith(
       "sheet-1",
-      "서울11",
-      ["서울11", "G:/Deals/서울11", "1", "2026-05-02T00:00:00.000Z", "D-DAY", "0/0", "⚠️ 미연결", "-", "2026-05-02T00:00:00.000Z"],
+      "수원11",
+      ["수원11", "G:/Deals/수원11", "1", "2026-05-02T00:00:00.000Z", "D-DAY", "0/0", "⚠️ 미연결", "-", "2026-05-02T00:00:00.000Z"],
     );
   });
 
@@ -168,6 +168,36 @@ describe("dealSheetSync", () => {
       "광주33",
       ["광주33", "G:/Deals/광주33", "1", "-", "-", "0/0", "⚠️ 미연결", "법률 리스크", "2026-05-02T00:00:00.000Z"],
     );
+  });
+
+  it("applies formatting on first sync and stores timestamp", async () => {
+    mocks.listDeals.mockResolvedValue({ all: [] });
+    await syncDealsToSheet();
+    expect(mocks.applyConditionalFormat).toHaveBeenCalledTimes(1);
+    expect(mocks.markSheetFormatApplied).toHaveBeenCalledWith("Aston-Deals-Dashboard", "sheet-1");
+  });
+
+  it("skips formatting when metadata already says applied", async () => {
+    mocks.getSheetRecord.mockResolvedValue({ spreadsheetId: "sheet-1", formatAppliedAt: "2026-05-02T03:00:00.000Z" });
+    mocks.listDeals.mockResolvedValue({ all: [] });
+    await syncDealsToSheet();
+    expect(mocks.applyConditionalFormat).not.toHaveBeenCalled();
+  });
+
+  it("does not fail sync when formatting fails", async () => {
+    mocks.applyConditionalFormat.mockRejectedValue(new Error("format failed"));
+    mocks.listDeals.mockResolvedValue({ all: [] });
+    await expect(syncDealsToSheet()).resolves.toEqual({
+      url: "https://docs.google.com/spreadsheets/d/sheet-1/edit",
+      count: 0,
+    });
+  });
+
+  it("reapplies formatting on explicit command", async () => {
+    const result = await applyDealSheetFormatting();
+    expect(result).toEqual({ url: "https://docs.google.com/spreadsheets/d/sheet-1/edit" });
+    expect(mocks.applyConditionalFormat).toHaveBeenCalledTimes(1);
+    expect(mocks.markSheetFormatApplied).toHaveBeenCalledWith("Aston-Deals-Dashboard", "sheet-1");
   });
 
   it("notifies telegram once on sync failure", async () => {

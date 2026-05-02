@@ -634,3 +634,26 @@
   - 완료/거절 딜 아카이브 시트 분리
   - 시트 조건부 서식(D-day 색상)
   - 시트 역방향 동기화
+
+## 2026-05-02 Phase 6 딜 시트 조건부 서식 인수인계 (Codex)
+
+- 완료 파일:
+  - `server/_core/googleSheets.ts`
+  - `server/deals/dealSheetSync.ts`
+  - `server/deals/dealFileRouter.ts`
+  - `server/deals/telegramDealFileHandler.ts`
+  - `server/__tests__/googleSheets.test.ts`
+  - `server/__tests__/dealSheetSync.test.ts`
+  - `data/google-sheets.json`
+- 실제 검증:
+  - `npm run check` 통과
+  - `npm run build` 통과
+  - `npm test` 통과: 361 passed, 7 skipped, 2 todo
+  - Google Sheets API로 조건부 서식 3개 + 헤더 서식 적용 확인
+  - 시트 URL: https://docs.google.com/spreadsheets/d/1kX_l2bQw8II4LZCwdS9_QEQ9JQ4HfpXYGpDoIF9F8b0/edit
+- 현재 진행 작업:
+  - 없음
+- 다음 Phase 후보:
+  - 완료/거절 딜 아카이브 시트 분리
+  - D-day 조건부 서식 색상 미세조정
+  - 시트 역방향 동기화

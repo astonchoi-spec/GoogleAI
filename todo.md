@@ -293,3 +293,16 @@
 - [ ] 텔레그램 실사용 화면에서 `딜 시트` 응답 확인
 - [ ] 시트 조건부 서식(D-day 색상) 필요 시 후속 Phase에서 추가
 - [ ] 완료/거절 딜 분리 아카이브 시트는 다음 Phase로 보류
+
+# 2026-05-02 Phase 6 D-day Conditional Format
+
+- [x] Aston-Deals-Dashboard D-day 조건부 서식 자동 적용 완료
+- [x] 헤더 회색 배경/흰 글씨/굵게, 컬럼 너비 자동 조정 적용
+- [x] `data/google-sheets.json`에 `formatAppliedAt` 저장
+- [x] `딜 시트 서식` 텔레그램 명령 추가
+- [x] 실제 Google Sheets API 호출로 규칙 3개 + 헤더 서식 적용 확인
+- [ ] 텔레그램 실사용 화면에서 `딜 시트 서식` 응답 QA
+- [ ] 다음 Phase 후보 결정
+  - 완료/거절 딜 아카이브 시트 분리
+  - D-day 조건부 서식 색상 미세조정
+  - 시트 역방향 동기화

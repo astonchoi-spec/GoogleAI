@@ -539,3 +539,23 @@
   - `npm test` 통과: 353 passed, 7 skipped, 2 todo
   - 실제 Google Sheets API 호출 성공: 3건 동기화
   - 시트 URL: https://docs.google.com/spreadsheets/d/1kX_l2bQw8II4LZCwdS9_QEQ9JQ4HfpXYGpDoIF9F8b0/edit
+
+## 2026-05-02 Phase 6 딜 시트 조건부 서식
+
+### [Codex] Aston-Deals-Dashboard D-day 조건부 서식 자동 적용
+- **작업**: `server/_core/googleSheets.ts` 확장으로 조건부 서식, 헤더 서식, 컬럼 너비 조정, 기존 규칙 삭제 후 재생성 지원 추가
+- **작업**: `server/deals/dealSheetSync.ts` 확장으로 첫 동기화 시 1회 자동 적용, `formatAppliedAt` 메타데이터 저장, 서식 실패 비차단 처리 추가
+- **작업**: `server/deals/dealFileRouter.ts`, `server/deals/telegramDealFileHandler.ts` 수정으로 `딜 시트 서식` 명령 추가
+- **작업**: `data/google-sheets.json` 메타데이터를 문자열 호환 + 객체 저장 방식으로 확장
+- **테스트**: `server/__tests__/googleSheets.test.ts` 10개, `server/__tests__/dealSheetSync.test.ts` 11개로 확장
+- **검증**:
+  - `npm run check` 통과
+  - `npm run build` 통과
+  - `npm test` 통과: 361 passed, 7 skipped, 2 todo
+  - 실제 Google Sheets API 호출 확인: 조건부 서식 3개 적용, 헤더 배경/굵기 적용 확인
+  - 실제 시트 URL 재확인: https://docs.google.com/spreadsheets/d/1kX_l2bQw8II4LZCwdS9_QEQ9JQ4HfpXYGpDoIF9F8b0/edit
+- **자율 결정**:
+  - D-30 노랑, D-7 주황, D-3 및 D-DAY·지연 빨강으로 정렬
+  - 컬럼 너비 자동 조정 포함
+  - 기존 조건부 서식은 Dashboard 시트 기준 전부 삭제 후 재생성
+- **후속 후보**: 완료/거절 딜 아카이브 시트 분리, 색상 미세조정, 시트 역방향 동기화

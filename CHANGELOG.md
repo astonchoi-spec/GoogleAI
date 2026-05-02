@@ -619,3 +619,13 @@
   - Mermaid 다이어그램 5개
   - 요청서와 실제 코드의 불일치 항목 명시(App 라우트 수, appRouter 범위, RiskGuard 위치, data JSON 수)
 - **검증**: 문서 외 코드 변경 없음 확인 예정, `npm run check` / `git diff --stat` 수행 예정
+
+### [Codex] `README.md` 재정비
+- **작업**: `Aston Workstation` 대외용 진입 문서 재작성
+- **수정 파일**: `README.md`
+- **포함 내용**:
+  - 제품 정체성, 핵심 기능, 기술 스택, Quick Start
+  - 필수 환경 변수, 주요 명령어, 최상위 디렉터리 구조
+  - `docs/ARCHITECTURE.md`, `AGENTS.md`, `CLAUDE.md`, 운영 문서 링크
+  - 현재 제약 요약과 비공개 운영 안내
+- **검증**: `npm run check`, `npm run build`, `README.md` 줄 수 확인 예정

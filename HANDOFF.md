@@ -138,6 +138,17 @@
 - 다음 작업 후보
   - `README.md` 재정비
 
+## 2026-05-02 README 작업 종료 인수인계 (Codex)
+
+- 오늘 완료
+  - `README.md`를 `Aston Workstation` 기준 진입 문서로 재작성
+  - `TODO.md`, `CHANGELOG.md`, `HANDOFF.md`에 README 작업과 다음 후보 반영
+- 문서 기준
+  - 상세 구조 설명은 `docs/ARCHITECTURE.md` 링크로 위임
+  - 실행 방법, 필수 환경 변수, 주요 명령어, 프로젝트 구조, 제약을 1분 읽기 분량으로 압축
+- 다음 작업
+  - `docs/employees/pf-analyst.md` 작성
+
 ## 2026-05-01 작업 종료 인수인계 (Codex)
 
 - 오늘 완료: Phase 1 골격 ~ Phase 4 모닝브리핑 에이전트 통합까지 10개 작업 완료 (테스트 192 → 340)
@@ -170,7 +181,7 @@
 ## 다음 추천 작업
 
 ### 즉시 (운영 검증)
-0. **`README.md` 재정비** — 앱 정체성, 실행 방법, 현재 라우트/모듈, 운영 전제를 코드 기준으로 다시 정리
+0. **PF 분석 직원 1호 JD 작성** — `docs/employees/pf-analyst.md`에 역할, 책임, 산출물, 운영 규칙 정의
 1. **.env에 `WIKI_ROOT=G:\내 드라이브\Aston-Wiki` 추가** — 서버 재시작 후 텔레그램에서 `위키 저장 테스트 #트레이딩` 전송해 동작 확인
 
 ### 즉시 (P0)
@@ -764,4 +775,5 @@
 - 내일 작업
   - `.env`의 `OPENCLAW_API_URL`을 `http://127.0.0.1:8000`으로 수정
   - `npx tsx scripts/smoke-openclaw.ts` 재실행 후 실제 응답 확인
+
 

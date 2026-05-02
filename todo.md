@@ -339,5 +339,7 @@
 
 - [x] `docs/ARCHITECTURE.md` 추가
   - 현재 코드 기준 전체 구조, Mermaid 5개, 요청서 대비 실제 구현 차이 반영
-- [ ] 다음 문서 작업 후보: `README.md` 재정비
-  - 앱 정체성, 실행 방법, 주요 라우트, 운영 전제, 현재 한계 요약 필요
+- [x] `README.md` 재정비
+  - Aston Workstation 정체성, Quick Start, 명령어, 문서 링크, 제약 요약 반영
+- [ ] 다음 문서 작업 후보: PF 분석 직원 1호 JD 작성
+  - 대상 파일: `docs/employees/pf-analyst.md`

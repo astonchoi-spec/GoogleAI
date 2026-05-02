@@ -25,4 +25,12 @@ describe("agentTemplates", () => {
     expect(getTemplate("nonexistent")).toBeNull();
     expect(getTemplate("pf-comprehensive")).not.toBeNull();
   });
+
+  it("includes NotebookLM execution instructions for OpenClaw", () => {
+    const template = getTemplate("notebook-query");
+    expect(template?.instructions).toContain("https://notebooklm.google.com");
+    expect(template?.instructions).toContain("dealStore.getDeal(dealName)");
+    expect(template?.instructions).toContain("질문을 입력한다");
+    expect(template?.instructions).toContain("출처가 보이면 함께 기록");
+  });
 });

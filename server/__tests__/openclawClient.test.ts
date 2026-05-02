@@ -2,15 +2,20 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { OpenClawClient } from "../agents/openclawClient.ts";
 import type { AgentTask } from "../agents/agentTypes.ts";
 
-const ORIG_URL = process.env.OPENCLAW_API_URL;
-const ORIG_KEY = process.env.OPENCLAW_API_KEY;
+const ORIG_ENV = {
+  OPENCLAW_API_URL: process.env.OPENCLAW_API_URL,
+  OPENCLAW_API_KEY: process.env.OPENCLAW_API_KEY,
+  OPENCLAW_DEFAULT_MODEL: process.env.OPENCLAW_DEFAULT_MODEL,
+  GEMINI_API_KEY: process.env.GEMINI_API_KEY,
+  GOOGLE_API_KEY: process.env.GOOGLE_API_KEY,
+};
 
 function task(): AgentTask {
   return {
     id: "task1",
     templateId: "pf-comprehensive",
     templateLabel: "PF 종합 분석",
-    target: "한남동 44",
+    target: "한남동44",
     inputs: {},
     status: "running",
     createdAt: new Date().toISOString(),
@@ -24,13 +29,16 @@ function mockFetch(handler: (url: string, init?: RequestInit) => Response): type
 beforeEach(() => {
   process.env.OPENCLAW_API_URL = "http://openclaw.local";
   process.env.OPENCLAW_API_KEY = "secret";
+  process.env.OPENCLAW_DEFAULT_MODEL = "";
+  process.env.GEMINI_API_KEY = "gemini-secret";
+  delete process.env.GOOGLE_API_KEY;
 });
 
 afterEach(() => {
-  if (ORIG_URL === undefined) delete process.env.OPENCLAW_API_URL;
-  else process.env.OPENCLAW_API_URL = ORIG_URL;
-  if (ORIG_KEY === undefined) delete process.env.OPENCLAW_API_KEY;
-  else process.env.OPENCLAW_API_KEY = ORIG_KEY;
+  for (const [key, value] of Object.entries(ORIG_ENV)) {
+    if (value === undefined) delete process.env[key];
+    else process.env[key] = value;
+  }
   vi.restoreAllMocks();
 });
 
@@ -85,7 +93,7 @@ describe("OpenClawClient", () => {
       fetchImpl: mockFetch((url, init) => {
         const auth = (init?.headers as Record<string, string> | undefined)?.authorization;
         if (url.endsWith("/health")) return new Response("ok", { status: auth === "Bearer secret" ? 200 : 401 });
-        if (url.endsWith("/api/tasks")) return Response.json({ result: "HTTP fallback" });
+        if (url.endsWith("/api/tasks")) return Response.json({ output: "HTTP fallback" });
         return new Response("", { status: 404 });
       }),
       gatewayCall,
@@ -95,6 +103,32 @@ describe("OpenClawClient", () => {
     const result = await client.runTask(task());
     expect(result.ok).toBe(true);
     expect(result.markdown).toBe("HTTP fallback");
+  });
+
+  it("reuses Aston Gemini key in HTTP payload without exposing it in output", async () => {
+    const gatewayCall = vi.fn(async ({ method }) => {
+      if (method === "health") return { ok: false };
+      return { status: "timeout" };
+    });
+    const seenBodies: string[] = [];
+    const client = new OpenClawClient({
+      fetchImpl: mockFetch((url, init) => {
+        const auth = (init?.headers as Record<string, string> | undefined)?.authorization;
+        if (url.endsWith("/health")) return new Response("ok", { status: auth === "Bearer secret" ? 200 : 401 });
+        if (url.endsWith("/api/tasks")) {
+          seenBodies.push(String(init?.body ?? ""));
+          return Response.json({ text: "provider key accepted" });
+        }
+        return new Response("", { status: 404 });
+      }),
+      gatewayCall,
+      requestTimeoutMs: 50,
+    });
+    await client.probe();
+    const result = await client.runTask(task());
+    expect(result.ok).toBe(true);
+    expect(seenBodies.some((body) => body.includes("providerApiKey"))).toBe(true);
+    expect(result.markdown).not.toContain("gemini-secret");
   });
 
   it("returns fallback when both gateway and http fail", async () => {
@@ -115,7 +149,6 @@ describe("OpenClawClient", () => {
     await client.probe();
     const result = await client.runTask(task());
     expect(result.fallback).toBe(true);
-    expect(result.reason).toMatch(/엔드포인트|timeout/);
+    expect(result.reason).toMatch(/실행 엔드포인트|timeout/);
   });
 });
-

@@ -31,17 +31,19 @@ describe("detect-openclaw", () => {
     expect(result.found).toBe(true);
     expect(result.url).toBe("http://localhost:8000");
     expect(result.healthEndpoint).toBe("/health");
+    expect(result.candidates?.[0]?.marker).toBe("openclaw");
   });
 
-  it("detects OpenClaw from root body marker", async () => {
+  it("detects marker text from root body", async () => {
     const result = await discoverOpenClaw({
       hosts: ["127.0.0.1"],
       ports: [5000],
       execDockerPs: async () => "",
-      fetchImpl: mockFetch({ "http://127.0.0.1:5000/": { body: "OpenClaw server" } }),
+      fetchImpl: mockFetch({ "http://127.0.0.1:5000/": { body: "Agent API ready" } }),
     });
     expect(result.found).toBe(true);
     expect(result.healthEndpoint).toBe("/");
+    expect(result.candidates?.[0]?.marker).toBe("agent");
   });
 
   it("returns a safe miss when no candidate responds", async () => {
@@ -53,6 +55,7 @@ describe("detect-openclaw", () => {
     });
     expect(result.found).toBe(false);
     expect(result.reason).toMatch(/찾지 못했습니다/);
+    expect(result.candidates).toEqual([]);
   });
 
   it("parses openclaw docker published ports", () => {

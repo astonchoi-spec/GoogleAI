@@ -48,6 +48,46 @@ const createEvent: IntentHandler = async (intent, options) => {
   };
 };
 
+const readSheet: IntentHandler = async (intent, options) => {
+  const spreadsheetId = asString(intent.params.spreadsheetId, "") || (process.env.WORKSPACE_SPREADSHEET_ID ?? "");
+  const range = asString(intent.params.range, "Sheet1!A1:Z50");
+  const maxRows = asNumber(intent.params.maxRows, 5);
+  if (!spreadsheetId) {
+    return {
+      intent,
+      handled: true,
+      requiresConfirmation: false,
+      response: "📊 시트 ID가 없습니다. WORKSPACE_SPREADSHEET_ID 환경변수를 설정하거나 시트 ID를 함께 입력해주세요.",
+    };
+  }
+  try {
+    const auth = await getGoogleAuth(options.userId);
+    const sheets = new SheetsConnector(auth);
+    const data = await sheets.readSheet(spreadsheetId, range);
+    if (!data.data.length) {
+      return {
+        intent, handled: true, requiresConfirmation: false,
+        response: `📊 ${data.sheetTitle}: 데이터가 없습니다.`,
+        data: { spreadsheetId, range, rows: [] },
+      };
+    }
+    const header = data.headers.join(" | ");
+    const rows = data.data.slice(0, maxRows).map((row) => row.join(" | ")).join("\n");
+    const totalRows = data.data.length;
+    const shown = Math.min(maxRows, totalRows);
+    return {
+      intent, handled: true, requiresConfirmation: false,
+      response: `📊 ${data.sheetTitle} (상위 ${shown}/${totalRows}행)\n\n${header}\n${"─".repeat(Math.min(header.length, 40))}\n${rows}`,
+      data: { spreadsheetId, range, headers: data.headers, rows: data.data, sheetTitle: data.sheetTitle },
+    };
+  } catch (err) {
+    if (isGoogleAuthError(err)) {
+      return { intent, handled: true, requiresConfirmation: false, response: GOOGLE_REAUTH_MSG };
+    }
+    throw err;
+  }
+};
+
 const writeSheet: IntentHandler = async (intent, options) => {
   const auth = await googleAuthManager.getAuthenticatedClient(options.userId);
   const sheets = new SheetsConnector(auth);
@@ -161,6 +201,63 @@ const sendEmail: IntentHandler = async (intent, options) => {
   }
 };
 
+function kstTodayRange(): { start: Date; end: Date; dateKey: string } {
+  // KST 기준 오늘 00:00 ~ 익일 00:00
+  const KST_OFFSET_MS = 9 * 60 * 60 * 1000;
+  const nowKst = new Date(Date.now() + KST_OFFSET_MS);
+  const y = nowKst.getUTCFullYear();
+  const m = nowKst.getUTCMonth();
+  const d = nowKst.getUTCDate();
+  const start = new Date(Date.UTC(y, m, d) - KST_OFFSET_MS);
+  const end = new Date(Date.UTC(y, m, d + 1) - KST_OFFSET_MS);
+  const dateKey = `${y}-${String(m + 1).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+  return { start, end, dateKey };
+}
+
+function formatEventTimeKst(date: Date, isAllDay: boolean): string {
+  if (isAllDay) return "종일";
+  return new Intl.DateTimeFormat("ko-KR", {
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+    timeZone: "Asia/Seoul",
+  }).format(date);
+}
+
+const todayEvents: IntentHandler = async (intent, options) => {
+  console.log("[INTENT] executing google_today_events");
+  try {
+    const auth = await getGoogleAuth(options.userId);
+    const calendar = new CalendarConnector(auth);
+    const { start, end, dateKey } = kstTodayRange();
+    const events = await calendar.getEventsByDateRange(start, end);
+    if (events.length === 0) {
+      return {
+        intent, handled: true, requiresConfirmation: false,
+        response: `📅 오늘(${dateKey}) 등록된 일정이 없습니다.`,
+        data: { events: [], dateKey },
+      };
+    }
+    const sorted = [...events].sort((a, b) => a.startTime.getTime() - b.startTime.getTime());
+    const lines = sorted.map((e, i) => {
+      const time = formatEventTimeKst(e.startTime, e.isAllDay);
+      const title = e.title || "(제목 없음)";
+      const loc = e.location ? ` @ ${e.location}` : "";
+      return `${i + 1}. ${time} — ${title}${loc}`;
+    });
+    return {
+      intent, handled: true, requiresConfirmation: false,
+      response: `📅 오늘(${dateKey}) 일정 ${events.length}개\n\n${lines.join("\n")}`,
+      data: { events: sorted, dateKey },
+    };
+  } catch (err) {
+    if (isGoogleAuthError(err)) {
+      return { intent, handled: true, requiresConfirmation: false, response: GOOGLE_REAUTH_MSG };
+    }
+    throw err;
+  }
+};
+
 const listEvents: IntentHandler = async (intent, options) => {
   console.log("[INTENT] executing google_list_events");
   const maxResults = asNumber(intent.params.maxResults, 5);
@@ -190,8 +287,10 @@ const listEvents: IntentHandler = async (intent, options) => {
 export const googleHandlers: HandlerMap = {
   google_create_event: createEvent,
   google_write_sheet: writeSheet,
+  google_read_sheet: readSheet,
   google_drive_search: driveSearch,
   google_get_emails: getEmails,
   google_send_email: sendEmail,
   google_list_events: listEvents,
+  google_today_events: todayEvents,
 };

@@ -31,6 +31,22 @@ export function isAgentIntentMessage(message: string): boolean {
   return /^에이전트(?:\s+|$)/.test(message.trim());
 }
 
+const NOTEBOOKLM_PREFIX_RE = /^(?:노트북(?:lm)?|notebooklm)\s+([\s\S]+)/i;
+
+export function matchNotebookLmQuery(message: string): IntentResult | null {
+  const m = message.trim().match(NOTEBOOKLM_PREFIX_RE);
+  if (!m) return null;
+  const question = m[1].trim();
+  if (!question) return null;
+  return {
+    domain: "intelligence",
+    action: "notebooklm_query",
+    type: "query",
+    confidence: 0.95,
+    params: { question },
+  };
+}
+
 export function fallbackIntent(message: string): IntentResult {
   const lower = message.toLowerCase();
   const compact = lower.replace(/\s+/g, "");
@@ -60,6 +76,26 @@ export function fallbackIntent(message: string): IntentResult {
   if (wikiSave) return wikiSave;
   const wikiSearch = matchWikiSearch(message);
   if (wikiSearch) return wikiSearch;
+
+  // NotebookLM 질의 — 명시적 prefix ("노트북 ...", "노트북LM ...", "NotebookLM ...")
+  const notebookLm = matchNotebookLmQuery(message);
+  if (notebookLm) return notebookLm;
+
+  // Telegram 최근 메시지 — Home 빠른 명령
+  if (
+    /telegram\s*(최근|recent)/i.test(message) ||
+    /(최근|recent)\s*telegram/i.test(message) ||
+    /텔레그램\s*(최근|메시지)/i.test(message) ||
+    /최근\s*텔레그램/i.test(message)
+  ) {
+    return {
+      domain: "chat",
+      action: "chat_telegram_recent",
+      type: "query",
+      confidence: 0.9,
+      params: { limit: 10 },
+    };
+  }
 
   const simReview = parseReviewMessage(message);
   if (/^매수\s*시뮬/i.test(message) && simReview) {
@@ -130,6 +166,23 @@ export function fallbackIntent(message: string): IntentResult {
 
   if (compact.includes("승인큐") || compact.includes("승인목록") || lower.includes("approval list")) {
     return { domain: "trading", action: "trading_approval_list", type: "query", confidence: 0.9, params: {} };
+  }
+
+  // 모니터링 / 시스템 상태
+  if (
+    /모니터링/.test(message) ||
+    /시스템\s*(상태|현황)/.test(message) ||
+    /운영\s*상태/.test(message) ||
+    /^monitoring$/i.test(message.trim()) ||
+    /system\s*status/i.test(message)
+  ) {
+    return {
+      domain: "intelligence",
+      action: "monitoring_status",
+      type: "query",
+      confidence: 0.9,
+      params: {},
+    };
   }
 
   // 모닝 브리핑 수동 트리거
@@ -368,6 +421,21 @@ export function fallbackIntent(message: string): IntentResult {
     };
   }
 
+  // 오늘 메일 요약 — 명시적 prefill 명령. newer_than:1d로 24시간 내 메일만 조회
+  if (
+    /오늘\s*(메일|이메일)/.test(message) ||
+    /(메일|이메일)\s*요약/.test(message)
+  ) {
+    console.log("[INTENT FALLBACK] google_get_emails (today digest) detected");
+    return {
+      domain: "google",
+      action: "google_get_emails",
+      type: "query",
+      confidence: 0.85,
+      params: { maxResults: 10, searchQuery: "newer_than:1d" },
+    };
+  }
+
   if (
     lower.includes("메일 확인") ||
     lower.includes("받은 메일") ||
@@ -391,8 +459,18 @@ export function fallbackIntent(message: string): IntentResult {
     return { domain: "google", action: "google_send_email", type: "execute", confidence: 0.7, params: {} };
   }
 
+  // 오늘만 한정 — "오늘 일정", "오늘 일정 브리핑", "오늘 스케줄" 등은 today_events로 분기
   if (
-    lower.includes("오늘 일정") ||
+    /오늘\s*(일정|스케줄|미팅|회의)/.test(message) ||
+    /(일정|스케줄)\s*브리핑/.test(message) ||
+    lower.includes("today schedule") ||
+    lower.includes("today events")
+  ) {
+    console.log("[INTENT FALLBACK] google_today_events detected");
+    return { domain: "google", action: "google_today_events", type: "query", confidence: 0.85, params: {} };
+  }
+
+  if (
     lower.includes("일정 확인") ||
     lower.includes("캘린더 목록") ||
     lower.includes("다음 일정") ||
@@ -455,6 +533,24 @@ export function fallbackIntent(message: string): IntentResult {
         startTime: start.toISOString(),
         endTime: end.toISOString(),
         isAllDay: false,
+      },
+    };
+  }
+
+  if (
+    (lower.includes("시트") || lower.includes("sheets") || lower.includes("스프레드시트")) &&
+    (lower.includes("읽") || lower.includes("조회") || lower.includes("보여") || lower.includes("확인") || lower.includes("read"))
+  ) {
+    const rangeMatch = message.match(/[A-Za-z가-힣0-9_]+!?[A-Z]+\d+(?::[A-Z]+\d+)?/);
+    return {
+      domain: "google",
+      action: "google_read_sheet",
+      type: "query",
+      confidence: 0.7,
+      params: {
+        spreadsheetId: process.env.WORKSPACE_SPREADSHEET_ID || "",
+        range: rangeMatch ? rangeMatch[0] : "Sheet1!A1:Z50",
+        maxRows: 5,
       },
     };
   }

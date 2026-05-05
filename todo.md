@@ -367,9 +367,26 @@
 
 - [x] 작업일지 / TODO / 인수인계 최신화
   - `Home` 빠른 명령 5개 즉시 실행화 작업을 기준으로 오늘 상태 재정리
-- [ ] `NotebookLM` 자연어 라우팅 연결
-- [ ] `Sheets` 자연어 라우팅 연결
-- [ ] `오늘 일정 브리핑` 라우팅 수정
-- [ ] `fallbackIntent` 명시 규칙 정리
-- [ ] `Monitoring` 라우팅 연결
+- [x] `NotebookLM` 자연어 라우팅 연결 (2026-05-06)
+- [x] `Sheets` 자연어 라우팅 연결 (2026-05-06, 읽기 액션 추가)
+- [x] `오늘 일정 브리핑` 라우팅 수정 (2026-05-06, `google_today_events` 신규)
+- [x] `fallbackIntent` 명시 규칙 정리 (2026-05-06, 메일 요약·Telegram 최근 메시지 명시 규칙 추가)
+- [x] `Monitoring` 라우팅 연결 (2026-05-06, `monitoring_status` 신규)
+
+## 2026-05-06 AI 채팅 라우팅 5종 보완 잔여
+
+- [ ] 텔레그램 실사용 QA — 6개 명령 응답 확인
+  - `노트북 한남동644 사업성 요약`
+  - `시트 읽기` (또는 `시트 조회`)
+  - `오늘 일정 브리핑`
+  - `오늘 메일 요약`
+  - `Telegram 최근 메시지` (웹 채팅)
+  - `모니터링`
+- [ ] `WORKSPACE_SPREADSHEET_ID` 환경변수 누락 시 사용자 안내 메시지 운영 확인
+- [ ] NotebookLM MCP 서버 미가동 시 `노트북 ...` 응답 메시지 운영 확인
+- [ ] 진단서 §8 잔여 이슈
+  - `한남 PF 진행상황`에서 `한남` 개별 딜 파싱
+  - 웹 `trpc.intent.route` 응답에서 `data` 포맷 누락(파일/메일/이벤트 목록) 보완
+  - 웹/Telegram 라우팅 경로 통합 (`handleWorkspaceCommand` ↔ `routeIntentMessage` 이중화)
+  - `chatSyncRouter.getMessages` ownership check TODO 처리
 

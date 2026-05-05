@@ -3,6 +3,40 @@
 
 ---
 
+## 2026-05-06
+
+### [Claude Code] AI 채팅 라우팅 5종 보완 (NotebookLM / Sheets / 오늘 일정 / fallback 규칙 / Monitoring)
+- **작업**: `docs/diagnostics/ai-chat-routing.md` §6·§7·§8의 누락 라우팅 5종을 한 번에 연결
+- **추가된 액션 6개**:
+  - `notebooklm_query` (domain=intelligence) — `노트북 ...`, `노트북LM ...`, `NotebookLM ...` prefix
+  - `google_read_sheet` (domain=google) — `시트 읽기/조회/보여줘`, `스프레드시트 ...`, `sheets read`
+  - `google_today_events` (domain=google) — `오늘 일정 브리핑`, `오늘 일정/스케줄/미팅`, `today schedule`
+  - `google_get_emails`(`newer_than:1d`) — `오늘 메일 요약`, `메일 요약` (기존 액션에 명시 규칙 추가)
+  - `chat_telegram_recent` (domain=chat, 신규 핸들러 파일) — `Telegram 최근 메시지`, `텔레그램 최근`
+  - `monitoring_status` (domain=intelligence) — `모니터링`, `시스템 상태`, `monitoring`, `system status`
+- **수정 파일**:
+  - `server/intent/types.ts` — IntentAction 6개 추가
+  - `server/intent/fallbackIntent.ts` — 매처 7개 추가, `오늘 일정` 분기 분리
+  - `server/intent/handlers/intelligence.ts` — NotebookLM, Monitoring 핸들러 추가
+  - `server/intent/handlers/google.ts` — `readSheet`, `todayEvents` 핸들러 추가
+  - `server/intent/handlers/chat.ts` — 신규 (Telegram 최근 메시지)
+  - `server/intent/registry.ts` — chatHandlers 등록
+- **신규 테스트**: 5개 파일, 34 케이스
+  - `notebookLmRouting.test.ts` (7), `sheetsRouting.test.ts` (6), `todayEventsRouting.test.ts` (7), `fallbackIntentRules.test.ts` (8), `monitoringRouting.test.ts` (6)
+- **검증**:
+  - `npm run check` ✅ (모듈 경계 위반 0건)
+  - `npm run build` ✅
+  - `npm test` ✅ 403 passed (369 → +34), 7 skipped, 2 todo
+- **자율 결정 기록**:
+  - 새 도메인 추가 대신 `intelligence` / `google` / `chat` 기존 도메인에 액션 추가 — modular monolith 분리 비용 절감
+  - 트리거 우선순위는 `오늘 일정 브리핑` > 일반 `오늘 일정` > `이번 주 일정`(기존 list_events) 순으로 정렬
+  - `읽기` 매처가 `쓰기` 매처보다 먼저 평가되어 `시트 읽기` 충돌 회피
+  - NotebookLM/Telegram-최근은 prefix 95~99% 우선순위로 일반 키워드 충돌 차단
+- **잔여**:
+  - 텔레그램·웹 채팅 실사용 QA (회장님 운영 검증)
+  - `WORKSPACE_SPREADSHEET_ID` 미설정 시 read_sheet 안내 메시지 확인
+  - NotebookLM MCP 서버 미가동 상태에서 `노트북 ...` 질의 응답 메시지 확인
+
 ## 2026-05-03
 
 ### [Codex] 작업일지 / TODO / 인수인계 정리

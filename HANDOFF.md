@@ -1,5 +1,5 @@
 ﻿# HANDOFF.md — 에스턴 워크스테이션
-> 업데이트: 2026-05-03 | 브랜치: codex-google-workspace-expansion
+> 업데이트: 2026-05-06 | 브랜치: codex-google-workspace-expansion
 
 ---
 
@@ -8,8 +8,8 @@
 | 항목 | 상태 |
 |------|------|
 | 서버 | 정상 기동 (포트 4000) |
-| 빌드 | `npm run check` ✅ / `npm run build` ✅ (2026-05-02) |
-| 테스트 | 369 passed, 7 skipped, 2 todo |
+| 빌드 | `npm run check` ✅ / `npm run build` ✅ (2026-05-06) |
+| 테스트 | 403 passed, 7 skipped, 2 todo |
 | 브랜치 | `codex-google-workspace-expansion` |
 | Redis | 선택적 (없어도 부팅됨, BullMQ lazy init) |
 | Google OAuth | 정상 연결 시 작동 |
@@ -815,3 +815,30 @@
   - `NotebookLM` 자연어 라우팅 연결
   - `Sheets` 자연어 라우팅 연결
   - `오늘 일정 브리핑` 라우팅 수정
+
+## 2026-05-06 AI 채팅 라우팅 5종 보완 완료 (Claude Code)
+
+- 오늘 완료 (진단서 §6·§7·§8 누락 5종 한 번에 연결)
+  1. `notebooklm_query` — `노트북 ...` / `노트북LM ...` / `NotebookLM ...` prefix → `queryNotebookLm()` 호출
+  2. `google_read_sheet` — `시트 읽기/조회/보여줘`, `스프레드시트 ...`, `sheets read` → `SheetsConnector.readSheet()`
+  3. `google_today_events` — `오늘 일정 브리핑`, `오늘 일정/스케줄/미팅` → KST 오늘 한정 `getEventsByDateRange()`
+  4. `google_get_emails`(`newer_than:1d`) — `오늘 메일 요약`, `메일 요약` (기존 액션에 명시 규칙 추가)
+  5. `chat_telegram_recent` — `Telegram 최근 메시지`, `텔레그램 최근` → `searchConversationMessages(source:telegram)`
+  6. `monitoring_status` — `모니터링`, `시스템 상태`, `monitoring`, `system status` → `getApiUsageSnapshot` + uptime/메모리/세션
+- 신규/수정 파일
+  - 수정: `server/intent/types.ts`, `server/intent/fallbackIntent.ts`, `server/intent/handlers/intelligence.ts`, `server/intent/handlers/google.ts`, `server/intent/registry.ts`
+  - 신규: `server/intent/handlers/chat.ts`
+  - 테스트: `notebookLmRouting.test.ts`, `sheetsRouting.test.ts`, `todayEventsRouting.test.ts`, `fallbackIntentRules.test.ts`, `monitoringRouting.test.ts` (총 34 케이스)
+- 검증
+  - `npm run check` ✅ (모듈 경계 위반 0건)
+  - `npm run build` ✅
+  - `npm test` ✅ 403 passed (369 → +34), 7 skipped, 2 todo
+- 우선순위 결정 근거
+  - `오늘 일정 브리핑` > `오늘 일정` > `이번 주 일정` 순으로 매처 정렬
+  - `시트 읽기`가 `시트 쓰기`보다 먼저 평가됨
+  - `노트북`/`텔레그램 최근` prefix는 confidence 0.9~0.99로 일반 키워드 충돌 차단
+- 운영 검증 잔여 (회장님 수동 QA)
+  - 6개 명령을 텔레그램·웹 채팅에서 각 1회 전송
+  - `WORKSPACE_SPREADSHEET_ID` / `NOTEBOOKLM_MCP_ENABLED` 미설정 환경 응답 확인
+- 다음 후보
+  - 진단서 §8 잔여: `한남 PF` 개별 딜 파싱, 웹 `intent.route` `data` 포맷 누락, 웹/Telegram 라우팅 경로 통합, `chatSyncRouter.getMessages` ownership check

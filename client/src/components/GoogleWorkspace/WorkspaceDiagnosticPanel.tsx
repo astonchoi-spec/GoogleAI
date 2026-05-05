@@ -15,6 +15,7 @@ import {
   ExternalLink,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { watchPopupClose } from "@/lib/popupMonitor";
 import { trpc } from "@/lib/trpc";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -155,12 +156,7 @@ function ServiceDetailRow({
   const handleReconnect = () => {
     if (!authUrl) return;
     const popup = window.open(authUrl, "_blank", "width=520,height=620");
-    const timer = setInterval(() => {
-      if (popup?.closed) {
-        clearInterval(timer);
-        onRefetch();
-      }
-    }, 800);
+    watchPopupClose(popup, onRefetch, 800);
   };
 
   return (
@@ -338,12 +334,7 @@ export default function WorkspaceDiagnosticPanel() {
                     "_blank",
                     "width=520,height=620"
                   );
-                  const timer = setInterval(() => {
-                    if (popup?.closed) {
-                      clearInterval(timer);
-                      handleRefetch();
-                    }
-                  }, 800);
+                  watchPopupClose(popup, handleRefetch, 800);
                 }}
               >
                 <LogIn className="mr-1.5 h-3.5 w-3.5" />

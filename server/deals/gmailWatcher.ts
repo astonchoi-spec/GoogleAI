@@ -16,6 +16,7 @@ type GmailWatcherDeps = {
 
 let pollTimer: ReturnType<typeof setInterval> | null = null;
 let authNotified = false;
+let pollInFlight = false;
 
 function intervalMs(): number {
   const minutes = Number(process.env.GMAIL_POLL_INTERVAL_MIN || "5");
@@ -150,9 +151,25 @@ export function startGmailWatcher(deps: GmailWatcherDeps = {}): ReturnType<typeo
     return null;
   }
   if (pollTimer) return pollTimer;
-  void pollGmailOnce(deps).catch((err) => console.error("[gmail-watcher] initial poll:", err));
+  const runPoll = async (reason: "initial" | "poll"): Promise<void> => {
+    if (pollInFlight) {
+      console.warn("[gmail-watcher] skipped overlapping poll");
+      return;
+    }
+
+    pollInFlight = true;
+    try {
+      await pollGmailOnce(deps);
+    } catch (err) {
+      console.error(`[gmail-watcher] ${reason}:`, err);
+    } finally {
+      pollInFlight = false;
+    }
+  };
+
+  void runPoll("initial");
   pollTimer = setInterval(() => {
-    void pollGmailOnce(deps).catch((err) => console.error("[gmail-watcher] poll:", err));
+    void runPoll("poll");
   }, intervalMs());
   console.log(`[gmail-watcher] polling every ${Math.round(intervalMs() / 60000)}min, label: ${labelName()}`);
   return pollTimer;
@@ -162,5 +179,6 @@ export function stopGmailWatcher(): void {
   if (!pollTimer) return;
   clearInterval(pollTimer);
   pollTimer = null;
+  pollInFlight = false;
   console.log("[gmail-watcher] stopped");
 }

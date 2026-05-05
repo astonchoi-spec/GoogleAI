@@ -3,6 +3,7 @@ import { motion } from "framer-motion";
 import { LogIn, LogOut, Loader2, AlertTriangle, CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { watchPopupClose } from "@/lib/popupMonitor";
 import { trpc } from "@/lib/trpc";
 
 export default function GoogleAuthCard() {
@@ -22,13 +23,10 @@ export default function GoogleAuthCard() {
   const handleConnect = () => {
     if (!authUrlData?.authUrl) return;
     const popup = window.open(authUrlData.authUrl, "_blank", "width=500,height=600");
-    const timer = setInterval(() => {
-      if (popup?.closed) {
-        clearInterval(timer);
-        refetch();
-        toast.success("Google 연결이 완료되었습니다.");
-      }
-    }, 1000);
+    watchPopupClose(popup, () => {
+      refetch();
+      toast.success("Google 연결이 완료되었습니다.");
+    });
   };
 
   const handleDisconnect = () => revokeMutation.mutate();

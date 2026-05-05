@@ -4,6 +4,7 @@ import { Bell, Bot, KeyRound, LogIn, Menu, Search, Send, ShieldCheck, Sparkles, 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { watchPopupClose } from "@/lib/popupMonitor";
 import { trpc } from "@/lib/trpc";
 
 interface StatusBarProps {
@@ -153,12 +154,10 @@ export default function StatusBar({ title, subtitle, onMenuClick }: StatusBarPro
               }
 
               popup.location.href = authUrl;
-              const timer = window.setInterval(() => {
-                if (!popup.closed) return;
-                window.clearInterval(timer);
+              watchPopupClose(popup, () => {
                 void utils.googleWorkspace.isAuthenticated.invalidate();
                 void utils.auth.me.invalidate();
-              }, 1000);
+              });
             }}
             className="hidden h-8 items-center gap-2 rounded-md border border-white/10 bg-white/5 px-3 text-xs text-[var(--aston-text)] hover:bg-white/10 md:flex"
           >

@@ -3,6 +3,22 @@
 
 ---
 
+## 2026-05-06 (P2 Intelligence System)
+
+### [Claude Code] Phase 1c — Gemini 자동 분류 Wiki 저장 (커밋 34f7d19)
+- 트리거: `저장해 [텍스트]`, `분류저장`, `자동저장`
+- Gemini → category/summary/tags 추출 → writeWiki() 저장
+- 응답: `✅ Wiki 자동 저장 완료 | #카테고리 | 한 줄 요약`
+- 테스트 6건 추가
+
+### [Claude Code] Phase 1d — MTProto 채널 수집기 (커밋 72f51e0~c384a11)
+- `telegram`(gram.js) 패키지 설치
+- `server/intelligence/collector.ts`: 채널 메시지 → Gemini 분류 → Wiki 저장
+- 스마트 필터: 150자 이상 + 관련 키워드 + 일일 200건 상한
+- 수집 채널 12개: 코인/주식/제약/바이오/거시/부동산 분야
+- API 키: TELEGRAM_API_ID/HASH 설정 완료 (OTP 인증 성공)
+- 환경변수: TELEGRAM_CHANNEL_IDS=12개 채널 목록
+
 ## 2026-05-06 (P1 완료)
 
 ### [Claude Code] Gemini Grounding 소스/인용 칩 UI (커밋 e9f62a0)

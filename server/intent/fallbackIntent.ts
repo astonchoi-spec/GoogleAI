@@ -341,6 +341,23 @@ export function fallbackIntent(message: string): IntentResult {
     };
   }
 
+  // "한남 PF 진행상황" 류 — 개별 딜명 + (PF/진행상황/상태/현황) → deals_command 로 분기
+  // PF/포트폴리오 단독 키워드보다 먼저 평가되어야 한다.
+  const dealStatusMatch = message.trim().match(/^(\S+)\s+(?:PF|pf)?\s*(진행상황|상태|현황)\s*$/);
+  if (dealStatusMatch) {
+    const dealName = dealStatusMatch[1];
+    const reserved = ["pf", "포트폴리오", "파이프라인", "전체", "총", "딜"];
+    if (!reserved.includes(dealName.toLowerCase())) {
+      return {
+        domain: "deals",
+        action: "deals_command",
+        type: "query",
+        confidence: 0.9,
+        params: { syntheticCommand: `딜 ${dealName}` },
+      };
+    }
+  }
+
   if (lower.includes("pf") || lower.includes("파이프라인") || lower.includes("포트폴리오")) {
     return { domain: "realestate", action: "realestate_portfolio_summary", type: "query", confidence: 0.55, params: {} };
   }

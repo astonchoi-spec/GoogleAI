@@ -47,8 +47,10 @@ export const chatSyncRouter = router({
       })
     )
     .query(async ({ input, ctx }) => {
-      // Verify user owns this conversation
-      // TODO: Add ownership check
+      const conversation = await getConversationById(input.conversationId);
+      if (!conversation || conversation.userId !== ctx.user.id) {
+        throw new Error("Conversation not found");
+      }
 
       const msgs = await getConversationMessages(input.conversationId, input.limit);
       return msgs.map((msg) => ({
@@ -67,7 +69,12 @@ export const chatSyncRouter = router({
         since: z.date(),
       })
     )
-    .query(async ({ input }) => {
+    .query(async ({ input, ctx }) => {
+      const conversation = await getConversationById(input.conversationId);
+      if (!conversation || conversation.userId !== ctx.user.id) {
+        throw new Error("Conversation not found");
+      }
+
       const msgs = await getRecentMessages(input.conversationId, input.since);
       return msgs.map((msg) => ({
         ...msg,
@@ -89,7 +96,12 @@ export const chatSyncRouter = router({
         limit: z.number().min(1).max(200).default(100),
       })
     )
-    .query(async ({ input }) => {
+    .query(async ({ input, ctx }) => {
+      const conversation = await getConversationById(input.conversationId);
+      if (!conversation || conversation.userId !== ctx.user.id) {
+        throw new Error("Conversation not found");
+      }
+
       const msgs = await searchConversationMessages({
         conversationId: input.conversationId,
         query: input.query,

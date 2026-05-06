@@ -67,14 +67,19 @@ const modules = [
   },
 ];
 
-const activities = [
-  { label: "AI 지시", detail: "오늘 메일 요약을 정리했습니다.", time: "2분 전", href: "/chat" }, // MODIFIED: recent activity rows now open the related operational screen.
-  { label: "Telegram 수신", detail: "새 메시지 3건이 동기화되었습니다.", time: "8분 전", href: "/chat?source=telegram" }, // MODIFIED: recent activity rows now open the related operational screen.
-  { label: "Google 작업", detail: "Calendar 일정 초안이 생성되었습니다.", time: "17분 전", href: "/google?tab=calendar" }, // MODIFIED: recent activity rows now open the related operational screen.
-  { label: "트레이딩 알림", detail: "BTC 포지션 변동 알림이 도착했습니다.", time: "31분 전", href: "/trading" }, // MODIFIED: recent activity rows now open the related operational screen.
-  { label: "PF 변경 기록", detail: "한남 PF 사업성 메모가 갱신되었습니다.", time: "42분 전", href: "/real-estate-pf" }, // MODIFIED: recent activity rows now open the related operational screen.
-  { label: "시스템 오류", detail: "최근 알림 없음", time: "현재", href: "/monitoring" }, // MODIFIED: recent activity rows now open the related operational screen.
-];
+function formatRelativeTime(timestamp: number | string | Date): string {
+  const t = new Date(timestamp).getTime();
+  if (!Number.isFinite(t)) return "—";
+  const diff = Date.now() - t;
+  if (diff < 0) return "방금 전";
+  const min = Math.floor(diff / 60000);
+  if (min < 1) return "방금 전";
+  if (min < 60) return `${min}분 전`;
+  const hr = Math.floor(min / 60);
+  if (hr < 24) return `${hr}시간 전`;
+  const day = Math.floor(hr / 24);
+  return `${day}일 전`;
+}
 
 function KPICard({ config, navigate }: { config: KPIConfig & { value: string }; navigate: (path: string) => void }) {
   const Icon = config.icon;
@@ -285,6 +290,92 @@ export default function Home() {
       return { ...config, value };
     });
   }, [tradingValue, alertValue, telegramValue, gmailValue, calendarValue, pfValue]);
+
+  // 실제 데이터 기반 최근 활동 — KPI에 이미 로드된 query 결과를 재사용
+  const activities = useMemo(() => {
+    const items: Array<{ label: string; detail: string; time: string; href: string; sortKey: number }> = [];
+
+    // 오늘 일정 — 가장 가까운 미래 일정
+    if (Array.isArray(calendarData?.events) && calendarData.events.length > 0) {
+      const sorted = [...calendarData.events].sort((a: any, b: any) => {
+        const ta = new Date(a.startTime || a.start?.dateTime || a.start?.date || 0).getTime();
+        const tb = new Date(b.startTime || b.start?.dateTime || b.start?.date || 0).getTime();
+        return ta - tb;
+      });
+      const next = sorted[0] as any;
+      const startMs = new Date(next.startTime || next.start?.dateTime || next.start?.date || 0).getTime();
+      items.push({
+        label: "Google 일정",
+        detail: `다음 일정: ${next.title || next.summary || "(제목 없음)"}`,
+        time: formatRelativeTime(startMs),
+        href: "/google?tab=calendar",
+        sortKey: startMs || Date.now(),
+      });
+    }
+
+    // 받은 메일 — 가장 최근 메일
+    if (Array.isArray(gmailData?.emails) && gmailData.emails.length > 0) {
+      const recent = gmailData.emails[0] as any;
+      const ts = recent.date ? new Date(recent.date).getTime() : Date.now();
+      items.push({
+        label: "Gmail 수신",
+        detail: `${recent.subject || "(제목 없음)"} — ${recent.from || ""}`.slice(0, 80),
+        time: formatRelativeTime(ts),
+        href: "/google?tab=gmail",
+        sortKey: ts,
+      });
+    }
+
+    // 트레이딩 알림 — 가장 최근 webhook
+    if (Array.isArray(alerts) && alerts.length > 0) {
+      const latest = alerts[0] as any;
+      const ts = latest.timestamp ? new Date(latest.timestamp).getTime() : Date.now();
+      items.push({
+        label: "트레이딩 알림",
+        detail: latest.symbol ? `${latest.symbol} ${latest.action || ""} 신호` : "TradingView 알림 수신",
+        time: formatRelativeTime(ts),
+        href: "/trading",
+        sortKey: ts,
+      });
+    }
+
+    // PF 딜 — 가장 최근 변경된 딜
+    if (Array.isArray(dealsData) && dealsData.length > 0) {
+      const sorted = [...(dealsData as any[])].sort((a, b) => {
+        const ta = new Date(a.updatedAt || a.createdAt || 0).getTime();
+        const tb = new Date(b.updatedAt || b.createdAt || 0).getTime();
+        return tb - ta;
+      });
+      const latest = sorted[0];
+      const ts = new Date(latest.updatedAt || latest.createdAt || 0).getTime() || Date.now();
+      items.push({
+        label: "PF 딜 변경",
+        detail: `${latest.name || "딜"} 갱신`,
+        time: formatRelativeTime(ts),
+        href: "/real-estate-pf",
+        sortKey: ts,
+      });
+    }
+
+    // Telegram 상태
+    if (telegramStatus) {
+      items.push({
+        label: "Telegram",
+        detail: telegramStatus.status === "active" ? "봇 활성 상태" : "봇 오프라인",
+        time: "현재",
+        href: "/chat?source=telegram",
+        sortKey: Date.now() - 1, // 항상 하단에 가까이 배치
+      });
+    }
+
+    // 폴백: 데이터가 하나도 없을 때
+    if (items.length === 0) {
+      return [{ label: "시스템 상태", detail: "최근 활동을 불러오는 중입니다.", time: "현재", href: "/monitoring", sortKey: 0 }];
+    }
+
+    // 시간 역순 정렬, 최대 6건
+    return items.sort((a, b) => b.sortKey - a.sortKey).slice(0, 6);
+  }, [calendarData, gmailData, alerts, dealsData, telegramStatus]);
 
   const submitCommand = () => {
     if (!trimmedCommand) return;

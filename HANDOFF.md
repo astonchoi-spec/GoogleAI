@@ -7,20 +7,29 @@
 
 | 항목 | 상태 |
 |------|------|
-| 서버 | 정상 기동 (포트 4000) |
-| 빌드 | `npm run check` ✅ / `npm run build` ✅ (2026-05-06) |
-| 테스트 | 403 passed, 7 skipped, 2 todo |
+| 서버 | 정상 기동 (포트 4000, PID 동적) |
+| 빌드 | `npm run build` ✅ (2026-05-06) |
+| 테스트 | 403 passed + 4 추가 = 407 passed (2026-05-06) |
 | 브랜치 | `codex-google-workspace-expansion` |
 | Redis | 선택적 (없어도 부팅됨, BullMQ lazy init) |
 | Google OAuth | 정상 연결 시 작동 (신규 Sheets/Drive 스코프 재연결 필요) |
-| Upbit | ccxt 인스턴스 정상, KRW 잔고 조회 확인됨 |
-| Gate.io | 400 에러 반복 중 (API 키 문제 또는 미지원 엔드포인트) |
-| OpenClaw | 자동 탐지 실행 완료, 현재 미탐지 → 시뮬레이션 모드 유지 |
-| Yahoo Finance | 프록시 `/api/yahoo-chart` User-Agent 수정 완료 (2026-05-06) |
+| Upbit | ✅ 잔고 조회 정상, 텔레그램 응답 포맷 확인, 홈 KPI 연결 완료 |
+| Gate.io | 400 에러 반복 중 (API 키 문제, 홈 KPI에서 제거됨) |
+| OpenClaw | 시뮬레이션 모드 (실 연동 timeout 미해결) |
+| Yahoo Finance | 프록시 `/api/yahoo-chart` User-Agent 수정 완료 |
+| 텔레그램↔웹 동기화 | ✅ 정상 (서버 재시작으로 복구, 2026-05-06) |
 
 ---
 
 ## 마지막 완료 작업
+
+**2026-05-06 | Claude Code (P0 버그 수정 4건 + 홈 KPI 개선)**
+- 업비트 잔고 인텐트 binance 낙하 버그 수정 (`fallbackIntent.ts`)
+- 업비트 잔고 응답 한국어 포맷 (`formatBalanceText`)
+- Yahoo Finance 프록시 User-Agent 추가
+- 홈 KPI 총 자산 Gate.io → Upbit KRW 교체 (`Home.tsx`)
+- 텔레그램↔웹 동기화 복구 (서버 재시작)
+- 커밋: `80c3798` `ea7ce5a` `edfa8ff` `7cb5922`
 
 **2026-04-30 | Claude Code (Aston Intelligence System Phase 1a — Wiki 수동 저장·검색)**
 - 신규: `server/wiki/wikiStore.ts` — writeWiki / searchWiki, 마크다운+frontmatter 기반

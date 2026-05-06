@@ -5,6 +5,21 @@
 
 ## 2026-05-06
 
+### [Claude Code] 홈 KPI 총 자산 Upbit 교체 (커밋 7cb5922)
+- **작업**: `Home.tsx` Trading KPI를 Gate.io(미연결) → Upbit KRW 잔고로 교체
+- **수정 파일**: `client/src/pages/Home.tsx`
+- **검증**: `npm run build` ✅, 라벨 "총 자산 (USDT)" → "총 자산 (Upbit)", 만/억 한국어 포맷
+
+### [Claude Code] 업비트 잔고 응답 한국어 포맷 (커밋 edfa8ff)
+- **작업**: `tradingBalance` 핸들러 — 잔고 데이터를 텔레그램/웹 응답 텍스트에 직접 포맷
+- **수정 파일**: `server/intent/handlers/trading.ts` — `formatBalanceText()` 추가
+- **검증**: `npm run build` ✅, 텔레그램 응답 "💰 UPBIT 잔고 / ₩13,778 KRW" 정상
+
+### [Claude Code] 업비트잔고 인텐트 binance 낙하 버그 수정 (커밋 ea7ce5a)
+- **작업**: `fallbackIntent.ts` — "업비트" 한글 키워드 누락으로 기본값 binance로 라우팅되던 버그
+- **수정 파일**: `server/intent/fallbackIntent.ts`, `server/__tests__/fallbackIntentRules.test.ts` (+4 테스트)
+- **검증**: `npm test` 12 passed ✅
+
 ### [Claude Code] Yahoo Finance 프록시 User-Agent 수정 + 웹 채팅 QA
 - **작업**: `/api/yahoo-chart` 프록시 서버사이드 fetch에 User-Agent 헤더 추가 (미설정 시 Yahoo Finance 차단됨)
 - **수정 파일**: `server/routers/proxy.ts` — fetch 옵션에 Chrome UA 추가

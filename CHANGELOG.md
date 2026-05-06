@@ -3,6 +3,19 @@
 
 ---
 
+## 2026-05-06 (P1 완료)
+
+### [Claude Code] Gemini Grounding 소스/인용 칩 UI (커밋 e9f62a0)
+- `caller.ts`: 소스를 content 텍스트에 붙이지 않고 `sources[]` 분리 반환
+- `llm.ts`: sources 필드 클라이언트 전달
+- `UnifiedChatInterface.tsx`: 메시지 버블 하단에 cyan 칩 렌더링 (클릭 시 출처 링크)
+- **검증**: `npm run build` ✅
+
+### [Claude Code] 홈 KPI 로딩/에러 UX 개선 (커밋 4f778e1)
+- 로딩("...") → pulse 애니메이션 + muted 색상
+- 에러("연결 필요"/"연결 실패") → amber 카드 테두리 + amber 값/아이콘
+- **검증**: `npm run build` ✅
+
 ## 2026-05-06 (추가)
 
 ### [Claude Code] 딜 시트 연동 완료 + 인텐트 버그 2건 수정 (커밋 ed65ba9)

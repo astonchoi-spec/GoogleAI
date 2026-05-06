@@ -87,7 +87,9 @@ describe("GateioConnector", () => {
   let connector: GateioConnector;
 
   beforeEach(() => {
-    // Create a fresh instance for each test
+    // Stub API key env vars so hasApiKey() returns true in tests
+    vi.stubEnv("GATEIO_API_KEY", "test-key");
+    vi.stubEnv("GATEIO_API_SECRET", "test-secret");
     connector = new GateioConnector();
   });
 

@@ -38,6 +38,9 @@ const tradingBalance: IntentHandler = async (intent) => {
   const exchange = asString(intent.params.exchange, "binance");
   let data;
   if (exchange === "gateio") {
+    if (!gateioConnector.hasApiKey()) {
+      return { intent, handled: true, requiresConfirmation: false, response: "⚠️ Gate.io API 키가 설정되지 않았습니다. .env에 GATEIO_API_KEY와 GATEIO_API_SECRET을 추가하세요." };
+    }
     data = await gateioConnector.getSpotBalance();
   } else if (exchange === "kiwoom") {
     const stockCode = asString(intent.params.stockCode, "");

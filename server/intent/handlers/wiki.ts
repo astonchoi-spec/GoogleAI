@@ -32,7 +32,7 @@ const wikiAutoClassify: IntentHandler = async (intent) => {
     const tags = Array.isArray(classified.tags) ? classified.tags : [];
 
     const body = `${summary}\n\n원문:\n${content}`;
-    await writeWiki({ body, categories: [category, ...tags], source: "telegram-auto" });
+    await writeWiki({ title: summary.slice(0, 50), body, categories: [category, ...tags], source: "telegram-auto" });
 
     const tagStr = tags.length > 0 ? ` #${tags.join(" #")}` : "";
     return {

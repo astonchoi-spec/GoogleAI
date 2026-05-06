@@ -172,7 +172,7 @@ export const llmRouter = router({
           const responseText = routed.response || formatIntentRouteMessage(routed) || "처리 완료";
           console.log("[INTENT] handled — returning result, length:", responseText.length);
           await sessionManager.addMessage(userId, "assistant", responseText);
-          return { response: responseText, model: "intent-router", engine: "intent-service" };
+          return { response: responseText, model: "intent-router", engine: "intent-service", data: routed.data, sources: undefined };
         }
 
         if (routed.requiresConfirmation) {
@@ -180,7 +180,7 @@ export const llmRouter = router({
           const responseText = formatIntentRouteMessage(routed) || routed.response;
           console.log("[INTENT] requiresConfirmation — returning confirmation");
           await sessionManager.addMessage(userId, "assistant", responseText);
-          return { response: responseText, model: "intent-router", engine: "intent-service" };
+          return { response: responseText, model: "intent-router", engine: "intent-service", data: routed.data, sources: undefined };
         }
 
         // chat 도메인이면 Gemini 일반 대화로 fall-through
@@ -200,7 +200,7 @@ export const llmRouter = router({
         if (isAuthError) {
           const errorResponse = `요청한 기능을 실행하지 못했습니다.\n\n${errMsg}`;
           await sessionManager.addMessage(userId, "assistant", errorResponse);
-          return { response: errorResponse, model: "intent-error", engine: "intent-service" };
+          return { response: errorResponse, model: "intent-error", engine: "intent-service", data: undefined, sources: undefined };
         }
         // 그 외 오류는 Gemini 일반 대화로 fall-through
       }
@@ -257,6 +257,7 @@ export const llmRouter = router({
         model: response.model,
         engine: response.engine,
         sources: response.sources,
+        data: undefined,
       };
     }),
 

@@ -1,7 +1,7 @@
 import type { Telegraf } from "telegraf";
 import { handleDealFile, isDealFileMessage } from "../../deals/telegramDealFileHandler.ts";
 import { getConversationByTelegramChatId, getOrCreateTelegramConversation, saveMessage } from "../../db-chat.ts";
-import { classifyIntent, formatIntentRouteMessage, routeIntentMessage } from "../../intent/intentService.ts";
+import { formatIntentRouteMessage, routeIntentMessage } from "../../intent/intentService.ts";
 import type LLMCaller from "../caller.ts";
 import { getModel } from "../models.ts";
 import type { SessionManager } from "../session.ts";
@@ -36,18 +36,7 @@ export function setupMessageRouter(
       await ctx.sendChatAction("typing");
       const conversationId = await persistUserMessage(ctx, userMessage);
 
-      const preIntent = await classifyIntent(userMessage);
-      const workspaceResult = preIntent.action.startsWith("google_")
-        ? await handleWorkspaceCommand(userMessage, ctx.chat?.id ?? 0, bot.telegram)
-        : null;
-      if (workspaceResult !== null) {
-        const sentMessage = await ctx.reply(workspaceResult, {
-          reply_parameters: { message_id: ctx.message.message_id },
-        });
-        await saveAssistantMessage(conversationId, workspaceResult, sentMessage.message_id);
-        return;
-      }
-
+      // Step 1: routeIntentMessage 우선 — 웹 채팅과 동일한 경로
       const routingUserId = (await getConnectedGoogleUserId()) ?? ctx.session.userId;
       console.log("[TG INTENT] routeIntentMessage userId:", routingUserId, "msg:", userMessage.slice(0, 60));
       const routed = await routeIntentMessage({
@@ -65,6 +54,18 @@ export function setupMessageRouter(
             reply_parameters: { message_id: ctx.message.message_id },
           });
           await saveAssistantMessage(conversationId, routedText, sentMessage.message_id);
+          return;
+        }
+      }
+
+      // Step 2: handleWorkspaceCommand 폴백 — send_drive_file 등 Telegram 전용 액션 처리
+      if (routed.intent.domain === "google" || routed.intent.action.startsWith("google_")) {
+        const workspaceResult = await handleWorkspaceCommand(userMessage, ctx.chat?.id ?? 0, bot.telegram);
+        if (workspaceResult !== null) {
+          const sentMessage = await ctx.reply(workspaceResult, {
+            reply_parameters: { message_id: ctx.message.message_id },
+          });
+          await saveAssistantMessage(conversationId, workspaceResult, sentMessage.message_id);
           return;
         }
       }

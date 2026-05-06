@@ -10,7 +10,7 @@ import * as readline from "node:readline/promises";
 import fs from "node:fs/promises";
 import path from "node:path";
 import { llmAdapter } from "../_core/llmAdapter.ts";
-import { writeWiki } from "../wiki/wikiStore.ts";
+import { writeWiki } from "../_core/wikiProxy.ts";
 
 const SESSION_PATH = path.resolve(process.cwd(), "data", "mtproto-session.txt");
 const MIN_MESSAGE_LENGTH = 150;        // 150자 미만은 저장 안 함 (비용 절감)
@@ -105,6 +105,7 @@ async function classifyAndSave(text: string, channelName: string): Promise<void>
     const tags = Array.isArray(result.tags) ? result.tags : [];
 
     await writeWiki({
+      title: summary.slice(0, 50),
       body: `${summary}\n\n[채널: ${channelName}]\n${text.slice(0, 2000)}`,
       categories: [category, ...tags],
       source: `mtproto:${channelName}`,
@@ -155,7 +156,7 @@ export async function startCollector(): Promise<void> {
       rl.close();
       return code.trim();
     },
-    onError: (err) => console.error("[collector] MTProto 에러:", err),
+    onError: (err: unknown) => console.error("[collector] MTProto 에러:", err),
   });
 
   await saveSession(String(client.session.save()));

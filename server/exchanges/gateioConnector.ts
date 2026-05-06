@@ -68,11 +68,21 @@ export class GateioConnector {
     }
   }
 
+  hasApiKey(): boolean {
+    return !!(process.env.GATEIO_API_KEY && process.env.GATEIO_API_SECRET);
+  }
+
   private getExchange(): any {
     if (!this.exchange) {
       throw new Error("Gate.io exchange not initialized. Check GATEIO_API_KEY and GATEIO_API_SECRET.");
     }
     return this.exchange;
+  }
+
+  private requireApiKey(context: string): void {
+    if (!this.hasApiKey()) {
+      throw new Error(`Gate.io API 키가 설정되지 않았습니다. GATEIO_API_KEY와 GATEIO_API_SECRET을 .env에 추가하세요.`);
+    }
   }
 
   private handleError(context: string, error: unknown): Error {
@@ -89,6 +99,7 @@ export class GateioConnector {
   }
 
   async getSpotBalance(): Promise<GateBalance> {
+    this.requireApiKey("현물 잔고 조회");
     try {
       const exchange = this.getExchange();
       const balance = await exchange.fetchBalance({ type: "spot" });
@@ -103,6 +114,7 @@ export class GateioConnector {
   }
 
   async getFuturesBalance(): Promise<GateBalance> {
+    this.requireApiKey("선물 잔고 조회");
     try {
       const exchange = this.getExchange();
       const balance = await exchange.fetchBalance({ type: "swap", settle: "usdt" });
@@ -117,6 +129,7 @@ export class GateioConnector {
   }
 
   async getPositions(): Promise<GatePosition[]> {
+    this.requireApiKey("포지션 조회");
     try {
       const exchange = this.getExchange();
       if (!exchange.has.fetchPositions) {
@@ -161,6 +174,7 @@ export class GateioConnector {
   }
 
   async getMyTrades(symbol: string, since?: number, limit?: number): Promise<GateTrade[]> {
+    this.requireApiKey("거래 내역 조회");
     try {
       const exchange = this.getExchange();
       const trades = await exchange.fetchMyTrades(symbol, since, limit);

@@ -210,11 +210,22 @@ export default function Home() {
 
     try {
       if (!telegramStatus) return "오프";
-      return telegramStatus.status === "active" ? "활성" : "오프";
+      if (telegramStatus.status === "no_token") return "토큰 없음";
+      if (telegramStatus.status === "token_set") return "초기화 중";
+      if (telegramStatus.status === "active") return "활성";
+      return "오프";
     } catch {
       return "연결 실패";
     }
   }, [telegramStatus, loadingTelegram, errorTelegram]);
+
+  const telegramHint = useMemo(() => {
+    if (!telegramStatus || telegramStatus.status !== "active") return "Telegram";
+    const mode = telegramStatus.mode;
+    if (mode === "webhook") return "webhook 모드";
+    if (mode === "polling") return "polling 모드";
+    return "Telegram";
+  }, [telegramStatus]);
 
   const gmailValue = useMemo(() => {
     if (loadingGmail) return "...";
@@ -256,7 +267,7 @@ export default function Home() {
   const kpiConfigs: KPIConfig[] = [
     { label: "오늘 일정", hint: "Calendar", icon: CalendarDays, href: "/google?tab=calendar", key: "calendar" },
     { label: "받은 메일", hint: "Gmail", icon: Mail, href: "/google?tab=gmail", key: "gmail" },
-    { label: "Telegram 상태", hint: "Telegram", icon: Smartphone, href: "/chat?source=telegram", key: "telegram" },
+    { label: "Telegram 상태", hint: telegramHint, icon: Smartphone, href: "/chat?source=telegram", key: "telegram" },
     { label: "총 자산 (Upbit)", hint: "Trading", icon: TrendingUp, href: "/trading", key: "trading" },
     { label: "PF 딜", hint: "Real Estate", icon: Building2, href: "/real-estate-pf", key: "pf" },
     { label: "오늘 알림", hint: "Monitoring", icon: ShieldAlert, href: "/monitoring", key: "alert" },

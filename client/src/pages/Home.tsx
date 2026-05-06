@@ -78,6 +78,8 @@ const activities = [
 
 function KPICard({ config, navigate }: { config: KPIConfig & { value: string }; navigate: (path: string) => void }) {
   const Icon = config.icon;
+  const isLoading = config.value === "...";
+  const isError = config.value === "연결 실패" || config.value === "연결 필요";
 
   return (
     <motion.div
@@ -93,17 +95,27 @@ function KPICard({ config, navigate }: { config: KPIConfig & { value: string }; 
           navigate(config.href);
         }
       }}
-      className="cursor-pointer rounded-2xl border border-white/10 bg-[var(--aston-panel)] p-4 transition hover:border-cyan-500/30 hover:bg-white/5"
+      className={`cursor-pointer rounded-2xl border p-4 transition hover:bg-white/5 ${
+        isError
+          ? "border-amber-500/30 bg-amber-500/5 hover:border-amber-500/50"
+          : "border-white/10 bg-[var(--aston-panel)] hover:border-cyan-500/30"
+      }`}
     >
       <div className="flex items-start justify-between gap-4">
         <div>
           <div className="text-sm font-medium text-[var(--aston-muted)]">{config.label}</div>
-          <div className="mt-2 text-3xl font-semibold tracking-tight text-[var(--aston-text)]">
+          <div className={`mt-2 text-3xl font-semibold tracking-tight ${
+            isLoading ? "animate-pulse text-[var(--aston-muted)]"
+            : isError ? "text-amber-400"
+            : "text-[var(--aston-text)]"
+          }`}>
             {config.value}
           </div>
           <div className="mt-1 text-xs text-[var(--aston-muted)]">{config.hint}</div>
         </div>
-        <div className="flex h-11 w-11 items-center justify-center rounded-xl border border-white/10 bg-white/5 text-cyan-300">
+        <div className={`flex h-11 w-11 items-center justify-center rounded-xl border bg-white/5 ${
+          isError ? "border-amber-500/20 text-amber-400" : "border-white/10 text-cyan-300"
+        }`}>
           <Icon className="h-5 w-5" />
         </div>
       </div>

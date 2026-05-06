@@ -94,6 +94,7 @@
     "tailwindcss-animate": "^1.0.7",
     "technicalindicators": "^3.1.0",
     "telegraf": "^4.16.3",
+    "telegram": "^2.26.22",
     "vaul": "^1.1.2",
     "wouter": "^3.3.5",
     "ws": "^8.20.0",

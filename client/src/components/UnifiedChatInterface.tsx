@@ -73,7 +73,7 @@ function isDuplicateMessage(candidate: UnifiedMessage, existing: UnifiedMessage)
 }
 
 export default function UnifiedChatInterface() {
-  const [location] = useLocation(); // MODIFIED: react to /chat query changes without remounting the chat component.
+  const [location, setLocation] = useLocation(); // MODIFIED: react to /chat query changes; setLocation enables re-auth CTA navigation.
   const { isAuthenticated } = useAuth();
   const { preferences } = useAppPreferences();
   const [messages, setMessages] = useState<UnifiedMessage[]>([]);
@@ -847,6 +847,19 @@ export default function UnifiedChatInterface() {
                   )}
                   <div className="space-y-1">
                     <p className="text-sm whitespace-pre-wrap">{msg.content}</p>
+                    {msg.role === "assistant" && msg.content.includes("Google 재인증") && (
+                      <div className="pt-2">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="h-7 border-amber-500/40 bg-amber-500/10 text-amber-300 hover:bg-amber-500/20 hover:text-amber-200"
+                          onClick={() => setLocation("/google")}
+                        >
+                          <LogIn className="mr-1 h-3 w-3" />
+                          Google 다시 연결
+                        </Button>
+                      </div>
+                    )}
                     {msg.sources && msg.sources.length > 0 && (
                       <div className="flex flex-wrap gap-1 pt-1">
                         {msg.sources.map((src, i) => (

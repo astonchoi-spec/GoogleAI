@@ -15,11 +15,14 @@ export interface LLMMessage {
   content: string;
 }
 
+export type GroundingSource = { title: string; uri: string };
+
 export interface LLMResponse {
   content: string;
   model: string;
   engine: LLMEngine;
   tokensUsed?: number;
+  sources?: GroundingSource[];
 }
 
 type GeminiGroundingChunk = {
@@ -53,22 +56,13 @@ function shouldEnableGeminiGrounding(modelId: string): boolean {
   return modelId.startsWith("gemini-2.") || modelId.startsWith("gemini-3."); // MODIFIED: current Gemini models support google_search grounding.
 }
 
-function appendGroundingSources(content: string, chunks: GeminiGroundingChunk[] | undefined): string {
-  const sources = (chunks ?? [])
+function extractGroundingSources(chunks: GeminiGroundingChunk[] | undefined): GroundingSource[] {
+  return (chunks ?? [])
     .map((chunk) => chunk.web)
     .filter((web): web is { uri: string; title?: string } => !!web?.uri)
     .filter((web, index, array) => array.findIndex((item) => item.uri === web.uri) === index)
-    .slice(0, 5);
-
-  if (sources.length === 0) return content;
-
-  // TODO: 검색 출처 UI 표시 - 현재는 응답 텍스트 하단에 임시로 출처를 붙이고, 이후 전용 citation UI로 분리한다.
-  const sourceLines = sources.map((source, index) => {
-    const title = source.title?.trim() || `출처 ${index + 1}`;
-    return `- [${title}](${source.uri})`;
-  });
-
-  return `${content}\n\n출처:\n${sourceLines.join("\n")}`; // MODIFIED: surface Google Search grounding citations in chat responses.
+    .slice(0, 5)
+    .map((web, index) => ({ title: web.title?.trim() || `출처 ${index + 1}`, uri: web.uri }));
 }
 
 function logGeminiGroundingMetadata(modelId: string, metadata?: GeminiGroundingMetadata): void {
@@ -281,17 +275,15 @@ export class LLMCaller {
         throw new Error("Gemini returned an empty response");
       }
 
-      const groundedContent = appendGroundingSources(
-        textContent,
-        candidate?.groundingMetadata?.groundingChunks
-      );
+      const sources = extractGroundingSources(candidate?.groundingMetadata?.groundingChunks);
       logGeminiGroundingMetadata(modelId, candidate?.groundingMetadata);
 
       return {
-        content: groundedContent,
+        content: textContent,
         model: modelId,
         engine: "gemini",
         tokensUsed: response.data.usageMetadata?.totalTokenCount,
+        sources: sources.length > 0 ? sources : undefined,
       };
     } catch (error) {
       throw new Error(`Gemini API error: ${error instanceof Error ? error.message : String(error)}`);

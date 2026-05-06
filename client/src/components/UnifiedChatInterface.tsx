@@ -32,12 +32,18 @@ import { useSpeechRecognition, useTextToSpeech } from "@/hooks/useSpeech"; // AD
 import MessageSearchControls from "./MessageSearchControls"; // MODIFIED: add dedicated search UI component for message search filters.
 import { useAppPreferences } from "@/hooks/useAppPreferences";
 
+interface GroundingSource {
+  title: string;
+  uri: string;
+}
+
 interface UnifiedMessage {
   id: string;
   role: "user" | "assistant";
   content: string;
   source: "web" | "telegram";
   timestamp: Date;
+  sources?: GroundingSource[];
 }
 
 interface MessageSearchFilters { // MODIFIED: keep search state typed and aligned with backend filters.
@@ -409,14 +415,16 @@ export default function UnifiedChatInterface() {
         llmChat: (payload) => chatMutation.mutateAsync(payload),
       });
       const aiResponseText = assistantResult.text;
+      const aiSources = assistantResult.sources;
 
       // Save AI response to DB only if logged in
       const aiMsg: UnifiedMessage = {
         id: `temp-assistant-${Date.now()}`,
         role: "assistant",
-        content: aiResponseText, // MODIFIED: render final response text independent of execution path.
+        content: aiResponseText,
         source: "web",
         timestamp: new Date(),
+        sources: aiSources,
       };
 
       if (conversationId) {
@@ -839,6 +847,22 @@ export default function UnifiedChatInterface() {
                   )}
                   <div className="space-y-1">
                     <p className="text-sm whitespace-pre-wrap">{msg.content}</p>
+                    {msg.sources && msg.sources.length > 0 && (
+                      <div className="flex flex-wrap gap-1 pt-1">
+                        {msg.sources.map((src, i) => (
+                          <a
+                            key={i}
+                            href={src.uri}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-1 rounded-full border border-cyan-500/30 bg-cyan-500/10 px-2 py-0.5 text-[10px] text-cyan-300 hover:bg-cyan-500/20 transition-colors"
+                          >
+                            <span className="opacity-60">🔗</span>
+                            <span className="max-w-[160px] truncate">{src.title}</span>
+                          </a>
+                        ))}
+                      </div>
+                    )}
                     <div className="flex items-center justify-between gap-2 text-xs opacity-70">
                       <span>
                         {msg.timestamp.toLocaleTimeString([], {

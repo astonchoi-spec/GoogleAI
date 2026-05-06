@@ -81,7 +81,7 @@ export async function resolveAssistantResponse({
   isAuthenticated,
   intentRoute,
   llmChat,
-}: ResolveAssistantResponseOptions): Promise<{ text: string; failed: boolean }> {
+}: ResolveAssistantResponseOptions): Promise<{ text: string; failed: boolean; sources?: { title: string; uri: string }[] }> {
   if (isAuthenticated) {
     try {
       const routed = await intentRoute({ message: userMessage });
@@ -98,7 +98,7 @@ export async function resolveAssistantResponse({
 
   try {
     const result = await llmChat({ message: userMessage });
-    return { text: result.response, failed: false };
+    return { text: result.response, failed: false, sources: result.sources ?? undefined };
   } catch (error) {
     console.error("Chat command resolution failed:", error);
     return { text: GENERIC_ERROR_MESSAGE, failed: true };

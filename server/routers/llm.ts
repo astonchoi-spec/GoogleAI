@@ -256,6 +256,7 @@ export const llmRouter = router({
         response: response.content,
         model: response.model,
         engine: response.engine,
+        sources: response.sources,
       };
     }),
 

@@ -13,7 +13,35 @@ import { llmAdapter } from "../_core/llmAdapter.ts";
 import { writeWiki } from "../wiki/wikiStore.ts";
 
 const SESSION_PATH = path.resolve(process.cwd(), "data", "mtproto-session.txt");
-const MIN_MESSAGE_LENGTH = 80; // 이보다 짧은 메시지는 저장 안 함
+const MIN_MESSAGE_LENGTH = 150;        // 150자 미만은 저장 안 함 (비용 절감)
+const MAX_DAILY_CALLS = Number(process.env.COLLECTOR_DAILY_LIMIT ?? "200"); // 일일 Gemini 호출 상한
+const RELEVANCE_KEYWORDS = [           // 이 키워드 포함 메시지만 처리 (비어있으면 전체)
+  "부동산", "PF", "매입", "매각", "임대", "토지", "건물",
+  "비트코인", "BTC", "ETH", "코인", "거래소", "선물", "현물",
+  "주식", "삼성", "반도체", "금리", "환율", "달러",
+  "몽골", "계약", "법무", "소송",
+  "금리", "인플레", "GDP", "경기",
+];
+
+let todayCallCount = 0;
+let todayDate = new Date().toDateString();
+
+function checkDailyLimit(): boolean {
+  const today = new Date().toDateString();
+  if (today !== todayDate) { todayDate = today; todayCallCount = 0; }
+  if (todayCallCount >= MAX_DAILY_CALLS) {
+    console.log(`[collector] 일일 한도 도달 (${MAX_DAILY_CALLS}건) — 오늘은 수집 중단`);
+    return false;
+  }
+  todayCallCount++;
+  return true;
+}
+
+function isRelevant(text: string): boolean {
+  if (RELEVANCE_KEYWORDS.length === 0) return true;
+  const lower = text.toLowerCase();
+  return RELEVANCE_KEYWORDS.some((kw) => lower.includes(kw.toLowerCase()));
+}
 
 type CollectorConfig = {
   apiId: number;
@@ -50,6 +78,8 @@ async function saveSession(session: string): Promise<void> {
 
 async function classifyAndSave(text: string, channelName: string): Promise<void> {
   if (text.length < MIN_MESSAGE_LENGTH) return;
+  if (!isRelevant(text)) { console.log(`[collector] 관련 없음 — 스킵: ${text.slice(0, 30)}...`); return; }
+  if (!checkDailyLimit()) return;
 
   const prompt = `다음 텔레그램 채널 메시지를 분석해서 JSON만 반환하세요.
 채널: ${channelName}

@@ -3,6 +3,60 @@
 
 ---
 
+## 2026-05-07 (P0/P1/P2 정리 + UX/Perf/CI 강화, 7 commits)
+
+### [Claude Code] 알려진 미해결 이슈 4건 일괄 해결 (커밋 bd30c1c)
+- **OpenClaw URL 오탐지**: `data/openclaw-discovery.json` URL `openclaw.local` → `http://localhost:8000`
+- **Gate.io 400 에러**: `gateioConnector.ts`에 `hasApiKey()` + `requireApiKey()` 가드 추가 — 잔고/포지션/거래내역만 차단, `getTicker`(공개 API)는 영향 없음. 인텐트 핸들러에서 미설정 시 친절한 응답.
+- **웹 intent 응답 data 누락**: `server/routers/llm.ts`의 모든 return 경로(`handled` / `requiresConfirmation` / `auth-error` / LLM fallback)에 `data` + `sources` 필드 통일 → tRPC 추론 타입 일관성.
+- **Telegram 라우팅 이중화**: `messageRouter.ts`에서 `handleWorkspaceCommand` 선행 호출 제거. `routeIntentMessage` 우선 시도 후, Google 도메인 미처리 시에만 `handleWorkspaceCommand` 폴백 (send_drive_file 등 Telegram 전용 액션).
+- **부수**: `intelligence/collector.ts` 모듈 경계 위반 수정(`_core/wikiProxy` 경유), `writeWiki` title 누락 보정, `telegram`/`gram.js` 패키지 설치, `quickCommand.ts` `llmChat` 반환 타입에 `sources` 추가
+- **수정 파일**: `data/openclaw-discovery.json`, `server/exchanges/gateioConnector.ts`(+test), `server/intent/handlers/trading.ts`, `server/routers/llm.ts`, `server/llm/telegramBot/messageRouter.ts`, `server/_core/wikiProxy.ts`(신규), `server/intelligence/collector.ts`, `server/intent/handlers/wiki.ts`, `client/src/chat/quickCommand.ts`
+- **검증**: check ✅ / build ✅ / test 415 passed (55 files)
+
+### [Claude Code] 진단서 §8 잔여 2건 보완 (커밋 22588e6)
+- **chatSyncRouter ownership check**: `getMessages` / `getRecentMessages` / `searchMessages` 3개 procedure에서 `conversation.userId !== ctx.user.id` 검증 추가 → 타 사용자 대화 무단 조회 차단
+- **한남 PF 개별 딜 파싱**: `<딜명> [PF] (진행상황|상태|현황)` 패턴을 `deals_command`로 라우팅. `intent.params.syntheticCommand`로 `딜 <딜명>` 형태 합성 명령 전달. 예약 키워드(PF/포트폴리오/파이프라인)는 기존 generic 매처 유지
+- **수정 파일**: `server/routers/chat-sync.ts`, `server/intent/fallbackIntent.ts`, `server/intent/handlers/deals.ts`, `server/__tests__/dealNameParsing.test.ts`(신규, 8 tests)
+- **검증**: check ✅ / build ✅ / test 423 passed (56 files, +8)
+
+### [Claude Code] 홈 KPI 'today' 의미 일치 (커밋 2dc3e9a)
+- **신규 엔드포인트**: `googleWorkspace.calendar.getTodayEvents` (KST 00:00~24:00 일정만)
+- 홈 '오늘 일정' KPI: `getUpcomingEvents(100)` → `getTodayEvents` (라벨과 데이터 의미 일치)
+- 홈 '받은 메일' KPI: `getEmails(100)` → `getEmails({query:"newer_than:1d"})` (오늘만)
+- **수정 파일**: `server/routers/google-workspace.ts`, `client/src/pages/Home.tsx`
+
+### [Claude Code] 홈 활동 피드 mock 제거 (커밋 c973ab5)
+- 하드코딩된 6개 activities 항목 ('2분 전', '8분 전' 등 fake 시간) 완전 제거
+- 이미 로드된 KPI 쿼리 결과 재사용해 동적으로 구성 — 추가 네트워크 요청 0건
+  - Google 일정: 가장 가까운 미래 일정
+  - Gmail 수신: 가장 최근 메일 1건
+  - 트레이딩 알림: 가장 최근 webhook
+  - PF 딜 변경: 가장 최근 갱신 딜
+  - Telegram: 봇 활성 상태
+- `formatRelativeTime()` 헬퍼 추가 (5분 전 / 2시간 전 / 3일 전)
+- 시간 역순 정렬, 최대 6건 표시, 데이터 0건 시 폴백 메시지
+
+### [Claude Code] Google 재인증 인라인 액션 버튼 (커밋 38407e7)
+- 채팅에서 'Google 재인증이 필요합니다' 응답 메시지 하단에 'Google 다시 연결' 버튼
+- amber 톤(경고색) + LogIn 아이콘, 클릭 시 `/google` 페이지로 이동
+- 기존 동작(사이드바에서 직접 찾아 이동) → 1-click 재연결로 단축
+- **수정 파일**: `client/src/components/UnifiedChatInterface.tsx`
+
+### [Claude Code] TradingView 로딩 스켈레톤 + 빌드 스모크 (커밋 64f47fd)
+- **TradingView 위젯**: 심볼 전환 시 즉시 로딩 오버레이 (cyan 펄스 도트 3개), MutationObserver로 iframe 등장 감지 → 자동 페이드아웃, 5초 안전 timeout. 차트 깜빡임 제거.
+- **빌드 스모크 검사**: `scripts/smoke-routes.ts` 추가. dist/public/index.html + JS 번들 무결성 + 핵심 라우트 8개 (`/`, `/chat`, `/trading`, `/real-estate-pf`, `/google`, `/settings`, `/monitoring`, `/login`) 검증. `npm run smoke:routes` / `deploy:check` 통합.
+- **수정 파일**: `client/src/components/trading/ChartArea.tsx`, `scripts/smoke-routes.ts`(신규), `package.json`
+
+### [Claude Code] Telegram KPI 카드 mode 표시 (커밋 ab82382)
+- 기존: 'Telegram 상태' KPI가 '활성/오프'만 표시 → 운영 모드 불명확
+- 개선: hint 라벨에 mode 동적 표시 (`webhook 모드` / `polling 모드`)
+- 상태 체계화: 토큰 없음 → 초기화 중 → 활성 → 오프 → 연결 필요/실패
+- `telegram.getStatus` 엔드포인트의 `mode`/`webhookUrl` 정보를 UI까지 노출
+- **수정 파일**: `client/src/pages/Home.tsx`
+
+---
+
 ## 2026-05-06 (P2 Intelligence System)
 
 ### [Claude Code] Phase 1c — Gemini 자동 분류 Wiki 저장 (커밋 34f7d19)

@@ -1,5 +1,5 @@
 ﻿# HANDOFF.md — 에스턴 워크스테이션
-> 업데이트: 2026-05-06 | 브랜치: codex-google-workspace-expansion
+> 업데이트: 2026-05-07 | 브랜치: codex-google-workspace-expansion
 
 ---
 
@@ -8,22 +8,47 @@
 | 항목 | 상태 |
 |------|------|
 | 서버 | 정상 기동 (포트 4000, PID 동적) |
-| 빌드 | `npm run build` ✅ (2026-05-06) |
-| 테스트 | 403 passed + 4 추가 = 407 passed (2026-05-06) |
+| 빌드 | `npm run build` ✅ (2026-05-07) |
+| 테스트 | 423 passed (2026-05-07, +20 from 403) |
+| 빌드 스모크 | ✅ `npm run smoke:routes` (라우트 8개 + 산출물 검증) |
 | 브랜치 | `codex-google-workspace-expansion` |
 | Redis | 선택적 (없어도 부팅됨, BullMQ lazy init) |
 | Google OAuth | 정상 연결 시 작동 (신규 Sheets/Drive 스코프 재연결 필요) |
 | Upbit | ✅ 잔고 조회 정상, 텔레그램 응답 포맷 확인, 홈 KPI 연결 완료 |
-| Gate.io | 400 에러 반복 중 (API 키 문제, 홈 KPI에서 제거됨) |
-| OpenClaw | 시뮬레이션 모드 (실 연동 timeout 미해결) |
+| Gate.io | ✅ API 키 미설정 시 명확한 에러 반환 (가드 추가, 2026-05-07) |
+| OpenClaw | 시뮬레이션 모드 (실 연동 timeout 미해결, discovery JSON URL 정상화) |
 | Yahoo Finance | 프록시 `/api/yahoo-chart` User-Agent 수정 완료 |
-| 텔레그램↔웹 동기화 | ✅ 정상 (서버 재시작으로 복구, 2026-05-06) |
+| 텔레그램↔웹 동기화 | ✅ 정상 + 라우팅 이중화 제거 (2026-05-07, routeIntentMessage 우선) |
 | Sheets UI | ✅ Aston-Deals-Dashboard 연결 완료 (Dashboard 탭, 3건) |
 | DEALS_ROOT | ✅ G:\내 드라이브\Aston-Deals 설정 완료 |
+| 홈 대시보드 | ✅ 모든 KPI/활동 피드 실데이터 (mock 0건, 2026-05-07) |
 
 ---
 
 ## 마지막 완료 작업
+
+**2026-05-07 | Claude Code (P0/P1/P2 정리 7건 + Telegram 모드 표시)**
+- **알려진 미해결 이슈 4건 해결** (커밋 `bd30c1c`)
+  - OpenClaw discovery JSON URL `openclaw.local` → `localhost:8000`
+  - Gate.io `hasApiKey()` 가드 추가 — 인증 메서드만 차단, getTicker 영향 없음
+  - 웹 `intent.route` 응답에 `data` + `sources` 필드 통일 (모든 return 경로)
+  - Telegram 라우팅 이중화 제거 — `routeIntentMessage` 우선, `handleWorkspaceCommand` 폴백
+  - 부수: `intelligence/collector.ts` 모듈 경계 위반 수정 (`_core/wikiProxy` 경유), `writeWiki` title 누락 보정, `telegram` 패키지 설치
+- **진단서 §8 잔여 2건 보완** (커밋 `22588e6`)
+  - `chatSyncRouter` ownership check (`getMessages` / `getRecentMessages` / `searchMessages`)
+  - `한남 PF 진행상황` 개별 딜 파싱 — `<딜명> [PF] (진행상황|상태|현황)` → `deals_command` synthetic command
+- **홈 KPI 의미 일치 + mock 제거** (커밋 `2dc3e9a`, `c973ab5`, `ab82382`)
+  - `googleWorkspace.calendar.getTodayEvents` 신규 엔드포인트 (KST 00:00~24:00)
+  - 홈 '오늘 일정' / '받은 메일' KPI를 진짜 today 단위로 교체
+  - 활동 피드 6개 하드코딩 mock 제거 → 실제 데이터 동적 구성 (Calendar/Gmail/Trading/Deal/Telegram)
+  - Telegram KPI에 webhook/polling mode 표시
+- **UX + Perf + CI** (커밋 `38407e7`, `64f47fd`)
+  - "Google 재인증" 메시지에 인라인 'Google 다시 연결' 버튼 (1-click 재연결)
+  - TradingView 위젯 로딩 스켈레톤 (심볼 전환 깜빡임 제거, MutationObserver 기반)
+  - `scripts/smoke-routes.ts` 빌드 스모크 검사 (라우트 8개 + 산출물 무결성)
+  - `npm run smoke:routes` / `deploy:check` 통합
+
+검증: `npm run check` ✅ / `npm run build` ✅ / `npm test` 423 passed (56 files) / `npm run smoke:routes` ✅
 
 **2026-05-06 | Claude Code (P0 버그 수정 4건 + 홈 KPI 개선)**
 - 업비트 잔고 인텐트 binance 낙하 버그 수정 (`fallbackIntent.ts`)

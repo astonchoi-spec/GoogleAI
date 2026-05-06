@@ -15,6 +15,25 @@ import {
   type IntentHandler,
 } from "../types.ts";
 
+function formatBalanceText(exchange: string, total: Record<string, number>): string {
+  const lines: string[] = [`💰 ${exchange.toUpperCase()} 잔고`];
+  const entries = Object.entries(total)
+    .filter(([, v]) => v > 0)
+    .sort(([a], [b]) => (a === "KRW" ? -1 : b === "KRW" ? 1 : 0));
+  if (entries.length === 0) {
+    lines.push("보유 자산 없음");
+  } else {
+    for (const [currency, amount] of entries) {
+      if (currency === "KRW") {
+        lines.push(`  ₩${Math.floor(amount).toLocaleString("ko-KR")} KRW`);
+      } else {
+        lines.push(`  ${amount.toFixed(8).replace(/\.?0+$/, "")} ${currency}`);
+      }
+    }
+  }
+  return lines.join("\n");
+}
+
 const tradingBalance: IntentHandler = async (intent) => {
   const exchange = asString(intent.params.exchange, "binance");
   let data;
@@ -37,7 +56,10 @@ const tradingBalance: IntentHandler = async (intent) => {
       return { intent, handled: true, requiresConfirmation: false, response: `${exchange} 잔고 조회 실패: ${errMsg}` };
     }
   }
-  return { intent, handled: true, requiresConfirmation: false, response: `${exchange} 잔고 조회를 완료했습니다.`, data };
+  const responseText = data && typeof data === "object" && "total" in data
+    ? formatBalanceText(exchange, (data as { total: Record<string, number> }).total)
+    : `${exchange} 잔고 조회를 완료했습니다.`;
+  return { intent, handled: true, requiresConfirmation: false, response: responseText, data };
 };
 
 const tradingPositions: IntentHandler = async (intent) => {

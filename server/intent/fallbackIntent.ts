@@ -206,7 +206,7 @@ export function fallbackIntent(message: string): IntentResult {
       params: {
         exchange: lower.includes("키움")
           ? "kiwoom"
-          : lower.includes("upbit")
+          : (lower.includes("upbit") || lower.includes("업비트"))
             ? "upbit"
             : (lower.includes("게이트") || lower.includes("gate"))
               ? "gateio"

@@ -28,6 +28,32 @@ describe("fallbackIntent 명시 규칙 정리", () => {
     });
   });
 
+  describe("잔고 거래소 매핑", () => {
+    it("\"업비트잔고\"를 upbit exchange로 매핑한다", () => {
+      const r = fallbackIntent("업비트잔고");
+      expect(r.action).toBe("trading_balance");
+      expect(r.params.exchange).toBe("upbit");
+    });
+
+    it("\"업비트 잔고\"도 upbit으로 매핑한다", () => {
+      const r = fallbackIntent("업비트 잔고");
+      expect(r.action).toBe("trading_balance");
+      expect(r.params.exchange).toBe("upbit");
+    });
+
+    it("\"upbit 잔고\" 영문도 upbit으로 매핑한다", () => {
+      const r = fallbackIntent("upbit 잔고");
+      expect(r.action).toBe("trading_balance");
+      expect(r.params.exchange).toBe("upbit");
+    });
+
+    it("\"잔고\" 단독은 binance 기본값으로 매핑한다", () => {
+      const r = fallbackIntent("잔고");
+      expect(r.action).toBe("trading_balance");
+      expect(r.params.exchange).toBe("binance");
+    });
+  });
+
   describe("Telegram 최근 메시지", () => {
     it("\"Telegram 최근 메시지\"를 chat_telegram_recent로 매칭한다", () => {
       const r = fallbackIntent("Telegram 최근 메시지");

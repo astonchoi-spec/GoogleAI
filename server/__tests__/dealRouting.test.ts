@@ -36,6 +36,8 @@ describe("deal intent routing priority", () => {
     "딜 한남동644",
     "딜 노트북 한남동644 https://notebooklm.google.com/notebook/xxx",
     "딜 상태 한남동644 완료",
+    "딜시트",
+    "딜시트 서식",
   ])("routes %s to deals_command before other domains", async (message) => {
     const intent = await classifyIntent(message);
     expect(intent.domain).toBe("deals");

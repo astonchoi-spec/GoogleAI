@@ -24,11 +24,11 @@ function extractDriveQuery(message: string): string {
  * - 브리핑 테스트는 Google Calendar 매처보다 먼저 실행
  */
 export function isDealIntentMessage(message: string): boolean {
-  return /^딜(?:\s+|$)/.test(message.trim());
+  return /^딜/.test(message.trim());
 }
 
 export function isAgentIntentMessage(message: string): boolean {
-  return /^에이전트(?:\s+|$)/.test(message.trim());
+  return /^에이전트/.test(message.trim());
 }
 
 const NOTEBOOKLM_PREFIX_RE = /^(?:노트북(?:lm)?|notebooklm)\s+([\s\S]+)/i;

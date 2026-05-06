@@ -16,7 +16,8 @@
     "test": "vitest run",
     "db:push": "drizzle-kit generate && drizzle-kit migrate",
     "backup:db": "tsx scripts/backup-db.ts",
-    "deploy:check": "npm run check && npm run test && npm run build"
+    "smoke:routes": "tsx scripts/smoke-routes.ts",
+    "deploy:check": "npm run check && npm run test && npm run build && npm run smoke:routes"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.90.0",

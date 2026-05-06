@@ -157,10 +157,15 @@ function calcBB(closes: number[], period = 20): TechResult["bb"] {
 
 function TradingViewWidget({ tvSymbol }: { tvSymbol: string }) {
   const ref = useRef<HTMLDivElement>(null);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     const el = ref.current;
     if (!el) return;
+
+    // 심볼 전환 시 즉시 로딩 상태로 — 깜빡임 방지
+    setIsLoading(true);
+
     const script = document.createElement("script");
     script.src  = "https://s3.tradingview.com/external-embedding/embed-widget-advanced-chart.js";
     script.type  = "text/javascript";
@@ -173,12 +178,41 @@ function TradingViewWidget({ tvSymbol }: { tvSymbol: string }) {
       hide_side_toolbar: false, support_host: "https://www.tradingview.com",
     });
     el.appendChild(script);
-    return () => { el.innerHTML = ""; };
+
+    // iframe 등장 감지 → 로딩 오버레이 페이드아웃
+    const observer = new MutationObserver(() => {
+      if (el.querySelector("iframe")) {
+        setIsLoading(false);
+        observer.disconnect();
+      }
+    });
+    observer.observe(el, { childList: true, subtree: true });
+
+    // 안전장치: 5초 경과 시 무조건 해제
+    const safetyTimer = setTimeout(() => setIsLoading(false), 5000);
+
+    return () => {
+      observer.disconnect();
+      clearTimeout(safetyTimer);
+      el.innerHTML = "";
+    };
   }, [tvSymbol]);
 
   return (
-    <div ref={ref} className="tradingview-widget-container" style={{ height: 700, width: "100%" }}>
-      <div className="tradingview-widget-container__widget" style={{ height: "100%", width: "100%" }} />
+    <div className="relative" style={{ height: 700, width: "100%" }}>
+      <div ref={ref} className="tradingview-widget-container" style={{ height: 700, width: "100%" }}>
+        <div className="tradingview-widget-container__widget" style={{ height: "100%", width: "100%" }} />
+      </div>
+      {isLoading && (
+        <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 rounded-lg bg-slate-900/60 backdrop-blur-sm pointer-events-none">
+          <div className="flex items-center gap-2 text-cyan-300">
+            <div className="h-3 w-3 rounded-full bg-cyan-400 animate-pulse" />
+            <div className="h-3 w-3 rounded-full bg-cyan-400 animate-pulse [animation-delay:150ms]" />
+            <div className="h-3 w-3 rounded-full bg-cyan-400 animate-pulse [animation-delay:300ms]" />
+          </div>
+          <div className="text-sm font-medium text-slate-300">{tvSymbol} 차트 로딩 중...</div>
+        </div>
+      )}
     </div>
   );
 }

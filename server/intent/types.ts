@@ -44,6 +44,7 @@ export type IntentAction =
   | "google_today_events"
   | "wiki_save"
   | "wiki_search"
+  | "wiki_auto_classify"
   | "deals_command"
   | "agent_command"
   | "chat_telegram_recent"

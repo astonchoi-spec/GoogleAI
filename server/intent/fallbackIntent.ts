@@ -71,6 +71,18 @@ export function fallbackIntent(message: string): IntentResult {
     };
   }
 
+  // 위키 자동 분류 저장 — "저장해 ...", "분류저장 ...", "자동저장 ..."
+  const autoClassifyMatch = message.trim().match(/^(?:저장해|분류저장|자동저장)\s+([\s\S]+)/);
+  if (autoClassifyMatch) {
+    return {
+      domain: "wiki",
+      action: "wiki_auto_classify",
+      type: "execute",
+      confidence: 0.97,
+      params: { content: autoClassifyMatch[1].trim() },
+    };
+  }
+
   // 위키 저장/검색 — 명시적 prefix
   const wikiSave = matchWikiSave(message);
   if (wikiSave) return wikiSave;

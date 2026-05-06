@@ -3,6 +3,16 @@
 
 ---
 
+## 2026-05-06 (추가)
+
+### [Claude Code] 딜 시트 연동 완료 + 인텐트 버그 2건 수정 (커밋 ed65ba9)
+- **딜시트 → Drive 오류 버그**: `isDealIntentMessage` 정규식 `^딜(?:\s+|$)` → `^딜` 수정 (공백없는 "딜시트" 미매칭 → Drive 검색으로 낙하)
+- **환경변수 추가**: `.env`에 `DEALS_ROOT=G:\내 드라이브\Aston-Deals`, `GOOGLE_SHEETS_USER_ID=4` 추가
+- **딜 시트 동기화 성공**: 텔레그램 `딜 시트` → 3건 동기화, SpreadsheetId `1DiOS7N-...`
+- **workspace-sheet.json 갱신**: 딜 대시보드 시트로 연결 (Dashboard 탭)
+- **수정 파일**: `server/intent/fallbackIntent.ts`, `server/__tests__/dealRouting.test.ts` (+2 테스트), `.env`, `data/workspace-sheet.json`
+- **검증**: `npm run build` ✅, 테스트 10 passed ✅, 텔레그램 딜 시트 동기화 3건 확인
+
 ## 2026-05-06
 
 ### [Claude Code] 홈 KPI 총 자산 Upbit 교체 (커밋 7cb5922)

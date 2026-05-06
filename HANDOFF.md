@@ -18,6 +18,8 @@
 | OpenClaw | 시뮬레이션 모드 (실 연동 timeout 미해결) |
 | Yahoo Finance | 프록시 `/api/yahoo-chart` User-Agent 수정 완료 |
 | 텔레그램↔웹 동기화 | ✅ 정상 (서버 재시작으로 복구, 2026-05-06) |
+| Sheets UI | ✅ Aston-Deals-Dashboard 연결 완료 (Dashboard 탭, 3건) |
+| DEALS_ROOT | ✅ G:\내 드라이브\Aston-Deals 설정 완료 |
 
 ---
 

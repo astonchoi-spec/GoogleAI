@@ -146,15 +146,15 @@ export default function Home() {
     retry: 1,
   });
 
-  // Gmail: Recent emails
+  // Gmail: Today's emails (newer_than:1d filter)
   const { data: gmailData, isLoading: loadingGmail, isError: errorGmail } = trpc.googleWorkspace.gmail.getEmails.useQuery(
-    { maxResults: 100 },
+    { maxResults: 100, query: "newer_than:1d" },
     { retry: 1 }
   );
 
-  // Calendar: Upcoming events
-  const { data: calendarData, isLoading: loadingCalendar, isError: errorCalendar } = trpc.googleWorkspace.calendar.getUpcomingEvents.useQuery(
-    { maxResults: 100 },
+  // Calendar: Today's events (KST 00:00 ~ 24:00)
+  const { data: calendarData, isLoading: loadingCalendar, isError: errorCalendar } = trpc.googleWorkspace.calendar.getTodayEvents.useQuery(
+    undefined,
     { retry: 1 }
   );
 

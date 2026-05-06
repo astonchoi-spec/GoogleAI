@@ -147,6 +147,24 @@ export const googleWorkspaceRouter = router({
       }),
 
     /**
+     * Get today's events (KST 00:00 ~ 24:00)
+     */
+    getTodayEvents: publicProcedure.query(async ({ ctx }: any) => {
+      const userId = ctx.user?.id.toString() || "anonymous";
+      const auth = await googleAuthManager.getAuthenticatedClient(userId);
+      const calendar = new CalendarConnector(auth);
+      const KST_OFFSET_MS = 9 * 60 * 60 * 1000;
+      const nowKst = new Date(Date.now() + KST_OFFSET_MS);
+      const y = nowKst.getUTCFullYear();
+      const m = nowKst.getUTCMonth();
+      const d = nowKst.getUTCDate();
+      const start = new Date(Date.UTC(y, m, d) - KST_OFFSET_MS);
+      const end = new Date(Date.UTC(y, m, d + 1) - KST_OFFSET_MS);
+      const events = await calendar.getEventsByDateRange(start, end);
+      return { events };
+    }),
+
+    /**
      * Create event
      */
     createEvent: publicProcedure

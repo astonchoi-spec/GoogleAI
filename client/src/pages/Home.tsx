@@ -117,14 +117,11 @@ export default function Home() {
 
   const trimmedCommand = useMemo(() => command.trim(), [command]);
 
-  // MODIFIED: Fetch KPI data from tRPC endpoints
-  // Trading: Gate.io spot + futures balance
-  const { data: spotBalance, isLoading: loadingSpot, isError: errorSpot } = trpc.trading.gateio.spotBalance.useQuery(undefined, {
-    retry: 1,
-  });
-  const { data: futuresBalance, isLoading: loadingFutures, isError: errorFutures } = trpc.trading.gateio.futuresBalance.useQuery(undefined, {
-    retry: 1,
-  });
+  // Trading: Upbit KRW balance
+  const { data: upbitBalance, isLoading: loadingUpbit, isError: errorUpbit } = trpc.trading.getBalance.useQuery(
+    { exchange: "upbit" },
+    { retry: 1 }
+  );
 
   // Alerts: TradingView webhook history (today count)
   const { data: alerts, isLoading: loadingAlerts, isError: errorAlerts } = trpc.alerts.tvWebhookHistory.useQuery(
@@ -156,21 +153,19 @@ export default function Home() {
 
   // Compute KPI values
   const tradingValue = useMemo(() => {
-    if (loadingSpot || loadingFutures) return "...";
-    if (errorSpot || errorFutures) return "연결 필요";
+    if (loadingUpbit) return "...";
+    if (errorUpbit) return "연결 필요";
 
     try {
-      const spotTotal = spotBalance?.total ? Object.values(spotBalance.total).reduce((a: number, b: number) => a + b, 0) : 0;
-      const futuresTotal = futuresBalance?.total ? Object.values(futuresBalance.total).reduce((a: number, b: number) => a + b, 0) : 0;
-      const total = Number(spotTotal) + Number(futuresTotal);
-
-      if (total < 1000) return total.toFixed(0);
-      if (total < 1000000) return `${(total / 1000).toFixed(1)}K`;
-      return `${(total / 1000000).toFixed(1)}M`;
+      const krw = upbitBalance?.total?.KRW ?? 0;
+      if (krw === 0) return "₩0";
+      if (krw < 10000) return `₩${Math.floor(krw).toLocaleString("ko-KR")}`;
+      if (krw < 100000000) return `₩${(krw / 10000).toFixed(1)}만`;
+      return `₩${(krw / 100000000).toFixed(2)}억`;
     } catch {
       return "연결 실패";
     }
-  }, [spotBalance, futuresBalance, loadingSpot, loadingFutures, errorSpot, errorFutures]);
+  }, [upbitBalance, loadingUpbit, errorUpbit]);
 
   const alertValue = useMemo(() => {
     if (loadingAlerts) return "...";
@@ -245,7 +240,7 @@ export default function Home() {
     { label: "오늘 일정", hint: "Calendar", icon: CalendarDays, href: "/google?tab=calendar", key: "calendar" },
     { label: "받은 메일", hint: "Gmail", icon: Mail, href: "/google?tab=gmail", key: "gmail" },
     { label: "Telegram 상태", hint: "Telegram", icon: Smartphone, href: "/chat?source=telegram", key: "telegram" },
-    { label: "총 자산 (USDT)", hint: "Trading", icon: TrendingUp, href: "/trading", key: "trading" },
+    { label: "총 자산 (Upbit)", hint: "Trading", icon: TrendingUp, href: "/trading", key: "trading" },
     { label: "PF 딜", hint: "Real Estate", icon: Building2, href: "/real-estate-pf", key: "pf" },
     { label: "오늘 알림", hint: "Monitoring", icon: ShieldAlert, href: "/monitoring", key: "alert" },
   ];

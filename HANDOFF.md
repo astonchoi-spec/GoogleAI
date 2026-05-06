@@ -12,10 +12,11 @@
 | 테스트 | 403 passed, 7 skipped, 2 todo |
 | 브랜치 | `codex-google-workspace-expansion` |
 | Redis | 선택적 (없어도 부팅됨, BullMQ lazy init) |
-| Google OAuth | 정상 연결 시 작동 |
+| Google OAuth | 정상 연결 시 작동 (신규 Sheets/Drive 스코프 재연결 필요) |
 | Upbit | ccxt 인스턴스 정상, KRW 잔고 조회 확인됨 |
 | Gate.io | 400 에러 반복 중 (API 키 문제 또는 미지원 엔드포인트) |
 | OpenClaw | 자동 탐지 실행 완료, 현재 미탐지 → 시뮬레이션 모드 유지 |
+| Yahoo Finance | 프록시 `/api/yahoo-chart` User-Agent 수정 완료 (2026-05-06) |
 
 ---
 

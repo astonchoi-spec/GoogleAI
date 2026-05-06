@@ -13,7 +13,11 @@ export function registerProxyRoutes(app: Express): void {
       }
 
       const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?interval=${interval}&range=${range}&includePrePost=false`;
-      const response = await fetch(url);
+      const response = await fetch(url, {
+        headers: {
+          "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+        },
+      });
 
       if (!response.ok) {
         res.status(response.status).json({ error: `Yahoo Finance returned ${response.status}` });

@@ -5,6 +5,13 @@
 
 ## 2026-05-06
 
+### [Claude Code] Yahoo Finance 프록시 User-Agent 수정 + 웹 채팅 QA
+- **작업**: `/api/yahoo-chart` 프록시 서버사이드 fetch에 User-Agent 헤더 추가 (미설정 시 Yahoo Finance 차단됨)
+- **수정 파일**: `server/routers/proxy.ts` — fetch 옵션에 Chrome UA 추가
+- **웹 채팅 QA**: 코드 정적 분석으로 Enter/버튼/빠른명령/음성/초기화/수정/삭제/검색/내보내기/중복억제/Telegram동기화 전 항목 구조 정상 확인
+- **검증**: `npm run build` ✅
+- **잔여**: 실제 브라우저 기동 후 운영 확인 필요 (워크트리 환경 .env 없어 서버 기동 불가)
+
 ### [Claude Code] AI 채팅 라우팅 5종 보완 (NotebookLM / Sheets / 오늘 일정 / fallback 규칙 / Monitoring)
 - **작업**: `docs/diagnostics/ai-chat-routing.md` §6·§7·§8의 누락 라우팅 5종을 한 번에 연결
 - **추가된 액션 6개**:

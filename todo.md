@@ -1,5 +1,21 @@
 ﻿# TODO.md — 에스턴 워크스테이션
-> 업데이트: 2026-05-07 | 브랜치: codex-google-workspace-expansion
+> 업데이트: 2026-05-07 후속 | 브랜치: codex-google-workspace-expansion
+
+---
+
+## 2026-05-07 후속 세션 결과 (운영 환경 복구)
+
+이번 세션 2개 커밋:
+- ✅ wouter Link 중첩 `<a>` hydration 오류 7개 파일 수정 (커밋 58929f2)
+- ✅ PM2 우선 실행 규칙 + SessionStart 점검 스크립트 (커밋 7de5869)
+
+운영 복구 (gitignored, 커밋 없음):
+- ✅ `.env` GOOGLE_CLIENT_ID 추가, GOOGLE_CLIENT_SECRET 변수명 정상화
+- ✅ `.env` WORKSPACE_SPREADSHEET_ID, PORT=4000 추가
+- ✅ `.claude/settings.json` 8개 권한 allowlist + 2개 훅 (PreToolUse, SessionStart)
+
+신규 알려진 이슈:
+- ⚠️ OpenClaw `loadGatewayCaller()` APPDATA 경로 조립 버그 (`openclawRuntime.ts:172`)
 
 ---
 

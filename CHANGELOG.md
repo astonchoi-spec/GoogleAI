@@ -3,6 +3,44 @@
 
 ---
 
+## 2026-05-07 후속 세션 (운영 환경 복구 + Claude Code 자동화, 2 commits)
+
+### [Claude Code] wouter Link 중첩 `<a>` hydration 오류 제거 (커밋 58929f2)
+- **증상**: 브라우저 콘솔에 `<a> cannot be a descendant of <a>` 다수 출력 → React hydration 오류
+- **원인**: wouter `Link` 컴포넌트가 자체적으로 `<a>` 렌더링하는데 자식으로 또 `<a>` 두는 패턴이 7개 파일에 산재
+- **수정**: `<a>` 제거 + className을 `Link`로 이동
+- **수정 파일**: `Home.tsx`, `Settings.tsx`, `Navbar.tsx`, `DocMenu.tsx`, `PFSummaryWidget.tsx`, `TradingSummaryWidget.tsx`, `QuickCommandWidget.tsx`
+- **검증**: 7 files changed, 51 insertions(+), 71 deletions(-)
+
+### [Claude Code] PM2 우선 실행 규칙 + SessionStart 점검 스크립트 (커밋 7de5869)
+- **CLAUDE.md**: 앱 실행 전 `pm2 list` 우선 확인 규칙 추가
+  - `aston` online이면 추가 실행 금지 (4000 포트 충돌 방지)
+  - PM2 없을 때만 `npm run dev` 사용
+- **scripts/session-check.mjs**: Claude Code SessionStart 훅용 스크립트
+  - `.env` 필수 키 5종 (`GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `WORKSPACE_SPREADSHEET_ID`, `GEMINI_API_KEY`, `TELEGRAM_BOT_TOKEN`) 검증
+  - PM2 aston 상태 + 4000 포트 점유 여부 한 줄 출력
+  - 다음 세션부터 자동 실행
+
+### [Claude Code] 운영 환경 복구 (`.env` 정상화, 커밋 없음 — gitignored)
+- **GOOGLE_CLIENT_ID** 추가 (그동안 누락 상태) → Google OAuth 로그인 가능 상태 복구
+- **GOOGLE_CLIENT_SECRET** 변수명 정상화 (`_CLIENT_SECRET` → `GOOGLE_CLIENT_SECRET`)
+- **WORKSPACE_SPREADSHEET_ID** 추가 (Aston-Deals-Dashboard, `1kX_l2bQw8II4LZCwdS9_QEQ9JQ4HfpXYGpDoIF9F8b0`)
+- **PORT=4000** 명시 추가
+- **검증**: PM2 재시작 후 `[Google] CLIENT_ID set: true, SECRET set: true` 확인
+
+### [Claude Code] Claude Code 자동화 4종 적용 (`.claude/settings.json` — gitignored)
+- **권한 allowlist 8종** 추가: `netstat *`, `pm2 list/logs/--version`, `tasklist *`, `pnpm/npm check` (오늘 가장 많이 권한 팝업 뜬 명령들)
+- **PreToolUse 훅**: `git commit *` 실행 전 `npm run check` 자동 → 실패 시 커밋 차단
+- **SessionStart 훅**: 세션 시작 시 `session-check.mjs` 자동 실행
+- **codex:setup** 점검: Codex CLI 0.128.0 / ChatGPT 로그인 / direct runtime 정상
+
+### 알려진 이슈 (이번 세션 발견, 미해결)
+- `[openclawClient] probeGatewayRpc: Cannot find module 'C:\Users\admin\AppData\Roaming\npm\node_modules\openclaw\dist\call-DS_a955m.js'`
+  - `openclawRuntime.ts:172`의 `loadGatewayCaller()`에서 `process.env.APPDATA` 비어 있을 때 잘못된 경로 조립
+  - 매 세션 startup 에러 로그 발생, 기능적으로는 시뮬레이션 모드 fallback (영향 없음)
+
+---
+
 ## 2026-05-07 (P0/P1/P2 정리 + UX/Perf/CI 강화, 7 commits)
 
 ### [Claude Code] 알려진 미해결 이슈 4건 일괄 해결 (커밋 bd30c1c)

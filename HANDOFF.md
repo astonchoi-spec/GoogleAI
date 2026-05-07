@@ -1,5 +1,5 @@
 ﻿# HANDOFF.md — 에스턴 워크스테이션
-> 업데이트: 2026-05-07 | 브랜치: codex-google-workspace-expansion
+> 업데이트: 2026-05-07 후속 | 브랜치: codex-google-workspace-expansion
 
 ---
 
@@ -7,13 +7,15 @@
 
 | 항목 | 상태 |
 |------|------|
-| 서버 | 정상 기동 (포트 4000, PID 동적) |
+| 서버 | ✅ PM2 `aston` online (포트 4000 고정) |
 | 빌드 | `npm run build` ✅ (2026-05-07) |
 | 테스트 | 423 passed (2026-05-07, +20 from 403) |
 | 빌드 스모크 | ✅ `npm run smoke:routes` (라우트 8개 + 산출물 검증) |
-| 브랜치 | `codex-google-workspace-expansion` |
+| 브랜치 | `codex-google-workspace-expansion` (HEAD: `7de5869`) |
 | Redis | 선택적 (없어도 부팅됨, BullMQ lazy init) |
-| Google OAuth | 정상 연결 시 작동 (신규 Sheets/Drive 스코프 재연결 필요) |
+| Google OAuth | ✅ CLIENT_ID/SECRET 정상 (재로그인 대기) |
+| `.env` 필수 키 | ✅ 5종 모두 설정 (회장님 직접 Google 로그인만 남음) |
+| Claude Code 자동화 | ✅ SessionStart 점검 + PreToolUse pre-commit check 활성 |
 | Upbit | ✅ 잔고 조회 정상, 텔레그램 응답 포맷 확인, 홈 KPI 연결 완료 |
 | Gate.io | ✅ API 키 미설정 시 명확한 에러 반환 (가드 추가, 2026-05-07) |
 | OpenClaw | 시뮬레이션 모드 (실 연동 timeout 미해결, discovery JSON URL 정상화) |
@@ -26,6 +28,31 @@
 ---
 
 ## 마지막 완료 작업
+
+**2026-05-07 후속 | Claude Code (운영 환경 복구 + Claude Code 자동화)**
+- **wouter Link 중첩 `<a>` hydration 오류 제거** (커밋 `58929f2`)
+  - 7개 파일에서 `<Link>` 안의 `<a>` 패턴 일괄 정리
+  - className을 `Link`로 이동, 내부 `<a>` 제거
+  - 브라우저 콘솔 hydration 오류 해소
+- **PM2 우선 실행 규칙 + SessionStart 점검 스크립트** (커밋 `7de5869`)
+  - `CLAUDE.md`: 앱 실행 전 `pm2 list` 우선 확인 규칙 추가
+  - `scripts/session-check.mjs`: `.env` 필수 키 5종 + PM2 aston + 4000 포트 자동 점검
+- **`.env` 운영 복구** (gitignored)
+  - `GOOGLE_CLIENT_ID` 추가 (그동안 누락 → Google 로그인 불가)
+  - `_CLIENT_SECRET` → `GOOGLE_CLIENT_SECRET` 변수명 정상화
+  - `WORKSPACE_SPREADSHEET_ID=1kX_l2bQw8II4LZCwdS9_QEQ9JQ4HfpXYGpDoIF9F8b0` 추가
+  - `PORT=4000` 명시 추가
+- **Claude Code 자동화 4종** (`.claude/settings.json`, gitignored)
+  - 권한 allowlist 8종 (`netstat`, `pm2 list/logs/--version`, `tasklist`, `npm/pnpm check`)
+  - PreToolUse 훅: `git commit *` 전 `npm run check` 실행 → 실패 시 차단
+  - SessionStart 훅: 매 세션 자동 환경 점검
+  - codex:setup 점검: Codex CLI 0.128.0 / ChatGPT 로그인 정상
+
+검증: 코드 변경 7개 파일 hydration 수정만, `npm run check` 미실행 (다음 작업과 병합 가능)
+
+⚠️ **신규 알려진 이슈**: `openclawRuntime.ts:172` `loadGatewayCaller()`에서 `process.env.APPDATA` 비어 있을 때 잘못된 경로 조립 — 매 세션 startup 에러 로그, 기능 영향 없음 (시뮬레이션 fallback)
+
+---
 
 **2026-05-07 | Claude Code (P0/P1/P2 정리 7건 + Telegram 모드 표시)**
 - **알려진 미해결 이슈 4건 해결** (커밋 `bd30c1c`)

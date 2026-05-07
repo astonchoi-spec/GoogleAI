@@ -36,6 +36,11 @@ export function isTgPipelineMessage(message: string): boolean {
   return /^\/tg(\s|$)/i.test(message.trim());
 }
 
+// /nb 명령은 NotebookLM 매핑 조회로 라우팅.
+export function isNbCommand(message: string): boolean {
+  return /^\/nb(\s|$)/i.test(message.trim());
+}
+
 const NOTEBOOKLM_PREFIX_RE = /^(?:노트북(?:lm)?|notebooklm)\s+([\s\S]+)/i;
 
 export function matchNotebookLmQuery(message: string): IntentResult | null {
@@ -64,6 +69,17 @@ export function fallbackIntent(message: string): IntentResult {
       type: "execute",
       confidence: 0.99,
       params: { rawText: message },
+    };
+  }
+
+  // /nb NotebookLM 매핑 조회 — /tg 다음, 다른 모든 매처보다 우선
+  if (isNbCommand(message)) {
+    return {
+      domain: "notebooklm",
+      action: "nb_command",
+      type: "query",
+      confidence: 0.99,
+      params: { raw: message },
     };
   }
 

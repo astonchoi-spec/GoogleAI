@@ -9,6 +9,7 @@ import { dealHandlers } from "./handlers/deals.ts";
 import { agentHandlers } from "./handlers/agents.ts";
 import { chatHandlers } from "./handlers/chat.ts";
 import { knowledgeHandlers } from "./handlers/knowledgePipeline.ts";
+import { notebooklmHandlers } from "./handlers/notebooklm.ts";
 import type { IntentAction, IntentHandler } from "./types.ts";
 
 export const handlerRegistry: Partial<Record<IntentAction, IntentHandler>> = {
@@ -23,4 +24,5 @@ export const handlerRegistry: Partial<Record<IntentAction, IntentHandler>> = {
   ...agentHandlers,
   ...chatHandlers,
   ...knowledgeHandlers,
+  ...notebooklmHandlers,
 };

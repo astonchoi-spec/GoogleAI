@@ -13,6 +13,10 @@
 | 빌드 스모크 | ✅ `npm run smoke:routes` (라우트 8개 + 산출물 검증) |
 | 브랜치 | `codex-google-workspace-expansion` |
 | Knowledge Pipeline | ✅ Phase B-1 완료 (`/tg` 신규, `저장해` 보존) |
+| Wiki 페이지 | ✅ 실데이터 연결 — 검색·카테고리·폴더 열기 (G 드라이브) |
+| Calendar 인텐트 | ✅ LLM 필드명 미스매치 수정 (시간/제목 정상 처리) |
+| ASTON_WIKI_ROOT | ✅ `G:\내 드라이브\Aston-Wiki` (운영용) — gitignored |
+| 다음 우선순위 | `/nb` NotebookLM 회수 (`/tg` 메모는 over-engineering 결정) |
 | Redis | 선택적 (없어도 부팅됨, BullMQ lazy init) |
 | Google OAuth | ✅ CLIENT_ID/SECRET 정상 (재로그인 대기) |
 | `.env` 필수 키 | ✅ 5종 모두 설정 (회장님 직접 Google 로그인만 남음) |
@@ -29,6 +33,29 @@
 ---
 
 ## 마지막 완료 작업
+
+**2026-05-07 Phase B-1 마감 후속 | Claude Code**
+- **TypeScript parameter property → 수동 declaration** (커밋 `e706a79`)
+  - PM2 `--experimental-strip-types` 모드는 `private readonly` constructor 단축 미지원
+  - Classifier / Summarizer / Tagger 3개 클래스 수정
+- **캘린더 인텐트 LLM 필드명 미스매치 수정** (이번 세션)
+  - LLM 반환 `{summary, start}` ↔ 핸들러 `{title, startTime}` 불일치
+  - 양쪽 필드명 허용으로 수정 + 응답에 KST 시간/제목 명시
+  - 수정 파일: `server/intent/handlers/google.ts`
+- **`.env` ASTON_WIKI_ROOT 적용** (gitignored)
+  - `ASTON_WIKI_ROOT=G:\내 드라이브\Aston-Wiki` 추가
+  - 기존 `WIKI_ROOT=D:\구글연동AI\data\wiki`는 보존
+  - 신규 Knowledge Pipeline → G 드라이브, 기존 Phase 1c → D 드라이브 (분리 운영)
+- **`/wiki` 페이지 실데이터 연결**
+  - 신규 tRPC `wiki` 라우터 (status / search / byCategory / recent / openFolder)
+  - WikiPage UI: 디바운스 검색, 카테고리 클릭 필터, 최근 항목 12건, **하단 경로 클릭 시 Windows 탐색기 자동 열림**
+  - 보안: openFolder는 `aston`/`legacy` 두 옵션만 (임의 경로 차단)
+  - 수정 파일: `server/routers.ts`, `client/src/pages/WikiPage.tsx`, `server/routers/wiki.ts`(신규)
+- **운영 피드백 반영**: `/tg` 메모는 over-engineering → 코드 보존, 다음 우선순위는 `/nb` NotebookLM 회수
+
+검증: `npm run check` ✅ / `npm run build` ✅ / 기존 492 tests 회귀 0건
+
+---
 
 **2026-05-07 Phase B-1 | Claude Code (Knowledge Pipeline 레퍼런스 구현)**
 - **설계 문서 3종**: `docs/knowledge-core/{phase-a-b-final, phase-b0-interfaces, phase-b1-readiness-eval}.md`
@@ -283,11 +310,35 @@
 
 ## 다음 추천 작업
 
-### 즉시 (운영 검증)
-0. **진단서 결과 기반 보완 작업 선정** — `docs/diagnostics/ai-chat-routing.md`의 `8절`, `10절` 기준 우선순위 확정
-1. **Wiki 검색 명령 연결** — `AI 채팅` → `Knowledge Core` 경로 재확인
-2. **NotebookLM 질의 명령 연결** — `AI 채팅` 단일 진입점에서 `NotebookLM` 호출 흐름 점검
-3. **PF 분석 직원 1호 JD 작성** — `docs/employees/pf-analyst.md`에 역할, 책임, 산출물, 운영 규칙 정의
+### 🏠 집에서 이어갈 때 — 시작 순서
+
+1. **`작업준비`** 명령으로 git fetch + pull + 4개 문서 자동 읽기
+2. **PM2 상태 확인**: `pm2 list` (aston online이면 그대로, offline이면 `pm2 restart aston`)
+3. **운영 검증** (회장님 직접):
+   - 텔레그램에서 `5월 22일 11:10 원준이 전화상담` → 캘린더 정상 생성 확인
+   - `http://localhost:4000/wiki` 접속 → 검색·카테고리·폴더 열기 동작 확인
+4. **다음 큰 작업**: `/nb` NotebookLM 회수 경로 설계 + 구현 (CURRENT_TASK 새로 작성)
+
+### 다음 메인 작업: NotebookLM 회수 (`/nb`)
+
+회장님 30개+ NotebookLM 노트북에서 가치 있는 분석 결과를 Wiki로 끌어오는 경로.
+
+**왜 이게 다음 우선순위인가**:
+- 회장님이 NotebookLM에서 이미 시간 들여 분석 중 — 결과가 NotebookLM 안에만 갇혀 있음
+- Wiki로 회수해야 AI 채팅이 활용 가능 (예: "한남644 PFV 후순위 리스크가 뭐였지?" → NotebookLM 분석 결과로 답변)
+- 일회성 메모 저장(`/tg`)보다 회장님 시간 절약 폭이 훨씬 큼
+
+**구현 방향** (Phase B-1 인프라 재사용):
+- `NotebookLmAdapter` 추가 (`server/knowledge/adapters/notebooklm.ts`)
+- 입력 형식: `/nb {project} {NotebookLM 답변 본문}` + 출처
+- 저장: `projects/{project}/notebooklm/`
+- 기존 Phase B-1의 cleaner / classifier / summarizer / tagger / router 재사용
+
+**진입 전 회장님 결정 필요**:
+- `notebooklm-mapping.yaml`에 30개+ 노트북 매핑 채우기 (회장님 직접)
+- 또는 매핑 없이 자유 입력으로 시작할지
+
+### 그 외 미해결
 
 ### 즉시 (P0)
 5. **Yahoo Finance CORS 프록시** — `server/routers/proxy.ts` 생성, `/api/yahoo-proxy` 엔드포인트 추가

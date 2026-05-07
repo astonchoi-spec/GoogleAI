@@ -3,6 +3,39 @@
 
 ---
 
+## 2026-05-07 Phase B-1 마감 후속 (집에서 이어갈 작업 정리)
+
+### 이번 세션 추가 완료
+- ✅ TypeScript parameter property → 수동 declaration (PM2 강제 strip-types 호환)
+- ✅ 캘린더 인텐트 LLM 필드명 미스매치 수정 (`summary`/`start` 양쪽 허용 + 응답에 시간 표시)
+- ✅ `.env`에 `ASTON_WIKI_ROOT=G:\내 드라이브\Aston-Wiki` 추가 (운영용 G 드라이브 활성화)
+- ✅ `/wiki` 페이지 실데이터 연결 (검색·카테고리·최근·폴더 열기)
+
+### 회장님 운영 피드백 반영 결정
+- **`/tg` 메모 명령은 over-engineering** — 코드는 보존, 사용은 선택
+- **다음 우선순위는 `/nb` NotebookLM 회수** — 진짜 가치 있는 영역
+  - 회장님 NotebookLM 30개+ 노트북에서 가치 있는 분석 결과를 Wiki로 회수
+  - AI 채팅이 NotebookLM 분석을 컨텍스트로 활용하게 만드는 경로
+
+### 집에서 이어갈 작업 (우선순위 순)
+1. **NotebookLM 회수 경로 `/nb` 설계 + 구현** — 다음 CURRENT_TASK 작성 필요
+   - 입력: `/nb hannam-644` + NotebookLM 답변 본문 붙여넣기 + 출처
+   - 처리: Phase B-1 파이프라인 재사용 (TelegramAdapter처럼 NotebookLmAdapter 추가)
+   - 저장: `projects/{project}/notebooklm/`
+2. **`notebooklm-mapping.yaml`에 회장님 30개+ 노트북 매핑 채우기** (회장님 직접)
+3. **회의록 어댑터** (수동 업로드 → 파이프라인)
+4. **음성 어댑터** (텔레그램 음성 → STT → 파이프라인) — STT 엔진 결정 필요
+5. **inbox/_suggested 키워드 힌트 자동 생성** (B-1 보완)
+6. **일괄 재처리 CLI** `scripts/reprocess.ts` (Track B)
+
+### 추가 미해결
+- [ ] 잘못 만들어진 "새 일정" 이벤트 캘린더에서 회장님 직접 정리
+- [ ] 텔레그램에서 새 캘린더 인텐트 동작 운영 검증 (`5월 22일 11:10 원준이 전화상담`)
+- [ ] `/wiki` 페이지에서 검색·카테고리·폴더 열기 운영 검증
+- [ ] OpenClaw gateway 1006 closure (서비스 가동 시 재진단)
+
+---
+
 ## 2026-05-07 Phase B-1 — Knowledge Pipeline 완료
 
 - ✅ Knowledge Core Phase A 확정 (Wiki=본진 / NotebookLM=분석실 / Workstation=작업환경)

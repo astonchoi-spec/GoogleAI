@@ -3,6 +3,50 @@
 
 ---
 
+## 2026-05-07 Phase B-1 마감 후속 (4 commits)
+
+### [Claude Code] TypeScript parameter property → 수동 declaration (커밋 e706a79)
+- Node.js `--experimental-strip-types` 모드는 `constructor(private readonly llm: LLMJsonClient) {}` 미지원
+- PM2 시작 시 `ERR_UNSUPPORTED_TYPESCRIPT_SYNTAX` 발생
+- Classifier / Summarizer / Tagger 3개 클래스 → 일반 property declaration + assignment 패턴
+
+### [Claude Code] 캘린더 인텐트 LLM 필드명 미스매치 수정 (이번 세션)
+- **증상**: "5월 22일 11:10 원준이 전화상담" → 봇은 성공 응답하지만 캘린더에 안 보임
+- **원인**: LLM이 `params: {summary, start}` 반환, 핸들러는 `{title, startTime}`만 읽음
+  - 결과: title="새 일정" (폴백), startTime=now (폴백) → 엉뚱한 시간/제목으로 생성
+- **수정**: `intent.params.title ?? intent.params.summary` / `startTime ?? start` / `endTime ?? end` 양쪽 허용
+- **응답 보강**: `📅 캘린더 일정 생성됨 / 📌 제목 / 🕐 KST 시간` 형식으로 회장님이 즉시 확인 가능
+- **수정 파일**: `server/intent/handlers/google.ts`
+
+### [Claude Code] /tg 명령 over-engineering 인정 — 향후 방향 재조정
+- 회장님 피드백: "메모는 캘린더·노션이 더 편함, 텔레그램 자체 검색도 가능. /tg 후 폴더 들여다볼 일 거의 없음"
+- 결정: `/tg` 코드는 보존 (재활용 가능), 회장님은 안 쓰셔도 됨
+- **다음 우선순위는 `/nb` NotebookLM 회수** (회장님 30개+ 노트북에서 가치 있는 분석을 Wiki로 끌어오는 경로)
+- Phase B-1 코드는 후속 어댑터들(음성·Gmail·회의록·NotebookLM)이 같은 골격 재활용
+
+### [Claude Code] ASTON_WIKI_ROOT 환경변수 적용 (.env, gitignored)
+- 합의(CURRENT_TASK §8.2): 운영 Wiki는 G 드라이브
+- `.env`에 `ASTON_WIKI_ROOT=G:\내 드라이브\Aston-Wiki` 추가
+- 기존 `WIKI_ROOT=D:\구글연동AI\data\wiki`는 보존 (옵션 A — 레거시 데이터 그대로)
+- 신규 Knowledge Pipeline 저장 = G 드라이브, 기존 Phase 1c 저장 = D 드라이브 (두 layout 분리 운영)
+
+### [Claude Code] /wiki 페이지 실데이터 연결 (이번 세션)
+- 기존: 카테고리 카드 9개 + "Google Drive 연동 예정" 정적 페이지
+- 신규: tRPC `wiki` 라우터 신설 (status / search / byCategory / recent / openFolder)
+- UI 변경:
+  - 검색창 → 350ms 디바운스 후 wikiStore 검색 (제목·본문·카테고리·source 매칭)
+  - 카테고리 카드 → 클릭 시 해당 카테고리 항목 필터링
+  - 최근 항목 12개 자동 표시
+  - 결과 카드 (제목 / 본문 미리보기 / 카테고리 칩 / 상대 시간)
+  - 하단 Wiki 저장소 경로 → **클릭 시 Windows Explorer로 폴더 열림** (보안: aston/legacy 두 옵션만)
+- **수정 파일**: `client/src/pages/WikiPage.tsx`, `server/routers/wiki.ts`(신규), `server/routers.ts`
+
+### 검증
+- `npm run check` ✅ / `npm run build` ✅
+- 기존 테스트 회귀 0건 (492 passed)
+
+---
+
 ## 2026-05-07 Phase B-1 — Knowledge Pipeline 레퍼런스 구현 (Telegram + 공통 8단계)
 
 ### [Claude Code] Knowledge Core Phase A·B-0·B-1 완료

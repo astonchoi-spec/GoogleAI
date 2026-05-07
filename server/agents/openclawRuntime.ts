@@ -167,9 +167,34 @@ export async function loadOpenClawLocalConfig(): Promise<OpenClawLocalConfig> {
   return defaultConfig;
 }
 
+function getOpenClawDistDirs(): string[] {
+  // MODIFIED: APPDATA may be empty in non-Windows shells; try multiple npm prefix locations.
+  const candidates = [
+    process.env.APPDATA && path.join(process.env.APPDATA, "npm", "node_modules", "openclaw", "dist"),
+    process.env.USERPROFILE && path.join(process.env.USERPROFILE, "AppData", "Roaming", "npm", "node_modules", "openclaw", "dist"),
+    process.env.NPM_PREFIX && path.join(process.env.NPM_PREFIX, "node_modules", "openclaw", "dist"),
+    "/usr/local/lib/node_modules/openclaw/dist",
+    "/usr/lib/node_modules/openclaw/dist",
+  ];
+  return candidates.filter((p): p is string => typeof p === "string" && p.length > 0);
+}
+
 export async function loadGatewayCaller(): Promise<GatewayCall> {
-  // MODIFIED: reuse the installed OpenClaw gateway client instead of duplicating RPC transport code.
-  const moduleUrl = pathToFileURL(path.join(process.env.APPDATA ?? "", "npm", "node_modules", "openclaw", "dist", "call-DS_a955m.js")).href;
-  const mod = (await import(moduleUrl)) as { callGateway: GatewayCall };
-  return mod.callGateway;
+  // MODIFIED: openclaw bundles `call-*.js` with content-hashed names that change between versions —
+  // resolve dynamically rather than hardcoding the hash, and fail with a clear message if not found.
+  for (const dir of getOpenClawDistDirs()) {
+    let entries: string[];
+    try {
+      entries = await fs.readdir(dir);
+    } catch {
+      continue;
+    }
+    const callFile = entries.find((name) => /^call-[\w-]+\.js$/.test(name));
+    if (!callFile) continue;
+    const moduleUrl = pathToFileURL(path.join(dir, callFile)).href;
+    const mod = (await import(moduleUrl)) as { callGateway?: GatewayCall };
+    if (typeof mod.callGateway !== "function") continue;
+    return mod.callGateway;
+  }
+  throw new Error("openclaw gateway caller (call-*.js) not found in any known npm prefix");
 }

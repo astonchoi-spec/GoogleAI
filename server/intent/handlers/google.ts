@@ -22,11 +22,21 @@ import {
 const createEvent: IntentHandler = async (intent, options) => {
   const auth = await googleAuthManager.getAuthenticatedClient(options.userId);
   const calendar = new CalendarConnector(auth);
-  const title = asString(intent.params.title, "새 일정");
-  const startTime = new Date(asString(intent.params.startTime, new Date().toISOString()));
-  const endTime = new Date(
-    asString(intent.params.endTime, new Date(startTime.getTime() + 60 * 60 * 1000).toISOString())
+  // LLM이 title/summary, startTime/start, endTime/end 등 다른 필드명을 쓸 수 있어 둘 다 허용.
+  const title = asString(
+    intent.params.title ?? intent.params.summary,
+    "새 일정",
   );
+  const startTimeStr = asString(
+    intent.params.startTime ?? intent.params.start,
+    new Date().toISOString(),
+  );
+  const startTime = new Date(startTimeStr);
+  const endTimeStr = asString(
+    intent.params.endTime ?? intent.params.end,
+    new Date(startTime.getTime() + 60 * 60 * 1000).toISOString(),
+  );
+  const endTime = new Date(endTimeStr);
   if (Number.isNaN(startTime.getTime()) || Number.isNaN(endTime.getTime())) {
     throw new Error("Invalid calendar event date");
   }
@@ -41,11 +51,13 @@ const createEvent: IntentHandler = async (intent, options) => {
     isAllDay: asBoolean(intent.params.isAllDay, false),
   });
 
+  // 응답에 제목·시간을 명시해 어떤 일정이 만들어졌는지 회장님이 즉시 확인 가능하게.
+  const startKst = startTime.toLocaleString("ko-KR", { timeZone: "Asia/Seoul", hour12: false });
   return {
     intent,
     handled: true,
     requiresConfirmation: false,
-    response: "캘린더 일정이 생성되었습니다.",
+    response: `📅 캘린더 일정 생성됨\n📌 ${title}\n🕐 ${startKst}`,
     data: { event },
   };
 };

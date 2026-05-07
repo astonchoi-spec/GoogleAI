@@ -40,7 +40,11 @@ export interface LLMJsonClient {
 }
 
 export class Classifier {
-  constructor(private readonly llm: LLMJsonClient) {}
+  private readonly llm: LLMJsonClient;
+
+  constructor(llm: LLMJsonClient) {
+    this.llm = llm;
+  }
 
   async classify(doc: CleanedDocument): Promise<ClassifiedDocument> {
     const explicitProject = doc.command_hints?.explicit_project;

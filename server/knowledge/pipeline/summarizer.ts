@@ -21,7 +21,11 @@ JSON:
 const SHORT_THRESHOLD = 100;
 
 export class Summarizer {
-  constructor(private readonly llm: LLMJsonClient) {}
+  private readonly llm: LLMJsonClient;
+
+  constructor(llm: LLMJsonClient) {
+    this.llm = llm;
+  }
 
   async summarize(doc: ClassifiedDocument): Promise<SummarizedDocument> {
     if (doc.cleaned_text.length < SHORT_THRESHOLD) {

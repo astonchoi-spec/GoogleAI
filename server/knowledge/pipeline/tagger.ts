@@ -21,7 +21,11 @@ const VALID_IMPORTANCE: Importance[] = ["low", "normal", "high"];
 const VALID_PRIVACY: PrivacyLevel[] = ["public", "private", "sensitive"];
 
 export class Tagger {
-  constructor(private readonly llm: LLMJsonClient) {}
+  private readonly llm: LLMJsonClient;
+
+  constructor(llm: LLMJsonClient) {
+    this.llm = llm;
+  }
 
   async tag(doc: SummarizedDocument): Promise<TaggedDocument> {
     type LlmResult = {

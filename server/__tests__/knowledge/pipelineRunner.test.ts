@@ -77,7 +77,7 @@ describe("PipelineRunner — end-to-end", () => {
     expect(classifierCalled).toBe(false);
   });
 
-  it("explicit_project 없음 + 모든 LLM 성공 → inbox/telegram/에 저장", async () => {
+  it("explicit_project 없음 + confidence≥0.75 + suggested_project → inbox/_suggested/{project}/에 저장", async () => {
     const llm = fakeLlmSequence([
       { category: "real-estate", suggested_projects: ["hannam-644"], confidence: 0.85 },
       { title: "한남644 일정", summary: "5/15 신청.", key_points: ["인허가"], action_items: [] },
@@ -86,9 +86,33 @@ describe("PipelineRunner — end-to-end", () => {
     const result = await new PipelineRunner({ llm }).run(makeInput());
     expect(result.ok).toBe(true);
     if (!result.ok) return;
-    expect(result.entry.saved_path).toContain(path.join("inbox", "telegram"));
+    expect(result.entry.saved_path).toContain(path.join("inbox", "_suggested", "hannam-644"));
     expect(result.doc.category).toBe("real-estate");
     expect(result.doc.importance).toBe("high");
+  });
+
+  it("explicit_project 없음 + confidence<0.75 → inbox/{source_type}/에 저장", async () => {
+    const llm = fakeLlmSequence([
+      { category: "real-estate", suggested_projects: ["hannam-644"], confidence: 0.6 },
+      { title: "메모", summary: "내용", key_points: [], action_items: [] },
+      { tags: [], people: [], companies: [], importance: "normal" },
+    ]);
+    const result = await new PipelineRunner({ llm }).run(makeInput());
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.entry.saved_path).toContain(path.join("inbox", "telegram"));
+  });
+
+  it("explicit_project 없음 + suggested_projects 빈 배열 → inbox/{source_type}/에 저장", async () => {
+    const llm = fakeLlmSequence([
+      { category: "other", suggested_projects: [], confidence: 0.9 },
+      { title: "메모", summary: "내용", key_points: [], action_items: [] },
+      { tags: [], people: [], companies: [], importance: "normal" },
+    ]);
+    const result = await new PipelineRunner({ llm }).run(makeInput());
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.entry.saved_path).toContain(path.join("inbox", "telegram"));
   });
 
   it("classifier LLM 실패 → partial 진행 + step_failures 마킹", async () => {

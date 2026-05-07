@@ -60,17 +60,27 @@ const tgPipelineCapture: IntentHandler = async (intent, options) => {
     };
   }
 
-  const project = result.doc.suggested_projects[0];
-  const projectLabel = project ? `📂 #${project}` : `📂 inbox/${result.doc.source_type}`;
   const skipNote = result.was_skipped ? " (이미 저장된 동일 메모 — skip)" : "";
   const qualityNote = result.doc.quality !== "complete" ? ` (quality: ${result.doc.quality})` : "";
   const titleLine = result.doc.title ? `\n💬 ${result.doc.title}` : "";
+
+  // 라우팅 결과에 따라 안내 문구 결정
+  const routeReason = result.entry.saved_path;
+  let projectLabel: string;
+  if (result.doc.suggested_projects[0] && result.entry.saved_path.includes("_suggested")) {
+    const suggested = result.doc.suggested_projects[0];
+    projectLabel = `📂 inbox/_suggested/#${suggested}\n💡 /tg #${suggested} 를 붙이면 projects/${suggested}/notes/에 직접 저장됩니다`;
+  } else if (result.doc.suggested_projects[0]) {
+    projectLabel = `📂 #${result.doc.suggested_projects[0]}`;
+  } else {
+    projectLabel = `📂 inbox/${result.doc.source_type}`;
+  }
 
   return {
     intent,
     handled: true,
     requiresConfirmation: false,
-    response: `✅ Wiki 저장 완료${skipNote}${qualityNote}\n${projectLabel}${titleLine}\n📁 ${result.entry.saved_path}`,
+    response: `✅ Wiki 저장 완료${skipNote}${qualityNote}\n${projectLabel}${titleLine}\n📁 ${routeReason}`,
     data: {
       saved_path: result.entry.saved_path,
       was_skipped: result.was_skipped,

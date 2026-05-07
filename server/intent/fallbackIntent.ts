@@ -31,6 +31,11 @@ export function isAgentIntentMessage(message: string): boolean {
   return /^에이전트/.test(message.trim());
 }
 
+// /tg 명령은 Knowledge Pipeline의 텔레그램 어댑터로 라우팅. 다른 모든 매처보다 우선.
+export function isTgPipelineMessage(message: string): boolean {
+  return /^\/tg(\s|$)/i.test(message.trim());
+}
+
 const NOTEBOOKLM_PREFIX_RE = /^(?:노트북(?:lm)?|notebooklm)\s+([\s\S]+)/i;
 
 export function matchNotebookLmQuery(message: string): IntentResult | null {
@@ -50,6 +55,17 @@ export function matchNotebookLmQuery(message: string): IntentResult | null {
 export function fallbackIntent(message: string): IntentResult {
   const lower = message.toLowerCase();
   const compact = lower.replace(/\s+/g, "");
+
+  // /tg Knowledge Pipeline은 모든 매처보다 우선 (CURRENT_TASK §8.10)
+  if (isTgPipelineMessage(message)) {
+    return {
+      domain: "knowledge",
+      action: "tg_pipeline_capture",
+      type: "execute",
+      confidence: 0.99,
+      params: { rawText: message },
+    };
+  }
 
   if (isAgentIntentMessage(message)) {
     return {

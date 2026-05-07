@@ -36,6 +36,18 @@ export function setupMessageRouter(
       await ctx.sendChatAction("typing");
       const conversationId = await persistUserMessage(ctx, userMessage);
 
+      // /tg Knowledge Pipeline 2단계 응답 — 1차 ack (Phase B-1, CURRENT_TASK §8.6)
+      if (/^\/tg(\s|$)/i.test(userMessage.trim())) {
+        try {
+          await ctx.reply("📝 Wiki 저장 처리중...", {
+            reply_parameters: { message_id: ctx.message.message_id },
+          });
+        } catch (e) {
+          // ack 실패해도 본 흐름 진행
+          console.warn("[Telegram] tg ack send failed:", (e as Error).message);
+        }
+      }
+
       // Step 1: routeIntentMessage 우선 — 웹 채팅과 동일한 경로
       const routingUserId = (await getConnectedGoogleUserId()) ?? ctx.session.userId;
       console.log("[TG INTENT] routeIntentMessage userId:", routingUserId, "msg:", userMessage.slice(0, 60));

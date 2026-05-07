@@ -20,7 +20,7 @@ describe("Google Sheets 자연어 라우팅", () => {
       expect(r.domain).toBe("google");
       expect(r.type).toBe("query");
       expect(r.params.spreadsheetId).toBe("test-spreadsheet-id");
-      expect(r.params.range).toBe("Sheet1!A1:Z50");
+      expect(r.params.range).toBe("A1:Z50");
     });
 
     it("\"시트 조회해줘\"를 매칭한다", () => {

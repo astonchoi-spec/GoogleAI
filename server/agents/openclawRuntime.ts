@@ -192,9 +192,19 @@ export async function loadGatewayCaller(): Promise<GatewayCall> {
     const callFile = entries.find((name) => /^call-[\w-]+\.js$/.test(name));
     if (!callFile) continue;
     const moduleUrl = pathToFileURL(path.join(dir, callFile)).href;
-    const mod = (await import(moduleUrl)) as { callGateway?: GatewayCall };
-    if (typeof mod.callGateway !== "function") continue;
-    return mod.callGateway;
+    const mod = (await import(moduleUrl)) as Record<string, unknown>;
+    // minified 빌드는 named export 대신 함수명으로 탐색
+    let fn: GatewayCall | null = null;
+    if (typeof mod.callGateway === "function") {
+      fn = mod.callGateway as GatewayCall;
+    } else {
+      const found = Object.values(mod).find(
+        (v) => typeof v === "function" && (v as { name?: string }).name === "callGateway",
+      );
+      if (found) fn = found as GatewayCall;
+    }
+    if (!fn) continue;
+    return fn;
   }
   throw new Error("openclaw gateway caller (call-*.js) not found in any known npm prefix");
 }

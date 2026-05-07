@@ -37,6 +37,7 @@ export type IntentAction =
   | "google_create_event"
   | "google_write_sheet"
   | "google_read_sheet"
+  | "google_ensure_schema"
   | "google_drive_search"
   | "google_get_emails"
   | "google_send_email"

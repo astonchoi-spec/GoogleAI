@@ -566,6 +566,20 @@ export function fallbackIntent(message: string): IntentResult {
     };
   }
 
+  // 시트 스키마 점검은 read보다 먼저 매칭 (스키마/점검/탭 키워드)
+  if (
+    (lower.includes("시트") || lower.includes("스프레드시트") || lower.includes("워크스페이스")) &&
+    (lower.includes("스키마") || lower.includes("점검") || lower.includes("탭 생성") || lower.includes("탭 확인"))
+  ) {
+    return {
+      domain: "google",
+      action: "google_ensure_schema",
+      type: "execute",
+      confidence: 0.92,
+      params: {},
+    };
+  }
+
   if (
     (lower.includes("시트") || lower.includes("sheets") || lower.includes("스프레드시트")) &&
     (lower.includes("읽") || lower.includes("조회") || lower.includes("보여") || lower.includes("확인") || lower.includes("read"))

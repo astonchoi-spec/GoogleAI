@@ -9,6 +9,8 @@ type WorkspaceSheetConfig = {
   sheetTitle: string;
   createdAt: string;
   updatedAt: string;
+  tabs?: Record<string, string>;
+  schemaCheckedAt?: string;
 };
 
 export async function getConfiguredWorkspaceSheet(): Promise<WorkspaceSheetConfig | null> {
@@ -32,10 +34,34 @@ export async function getConfiguredWorkspaceSheet(): Promise<WorkspaceSheetConfi
       sheetTitle: parsed.sheetTitle || "Workspace",
       createdAt: parsed.createdAt || "",
       updatedAt: parsed.updatedAt || "",
+      tabs: parsed.tabs,
+      schemaCheckedAt: parsed.schemaCheckedAt,
     };
   } catch {
     return null;
   }
+}
+
+export async function saveWorkspaceSchemaResult(input: {
+  spreadsheetId: string;
+  tabs: Record<string, string>;
+}): Promise<void> {
+  const now = new Date().toISOString();
+  let existing: Partial<WorkspaceSheetConfig> = {};
+  try {
+    existing = JSON.parse(await readFile(CONFIG_PATH, "utf8")) as Partial<WorkspaceSheetConfig>;
+  } catch {}
+  const config: WorkspaceSheetConfig = {
+    spreadsheetId: input.spreadsheetId,
+    title: existing.title || "Aston Workspace",
+    sheetTitle: existing.sheetTitle || "Workspace",
+    createdAt: existing.createdAt || now,
+    updatedAt: now,
+    tabs: input.tabs,
+    schemaCheckedAt: now,
+  };
+  await mkdir(path.dirname(CONFIG_PATH), { recursive: true });
+  await writeFile(CONFIG_PATH, JSON.stringify(config, null, 2), "utf8");
 }
 
 export async function saveConfiguredWorkspaceSheet(input: {

@@ -3,6 +3,8 @@ import SheetsConnector from "../../google/sheets.ts";
 import DriveConnector from "../../google/drive.ts";
 import GmailConnector from "../../google/gmail.ts";
 import { googleAuthManager } from "../../routers/google-workspace.ts";
+import { ensureWorkspaceSchema, formatSchemaCheckMessage } from "../../google/workspaceSchema.ts";
+import { saveWorkspaceSchemaResult, getConfiguredWorkspaceSheet } from "../../google/workspace-sheet-config.ts";
 import {
   asString,
   asNumber,
@@ -284,6 +286,35 @@ const listEvents: IntentHandler = async (intent, options) => {
   }
 };
 
+const ensureSchema: IntentHandler = async (intent, options) => {
+  const configured = await getConfiguredWorkspaceSheet();
+  const spreadsheetId = configured?.spreadsheetId || process.env.WORKSPACE_SPREADSHEET_ID || "";
+  if (!spreadsheetId) {
+    return {
+      intent,
+      handled: true,
+      requiresConfirmation: false,
+      response: "📋 WORKSPACE_SPREADSHEET_ID 또는 workspace-sheet.json 설정이 필요합니다.",
+    };
+  }
+  try {
+    const result = await ensureWorkspaceSchema(options.userId, spreadsheetId);
+    await saveWorkspaceSchemaResult({ spreadsheetId: result.spreadsheetId, tabs: result.resolvedTabs });
+    return {
+      intent,
+      handled: true,
+      requiresConfirmation: false,
+      response: formatSchemaCheckMessage(result),
+      data: { result },
+    };
+  } catch (err) {
+    if (isGoogleAuthError(err)) {
+      return { intent, handled: true, requiresConfirmation: false, response: GOOGLE_REAUTH_MSG };
+    }
+    throw err;
+  }
+};
+
 export const googleHandlers: HandlerMap = {
   google_create_event: createEvent,
   google_write_sheet: writeSheet,
@@ -293,4 +324,5 @@ export const googleHandlers: HandlerMap = {
   google_send_email: sendEmail,
   google_list_events: listEvents,
   google_today_events: todayEvents,
+  google_ensure_schema: ensureSchema,
 };

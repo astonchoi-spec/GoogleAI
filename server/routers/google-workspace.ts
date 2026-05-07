@@ -10,7 +10,8 @@ import GmailConnector from "../google/gmail.ts";
 import CalendarConnector from "../google/calendar.ts";
 import DriveConnector from "../google/drive.ts";
 import SheetsConnector from "../google/sheets.ts";
-import { getConfiguredWorkspaceSheet, saveConfiguredWorkspaceSheet } from "../google/workspace-sheet-config.ts";
+import { getConfiguredWorkspaceSheet, saveConfiguredWorkspaceSheet, saveWorkspaceSchemaResult } from "../google/workspace-sheet-config.ts";
+import { ensureWorkspaceSchema, REQUIRED_TABS } from "../google/workspaceSchema.ts";
 import { sessionManager } from "../llm/session.ts"; // MODIFIED: reuse the shared session store so Google auth state stays aligned with chat and Telegram.
 
 // Initialize Google Auth Manager
@@ -398,6 +399,27 @@ export const googleWorkspaceRouter = router({
 
         return { ...saved, created: true };
       }),
+
+    /**
+     * 워크스페이스 스프레드시트 필수 탭 스키마 확인/생성 (비파괴).
+     * 누락된 탭만 생성하고, tabs 결과를 workspace-sheet.json에 기록.
+     */
+    ensureSchema: protectedProcedure.mutation(async ({ ctx }) => {
+      const configured = await getConfiguredWorkspaceSheet();
+      if (!configured?.spreadsheetId) {
+        throw new Error("WORKSPACE_SPREADSHEET_ID 또는 workspace-sheet.json 설정이 필요합니다.");
+      }
+      const userId = ctx.user.id.toString();
+      const result = await ensureWorkspaceSchema(userId, configured.spreadsheetId);
+      await saveWorkspaceSchemaResult({
+        spreadsheetId: result.spreadsheetId,
+        tabs: result.resolvedTabs,
+      });
+      return {
+        ...result,
+        requiredTabs: REQUIRED_TABS.map((t) => ({ key: t.key, title: t.title, description: t.description })),
+      };
+    }),
 
     /**
      * Read sheet data

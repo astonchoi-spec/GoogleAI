@@ -71,6 +71,25 @@ export function fallbackIntent(message: string): IntentResult {
   const lower = message.toLowerCase();
   const compact = lower.replace(/\s+/g, "");
 
+  // 구글 재인증 요청 — 명시적 안내 메시지 반환
+  if (
+    compact.includes("구글재인증") ||
+    compact.includes("google재인증") ||
+    (lower.includes("구글") && lower.includes("재인증")) ||
+    (lower.includes("google") && lower.includes("재인증")) ||
+    compact.includes("구글로그인") ||
+    compact.includes("구글연결") ||
+    compact.includes("구글다시연결")
+  ) {
+    return {
+      domain: "google",
+      action: "google_reauth_guide",
+      type: "query",
+      confidence: 0.97,
+      params: {},
+    };
+  }
+
   // /tg Knowledge Pipeline은 모든 매처보다 우선 (CURRENT_TASK §8.10)
   if (isTgPipelineMessage(message)) {
     return {
@@ -656,7 +675,7 @@ export function fallbackIntent(message: string): IntentResult {
       confidence: 0.7,
       params: {
         spreadsheetId: process.env.WORKSPACE_SPREADSHEET_ID || "",
-        range: rangeMatch ? rangeMatch[0] : "Sheet1!A1:Z50",
+        range: rangeMatch ? rangeMatch[0] : "A1:Z50",
         maxRows: 5,
       },
     };

@@ -64,7 +64,7 @@ const createEvent: IntentHandler = async (intent, options) => {
 
 const readSheet: IntentHandler = async (intent, options) => {
   const spreadsheetId = asString(intent.params.spreadsheetId, "") || (process.env.WORKSPACE_SPREADSHEET_ID ?? "");
-  const range = asString(intent.params.range, "Sheet1!A1:Z50");
+  const range = asString(intent.params.range, "A1:Z50");
   const maxRows = asNumber(intent.params.maxRows, 5);
   if (!spreadsheetId) {
     return {
@@ -98,7 +98,12 @@ const readSheet: IntentHandler = async (intent, options) => {
     if (isGoogleAuthError(err)) {
       return { intent, handled: true, requiresConfirmation: false, response: GOOGLE_REAUTH_MSG };
     }
-    throw err;
+    const errMsg = err instanceof Error ? err.message : String(err);
+    console.error("[google_read_sheet] error:", errMsg);
+    return {
+      intent, handled: true, requiresConfirmation: false,
+      response: `📊 시트 읽기 오류: ${errMsg}\n\n시트 ID: ${spreadsheetId}\n범위: ${range}`,
+    };
   }
 };
 
@@ -327,6 +332,15 @@ const ensureSchema: IntentHandler = async (intent, options) => {
   }
 };
 
+const reauthGuide: IntentHandler = async (intent, _options) => {
+  return {
+    intent,
+    handled: true,
+    requiresConfirmation: false,
+    response: GOOGLE_REAUTH_MSG,
+  };
+};
+
 export const googleHandlers: HandlerMap = {
   google_create_event: createEvent,
   google_write_sheet: writeSheet,
@@ -337,4 +351,5 @@ export const googleHandlers: HandlerMap = {
   google_list_events: listEvents,
   google_today_events: todayEvents,
   google_ensure_schema: ensureSchema,
+  google_reauth_guide: reauthGuide,
 };

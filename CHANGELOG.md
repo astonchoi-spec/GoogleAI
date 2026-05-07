@@ -3,6 +3,31 @@
 
 ---
 
+## 2026-05-07 Google OAuth 재연결 + 인텐트 수정 (Claude Code)
+
+### Google Sheets 연동 복구
+- **PM2 포트 충돌 해소**: 고아 node 프로세스(PID 5676) 종료, aston을 4000으로 복구
+- **NODE_ENV=development** PM2 재시작으로 Vite dev server 정상 기동
+- **`WORKSPACE_SPREADSHEET_ID` 수정**: 잘못된 ID → `1kX_l2bQw8II4LZCwdS9_QEQ9JQ4HfpXYGpDoIF9F8b0`
+- **기본 range 수정**: `Sheet1!A1:Z50` → `A1:Z50` (탭명 없이 첫 번째 시트 자동 선택)
+- **Google OAuth 재인증 완료**: userId=6 토큰 갱신, Sheets API 정상 응답 확인
+
+### 인텐트 수정 3종 (`server/intent/`)
+- **`google_reauth_guide` 인텐트 신규**: `구글 재인증` / `구글 로그인` / `구글 연결` 키워드 → 웹앱 URL 안내 메시지 즉시 반환
+- **`GOOGLE_REAUTH_MSG` 개선**: 웹앱 URL + 스코프 안내 포함으로 업데이트
+- **`readSheet` 에러 처리 강화**: 비인증 에러도 catch해 사용자 친화적 메시지 반환 (LLM 폴백 방지)
+
+### 수정 파일
+- `server/intent/types.ts` — `google_reauth_guide` IntentAction 추가, GOOGLE_REAUTH_MSG URL 포함
+- `server/intent/fallbackIntent.ts` — `google_reauth_guide` 키워드 매처 추가, 기본 range 수정
+- `server/intent/handlers/google.ts` — `reauthGuide` 핸들러 + 기본 range 수정 + readSheet 에러 catch 강화
+
+### 검증
+- 텔레그램 `구글 재인증` → 안내 메시지 ✅
+- 텔레그램 `시트 읽기` → `📊 Dashboard: 데이터가 없습니다.` ✅ (LLM 폴백 없음)
+
+---
+
 ## 2026-05-07 NotebookLM 회수 + 어댑터 확장 (5 commits, Claude Code)
 
 ### [3292f12] /nb 명령 — NotebookLM 매핑 조회 모듈

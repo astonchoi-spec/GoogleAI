@@ -7,7 +7,7 @@
 
 | 항목 | 상태 |
 |------|------|
-| 서버 | ✅ PM2 `aston` online (포트 4000 고정) |
+| 서버 | ✅ PM2 `aston` online (포트 4000, NODE_ENV=development) |
 | 빌드 | `npm run build` ✅ (2026-05-07 Phase B-1) |
 | 테스트 | **543 passed** (2026-05-07 이번 세션, +51 신규) |
 | 빌드 스모크 | ✅ `npm run smoke:routes` |
@@ -17,9 +17,9 @@
 | /meet save | ✅ MeetingAdapter → `projects/{p}/meetings/` |
 | _suggested 라우팅 | ✅ confidence≥0.75 → `inbox/_suggested/{project}/` |
 | reprocess CLI | ✅ `npm run reprocess` pending 큐 재처리 |
-| 다음 우선순위 | 운영 검증 (텔레그램 직접 테스트) + VoiceAdapter (나중에) |
+| 다음 우선순위 | `딜 시트` 동기화 확인 + `/nb`, `/nb save`, `/meet save` 운영 검증 |
 | Redis | 선택적 (없어도 부팅됨, BullMQ lazy init) |
-| Google OAuth | ✅ CLIENT_ID/SECRET 정상 (재로그인 대기) |
+| Google OAuth | ✅ 재인증 완료 (userId=6, Sheets API 정상) |
 | `.env` 필수 키 | ✅ 5종 모두 설정 (회장님 직접 Google 로그인만 남음) |
 | Claude Code 자동화 | ✅ SessionStart 점검 + PreToolUse pre-commit check 활성 |
 | Upbit | ✅ 잔고 조회 정상, 텔레그램 응답 포맷 확인, 홈 KPI 연결 완료 |

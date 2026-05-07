@@ -38,6 +38,7 @@ export type IntentAction =
   | "google_write_sheet"
   | "google_read_sheet"
   | "google_ensure_schema"
+  | "google_reauth_guide"
   | "google_drive_search"
   | "google_get_emails"
   | "google_send_email"
@@ -150,7 +151,10 @@ export function spreadsheetIdFromEnv(): string {
 // Google 인증 헬퍼
 // ---------------------------------------------------------------------------
 
-export const GOOGLE_REAUTH_MSG = "Google 재인증이 필요합니다. 웹 앱에서 Google 계정을 다시 연결해주세요.";
+export const GOOGLE_REAUTH_MSG =
+  "🔐 Google 재인증이 필요합니다.\n\n" +
+  "👉 http://localhost:4000 접속 → Google 계정으로 로그인\n" +
+  "(Sheets·Drive·Gmail·Calendar 스코프 포함 허용)";
 
 export function isGoogleAuthError(err: unknown): boolean {
   if (!(err instanceof Error)) return false;

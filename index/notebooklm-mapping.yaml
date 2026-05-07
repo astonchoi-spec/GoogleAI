@@ -1,0 +1,76 @@
+# NotebookLM 노트북 ↔ Aston-Wiki 프로젝트 매핑
+#
+# 본 파일의 운영 위치: Google Drive/Aston-Wiki/index/notebooklm-mapping.yaml
+# (이 레포의 사본은 스켈레톤·템플릿 용도)
+#
+# 작성: 2026-05-07 (Phase A·B-0 확정 시점)
+# 채우는 주체: 회장님 직접
+# 사용처: NotebookLM 결과 회수 시 자동으로 올바른 projects/{project}/notebooklm/ 폴더 결정
+#
+# 채우는 방법:
+#   1. 회장님이 운영 중인 NotebookLM 노트북 30개+ 목록 확인
+#   2. 각 노트북에 대해 아래 schema에 맞춰 한 줄씩 추가
+#   3. project 필드는 영문 케밥 케이스 (Q1 결정에 따름 — 확정 후 본 파일 적용)
+#   4. display_name 필드에 한글명 그대로 보존
+#
+# Schema (각 항목당 필수 필드):
+#   notebook_name : NotebookLM에서 보이는 노트북 이름 (한글 가능)
+#   project       : 매핑되는 Wiki 프로젝트 폴더명 (영문 케밥)
+#   display_name  : UI/텔레그램에 표시할 한글명
+#   category      : 분류 (real-estate / system / trading / learning / legal / personal 등)
+#   status        : active / paused / archived
+#
+# 선택 필드:
+#   notes         : 추가 메모
+#   tags          : 검색용 태그 배열
+#   created_at    : ISO 8601 (YYYY-MM-DD)
+
+notebooks: []
+
+# ─────────────────────────────────────────────────────────────
+# 작성 예시 (실제 매핑 시 아래를 풀어서 사용)
+# ─────────────────────────────────────────────────────────────
+#
+# notebooks:
+#   - notebook_name: "한남동644 시그니처 공동주택 개발사업"
+#     project: "hannam-644"
+#     display_name: "한남동644 시그니처 공동주택"
+#     category: "real-estate"
+#     status: "active"
+#
+#   - notebook_name: "한남644PFV"
+#     project: "hannam-644-pfv"
+#     display_name: "한남644 PFV"
+#     category: "real-estate"
+#     status: "active"
+#     notes: "PFV 구조·후순위 리스크 전용 분석실. hannam-644의 sub-project."
+#
+#   - notebook_name: "역북동 PF 용역수수료 및 자료지급 확약서"
+#     project: "yeokbuk-pf"
+#     display_name: "역북동 PF"
+#     category: "real-estate"
+#     status: "active"
+#
+#   - notebook_name: "Aston-Quant-Guard"
+#     project: "system-aston-quant-guard"
+#     display_name: "Aston Quant Guard"
+#     category: "system"
+#     status: "active"
+#
+#   - notebook_name: "트레이딩뷰 봇 및 퀀트 전략 자동화"
+#     project: "system-trading-automation"
+#     display_name: "트레이딩 자동화"
+#     category: "trading"
+#     status: "active"
+#
+#   - notebook_name: "기흥구 중동 1042-7 토지매각계획"
+#     project: "jungdong-1042-7"
+#     display_name: "기흥 중동 1042-7"
+#     category: "real-estate"
+#     status: "active"
+#
+#   - notebook_name: "NotebookLM 활용법"
+#     project: "learning-notebooklm"
+#     display_name: "NotebookLM 활용법"
+#     category: "learning"
+#     status: "active"

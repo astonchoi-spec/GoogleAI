@@ -20,6 +20,7 @@ import { alertsRouter } from "./routers/alerts.ts"; // MODIFIED: register alerts
 import { journalRouter } from "./routers/journal.ts"; // MODIFIED: 1-D 매매일지 라우터 등록.
 import { analysisRouter } from "./routers/analysis.ts"; // MODIFIED: register technical analysis router.
 import { notebooklmRouter } from "./routers/notebooklm.ts"; // MODIFIED: register NotebookLM MCP router.
+import { wikiRouter } from "./routers/wiki.ts"; // MODIFIED: expose Wiki search/category/recent procedures for /wiki page.
 
 const ADMIN_USERNAME = "admin";
 const ADMIN_PASSWORD = "admin123";
@@ -79,6 +80,7 @@ export const appRouter = router({
   journal: journalRouter, // MODIFIED: 1-D 매매일지 프로시저 노출.
   analysis: analysisRouter, // MODIFIED: expose technical analysis procedures via appRouter.
   notebooklm: notebooklmRouter, // MODIFIED: expose NotebookLM MCP query/status procedures via appRouter.
+  wiki: wikiRouter, // MODIFIED: expose Wiki page data (search/byCategory/recent/status).
 });
 
 export type AppRouter = typeof appRouter;

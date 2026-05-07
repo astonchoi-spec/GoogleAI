@@ -17,16 +17,17 @@
   - 회장님 NotebookLM 30개+ 노트북에서 가치 있는 분석 결과를 Wiki로 회수
   - AI 채팅이 NotebookLM 분석을 컨텍스트로 활용하게 만드는 경로
 
-### 집에서 이어갈 작업 (우선순위 순)
-1. **NotebookLM 회수 경로 `/nb` 설계 + 구현** — 다음 CURRENT_TASK 작성 필요
-   - 입력: `/nb hannam-644` + NotebookLM 답변 본문 붙여넣기 + 출처
-   - 처리: Phase B-1 파이프라인 재사용 (TelegramAdapter처럼 NotebookLmAdapter 추가)
-   - 저장: `projects/{project}/notebooklm/`
-2. **`notebooklm-mapping.yaml`에 회장님 30개+ 노트북 매핑 채우기** (회장님 직접)
-3. **회의록 어댑터** (수동 업로드 → 파이프라인)
-4. **음성 어댑터** (텔레그램 음성 → STT → 파이프라인) — STT 엔진 결정 필요
-5. **inbox/_suggested 키워드 힌트 자동 생성** (B-1 보완)
-6. **일괄 재처리 CLI** `scripts/reprocess.ts` (Track B)
+### 어댑터 구현 완료 (2026-05-07 이번 세션)
+- ✅ `/nb` 매핑 조회 4종 + 28개 노트북 mapping
+- ✅ `/nb save {project}` → NotebookLmAdapter → `projects/{project}/notebooklm/`
+- ✅ `/meet save {project}` → MeetingAdapter → `projects/{project}/meetings/`
+- ✅ `inbox/_suggested/{project}/` 키워드 힌트 라우팅 (confidence ≥ 0.75)
+- ✅ `scripts/reprocess.ts` pending 큐 재처리 CLI
+
+### 남은 작업
+- [ ] **VoiceAdapter** — 텔레그램 음성 → Google Cloud STT → 파이프라인 (나중에)
+- [ ] 운영 검증: 텔레그램에서 `/nb`, `/nb save`, `/meet save` 직접 테스트
+- [ ] Google OAuth 재연결 (Sheets/Drive 스코프)
 
 ### 추가 미해결
 - [ ] 잘못 만들어진 "새 일정" 이벤트 캘린더에서 회장님 직접 정리

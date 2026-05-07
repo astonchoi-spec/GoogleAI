@@ -1,5 +1,5 @@
 ﻿# HANDOFF.md — 에스턴 워크스테이션
-> 업데이트: 2026-05-07 NotebookLM/Meeting 어댑터 | 브랜치: codex-google-workspace-expansion
+> 업데이트: 2026-05-08 OpenClaw 연결 복구 | 브랜치: codex-google-workspace-expansion
 
 ---
 
@@ -7,33 +7,34 @@
 
 | 항목 | 상태 |
 |------|------|
-| 서버 | ✅ PM2 `aston` online (포트 4000, NODE_ENV=development) |
-| 빌드 | `npm run build` ✅ (2026-05-07 Phase B-1) |
-| 테스트 | **543 passed** (2026-05-07 이번 세션, +51 신규) |
-| 빌드 스모크 | ✅ `npm run smoke:routes` |
+| 서버 | ✅ PM2 `aston` online (포트 4000) — 재시작 필요 (새 코드 반영) |
+| 빌드 | `npm run build` ✅ (2026-05-08) |
+| 테스트 | **543 passed** (2026-05-08) |
 | 브랜치 | `codex-google-workspace-expansion` |
+| **OpenClaw** | ✅ **available=true, simulationMode=false** (2026-05-08 수정) |
+| OpenClaw URL | `http://localhost:8000` (gateway token 정상) |
 | /nb 조회 | ✅ list/show/search/help + 28개 노트북 매핑 |
 | /nb save | ✅ NotebookLmAdapter → `projects/{p}/notebooklm/` |
 | /meet save | ✅ MeetingAdapter → `projects/{p}/meetings/` |
-| _suggested 라우팅 | ✅ confidence≥0.75 → `inbox/_suggested/{project}/` |
 | reprocess CLI | ✅ `npm run reprocess` pending 큐 재처리 |
-| 다음 우선순위 | `딜 시트` 동기화 확인 + `/nb`, `/nb save`, `/meet save` 운영 검증 |
-| Redis | 선택적 (없어도 부팅됨, BullMQ lazy init) |
+| Redis | 선택적 (없어도 부팅됨) |
 | Google OAuth | ✅ 재인증 완료 (userId=6, Sheets API 정상) |
-| `.env` 필수 키 | ✅ 5종 모두 설정 (회장님 직접 Google 로그인만 남음) |
-| Claude Code 자동화 | ✅ SessionStart 점검 + PreToolUse pre-commit check 활성 |
-| Upbit | ✅ 잔고 조회 정상, 텔레그램 응답 포맷 확인, 홈 KPI 연결 완료 |
-| Gate.io | ✅ API 키 미설정 시 명확한 에러 반환 (가드 추가, 2026-05-07) |
-| OpenClaw | 시뮬레이션 모드 (실 연동 timeout 미해결, discovery JSON URL 정상화) |
-| Yahoo Finance | 프록시 `/api/yahoo-chart` User-Agent 수정 완료 |
-| 텔레그램↔웹 동기화 | ✅ 정상 + 라우팅 이중화 제거 (2026-05-07, routeIntentMessage 우선) |
-| Sheets UI | ✅ Aston-Deals-Dashboard 연결 완료 (Dashboard 탭, 3건) |
+| Upbit | ✅ 잔고 조회 정상 |
+| Gate.io | ✅ API 키 미설정 시 명확한 에러 반환 |
+| Yahoo Finance | ✅ 프록시 User-Agent 수정 완료 |
+| Sheets UI | ✅ Aston-Deals-Dashboard 연결 완료 |
 | DEALS_ROOT | ✅ G:\내 드라이브\Aston-Deals 설정 완료 |
-| 홈 대시보드 | ✅ 모든 KPI/활동 피드 실데이터 (mock 0건, 2026-05-07) |
+| 홈 대시보드 | ✅ 모든 KPI/활동 피드 실데이터 |
 
 ---
 
 ## 마지막 완료 작업
+
+**2026-05-08 OpenClaw gateway caller 수정 | Claude Code (1 commit)**
+- `openclawRuntime.loadGatewayCaller()` — minified 번들 `callGateway` 함수명 탐색으로 수정
+- smoke-openclaw 통과, available=true 확인
+- 전체 플로우 재정리: B-3 폐기, B-2/1c 보류, 다음은 B-5 KakaoMcpAdapter
+- **PM2 재시작 필요**: `pm2 restart aston`
 
 **2026-05-07 NotebookLM·Meeting 어댑터 + 라우터 완성 | Claude Code (5 commits)**
 - `/nb` 조회 모듈 (`server/notebooklm/`) — 28개 노트북 매핑 조회, 4종 서브커맨드
@@ -319,16 +320,15 @@
 
 ## 다음 추천 작업
 
-### 🏠 집에서 이어갈 때 — 시작 순서
+### 다음 메인 작업: B-5 KakaoMcpAdapter
 
-1. **`작업준비`** 명령으로 git fetch + pull + 4개 문서 자동 읽기
-2. **PM2 상태 확인**: `pm2 list` (aston online이면 그대로, offline이면 `pm2 restart aston`)
-3. **운영 검증** (회장님 직접):
-   - 텔레그램에서 `5월 22일 11:10 원준이 전화상담` → 캘린더 정상 생성 확인
-   - `http://localhost:4000/wiki` 접속 → 검색·카테고리·폴더 열기 동작 확인
-4. **다음 큰 작업**: `/nb` NotebookLM 회수 경로 설계 + 구현 (CURRENT_TASK 새로 작성)
+**OpenClaw로 카카오톡 메시지 자동 수집 → B-1 Knowledge Pipeline → Wiki**
 
-### 다음 메인 작업: NotebookLM 회수 (`/nb`)
+- OpenClaw 연결 완료 (`available=true`)
+- 설계 단계 진입 가능
+- CURRENT_TASK.md 작성 후 시작
+
+### 이전 메인 작업: NotebookLM 회수 (`/nb`) — 완료
 
 회장님 30개+ NotebookLM 노트북에서 가치 있는 분석 결과를 Wiki로 끌어오는 경로.
 

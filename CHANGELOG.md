@@ -3,6 +3,29 @@
 
 ---
 
+## 2026-05-08 OpenClaw 연결 복구 (Claude Code)
+
+### OpenClaw gateway caller minified bundle 수정
+- **원인**: `loadGatewayCaller()`가 `mod.callGateway` named export로만 탐색 → openclaw minified 빌드에서 `callGateway`가 `r`로 export되어 항상 못 찾음
+- **수정**: named export 실패 시 함수명(`v.name === "callGateway"`)으로 재탐색하도록 보강
+- **결과**: `smoke-openclaw.ts` 통과, `/api/agents/health` → `available: true`, `simulationMode: false`
+- **부수**: `sheetsRouting.test.ts` stale range 기본값(`Sheet1!A1:Z50` → `A1:Z50`) 수정
+
+### 전체 작업 플로우 정리
+- B-2 VoiceAdapter 보류 / B-3 GmailAdapter 폐기 / Phase 1c MTProto 보류
+- Sheets 워크스페이스 스키마 작업 불필요로 결론 (이미 사용 경로 없음)
+- **다음**: OpenClaw로 카카오톡 자동화 (B-5 KakaoMcpAdapter) 설계 예정
+
+### 수정 파일
+- `server/agents/openclawRuntime.ts`
+- `server/__tests__/sheetsRouting.test.ts`
+
+### 검증
+- `npm run check` ✅ / `npm run build` ✅ / `npm test` 543 passed ✅
+- smoke-openclaw ✅ / OpenClaw available=true, simulationMode=false ✅
+
+---
+
 ## 2026-05-07 Google OAuth 재연결 + 인텐트 수정 (Claude Code)
 
 ### Google Sheets 연동 복구

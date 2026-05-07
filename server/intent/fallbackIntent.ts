@@ -46,6 +46,11 @@ export function isNbSaveCommand(message: string): boolean {
   return /^\/nb\s+save\s+\S+/i.test(message.trim()) && message.includes("\n");
 }
 
+// /meet save {project}\n{body} — 회의록 저장
+export function isMeetSaveCommand(message: string): boolean {
+  return /^\/meet\s+save\s+\S+/i.test(message.trim()) && message.includes("\n");
+}
+
 const NOTEBOOKLM_PREFIX_RE = /^(?:노트북(?:lm)?|notebooklm)\s+([\s\S]+)/i;
 
 export function matchNotebookLmQuery(message: string): IntentResult | null {
@@ -74,6 +79,17 @@ export function fallbackIntent(message: string): IntentResult {
       type: "execute",
       confidence: 0.99,
       params: { rawText: message },
+    };
+  }
+
+  // /meet save — 회의록 저장
+  if (isMeetSaveCommand(message)) {
+    return {
+      domain: "notebooklm",
+      action: "meet_save",
+      type: "execute",
+      confidence: 0.99,
+      params: { raw: message },
     };
   }
 

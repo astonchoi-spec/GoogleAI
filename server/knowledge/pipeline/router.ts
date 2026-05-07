@@ -11,8 +11,11 @@ export class Router {
     const explicitProject = doc.command_hints?.explicit_project;
 
     if (explicitProject) {
-      // notebooklm 어댑터인 경우 notebooklm/, 그 외 notes/
-      const subfolder = doc.source_type === "notebooklm" ? "notebooklm" : "notes";
+      const SUBFOLDER: Partial<Record<string, string>> = {
+        notebooklm: "notebooklm",
+        meeting: "meetings",
+      };
+      const subfolder = SUBFOLDER[doc.source_type] ?? "notes";
       return {
         target_folder: path.join(root, "projects", explicitProject, subfolder),
         routing_reason: "explicit_command",

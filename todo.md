@@ -27,7 +27,8 @@
 ### 남은 작업
 - [ ] **VoiceAdapter** — 텔레그램 음성 → Google Cloud STT → 파이프라인 (나중에)
 - [ ] 운영 검증: 텔레그램에서 `/nb`, `/nb save`, `/meet save` 직접 테스트
-- [ ] Google OAuth 재연결 (Sheets/Drive 스코프)
+- [x] Google OAuth 재연결 (Sheets/Drive 스코프) — 2026-05-07 완료
+- [x] `딜 시트` 텔레그램 명령 → 3건 동기화 ✅ (DEALS_ROOT .env 누락 수정 포함)
 
 ### 추가 미해결
 - [ ] 잘못 만들어진 "새 일정" 이벤트 캘린더에서 회장님 직접 정리

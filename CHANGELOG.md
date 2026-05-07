@@ -3,6 +3,42 @@
 
 ---
 
+## 2026-05-07 NotebookLM 회수 + 어댑터 확장 (5 commits, Claude Code)
+
+### [3292f12] /nb 명령 — NotebookLM 매핑 조회 모듈
+- `server/notebooklm/` 신규 도메인 모듈 (mappingLoader / notebookQuery / types)
+- YAML 직접 파서 (외부 패키지 없음) + mtime 캐시 + 스키마 검증
+- `/nb` / `/nb list [카테고리]` / `/nb show {id}` / `/nb search {keyword}` 4종
+- `index/notebooklm-mapping.yaml` 28개 노트북 1차 매핑
+- 테스트 29개 신규, 521 → 521 passed
+
+### [1d1be26] /nb save — NotebookLM 회수 파이프라인 연결
+- `server/knowledge/adapters/notebooklm.ts` 신규
+- `/nb save {project}\n{본문}` → Phase B-1 파이프라인 → `projects/{project}/notebooklm/`
+- project ID 검증 + 유사 항목 제안 + 멱등성 보장
+- 테스트 9개 신규, 530 passed
+
+### [b28554a] /meet save — 회의록 저장 어댑터
+- `server/knowledge/adapters/meeting.ts` 신규
+- `/meet save {project} [참석자: 이름,이름]\n{본문}`
+- router.ts: `meeting` source_type → `projects/{project}/meetings/` 경로 추가
+- 테스트 11개 신규, 541 passed
+
+### [24feb0c] inbox/_suggested/{project}/ 키워드 힌트 라우팅
+- 라우터 3단계 완성: explicit_command → keyword_hint_suggested → inbox_fallback
+- LLM confidence ≥ 0.75 + suggested_project → `inbox/_suggested/{project}/`로 보냄 (자동 승격 절대 X)
+- `/tg` 응답에 `_suggested` 경로 안내 + `#project` 재전송 가이드 추가
+- 543 passed
+
+### [0fb80f4] scripts/reprocess.ts — pending 큐 재처리 CLI
+- `npm run reprocess` / `npm run reprocess:list` / `npm run reprocess:dry`
+- `--max N` 옵션으로 건수 제한 가능
+
+### 검증
+- `npm run check` ✅ / `npm test` 543 passed / 모듈 경계 위반 0건
+
+---
+
 ## 2026-05-07 Phase B-1 마감 후속 (4 commits)
 
 ### [Claude Code] TypeScript parameter property → 수동 declaration (커밋 e706a79)

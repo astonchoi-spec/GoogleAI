@@ -1,5 +1,5 @@
 ﻿# HANDOFF.md — 에스턴 워크스테이션
-> 업데이트: 2026-05-07 후속 | 브랜치: codex-google-workspace-expansion
+> 업데이트: 2026-05-07 NotebookLM/Meeting 어댑터 | 브랜치: codex-google-workspace-expansion
 
 ---
 
@@ -9,14 +9,15 @@
 |------|------|
 | 서버 | ✅ PM2 `aston` online (포트 4000 고정) |
 | 빌드 | `npm run build` ✅ (2026-05-07 Phase B-1) |
-| 테스트 | **492 passed** (2026-05-07 Phase B-1, +59 신규) |
-| 빌드 스모크 | ✅ `npm run smoke:routes` (라우트 8개 + 산출물 검증) |
+| 테스트 | **543 passed** (2026-05-07 이번 세션, +51 신규) |
+| 빌드 스모크 | ✅ `npm run smoke:routes` |
 | 브랜치 | `codex-google-workspace-expansion` |
-| Knowledge Pipeline | ✅ Phase B-1 완료 (`/tg` 신규, `저장해` 보존) |
-| Wiki 페이지 | ✅ 실데이터 연결 — 검색·카테고리·폴더 열기 (G 드라이브) |
-| Calendar 인텐트 | ✅ LLM 필드명 미스매치 수정 (시간/제목 정상 처리) |
-| ASTON_WIKI_ROOT | ✅ `G:\내 드라이브\Aston-Wiki` (운영용) — gitignored |
-| 다음 우선순위 | `/nb` NotebookLM 회수 (`/tg` 메모는 over-engineering 결정) |
+| /nb 조회 | ✅ list/show/search/help + 28개 노트북 매핑 |
+| /nb save | ✅ NotebookLmAdapter → `projects/{p}/notebooklm/` |
+| /meet save | ✅ MeetingAdapter → `projects/{p}/meetings/` |
+| _suggested 라우팅 | ✅ confidence≥0.75 → `inbox/_suggested/{project}/` |
+| reprocess CLI | ✅ `npm run reprocess` pending 큐 재처리 |
+| 다음 우선순위 | 운영 검증 (텔레그램 직접 테스트) + VoiceAdapter (나중에) |
 | Redis | 선택적 (없어도 부팅됨, BullMQ lazy init) |
 | Google OAuth | ✅ CLIENT_ID/SECRET 정상 (재로그인 대기) |
 | `.env` 필수 키 | ✅ 5종 모두 설정 (회장님 직접 Google 로그인만 남음) |
@@ -33,6 +34,14 @@
 ---
 
 ## 마지막 완료 작업
+
+**2026-05-07 NotebookLM·Meeting 어댑터 + 라우터 완성 | Claude Code (5 commits)**
+- `/nb` 조회 모듈 (`server/notebooklm/`) — 28개 노트북 매핑 조회, 4종 서브커맨드
+- `/nb save {project}` — NotebookLmAdapter → B-1 파이프라인 → `projects/{project}/notebooklm/`
+- `/meet save {project}` — MeetingAdapter → `projects/{project}/meetings/` (참석자 힌트 포함)
+- 라우터 3단계 완성: explicit_command / keyword_hint_suggested / inbox_fallback
+- `scripts/reprocess.ts` pending 큐 CLI (list/dry-run/max N)
+- 테스트 541→543 passed, 모듈 경계 위반 0건
 
 **2026-05-07 Phase B-1 마감 후속 | Claude Code**
 - **TypeScript parameter property → 수동 declaration** (커밋 `e706a79`)

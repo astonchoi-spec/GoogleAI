@@ -51,6 +51,7 @@ export type IntentAction =
   | "agent_command"
   | "chat_telegram_recent"
   | "nb_command"
+  | "nb_save"
   | "execute_placeholder"
   | "chat";
 

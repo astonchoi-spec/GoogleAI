@@ -41,6 +41,11 @@ export function isNbCommand(message: string): boolean {
   return /^\/nb(\s|$)/i.test(message.trim());
 }
 
+// /nb save {project}\n{body} — Wiki 저장 (조회보다 먼저 검사)
+export function isNbSaveCommand(message: string): boolean {
+  return /^\/nb\s+save\s+\S+/i.test(message.trim()) && message.includes("\n");
+}
+
 const NOTEBOOKLM_PREFIX_RE = /^(?:노트북(?:lm)?|notebooklm)\s+([\s\S]+)/i;
 
 export function matchNotebookLmQuery(message: string): IntentResult | null {
@@ -69,6 +74,17 @@ export function fallbackIntent(message: string): IntentResult {
       type: "execute",
       confidence: 0.99,
       params: { rawText: message },
+    };
+  }
+
+  // /nb save — Wiki 저장 (nb_command 조회보다 먼저)
+  if (isNbSaveCommand(message)) {
+    return {
+      domain: "notebooklm",
+      action: "nb_save",
+      type: "execute",
+      confidence: 0.99,
+      params: { raw: message },
     };
   }
 

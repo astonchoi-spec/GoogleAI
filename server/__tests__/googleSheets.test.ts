@@ -40,6 +40,8 @@ beforeEach(async () => {
   cwdBefore = process.cwd();
   tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), "google-sheets-"));
   process.chdir(tmpDir);
+  // MODIFIED: 환경변수 격리 — 호스트 .env에 GOOGLE_SHEETS_USER_ID가 설정돼 있어도 테스트는 기본값 "1" 사용.
+  process.env.GOOGLE_SHEETS_USER_ID = "1";
   vi.resetModules();
   subject = await import("../_core/googleSheets.ts");
   mocks.getGoogleOAuthClient.mockResolvedValue({ userId: "1", auth: { token: "x" } });

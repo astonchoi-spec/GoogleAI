@@ -21,8 +21,7 @@ export default function PFSummaryWidget() {
   }).length;
 
   return (
-    <Link href="/real-estate-pf">
-      <a className="block rounded-2xl border border-white/10 bg-black/15 p-5 transition-colors hover:border-cyan-500/30 hover:bg-white/5">
+    <Link href="/real-estate-pf" className="block rounded-2xl border border-white/10 bg-black/15 p-5 transition-colors hover:border-cyan-500/30 hover:bg-white/5">
         <div className="mb-4 flex items-center gap-3">
           <div className="flex h-10 w-10 items-center justify-center rounded-lg border border-blue-500/20 bg-blue-500/10">
             <Building2 className="h-5 w-5 text-blue-400" />
@@ -46,7 +45,6 @@ export default function PFSummaryWidget() {
             <span className="text-[var(--aston-text)]">{deals.isLoading ? "..." : `${thisWeekMilestones}건`}</span>
           </div>
         </div>
-      </a>
     </Link>
   );
 }

@@ -15,8 +15,7 @@ export default function TradingSummaryWidget() {
   const activeAlerts = (alerts.data ?? []).filter((a) => a.active).length;
 
   return (
-    <Link href="/trading">
-      <a className="block rounded-2xl border border-white/10 bg-black/15 p-5 transition-colors hover:border-cyan-500/30 hover:bg-white/5">
+    <Link href="/trading" className="block rounded-2xl border border-white/10 bg-black/15 p-5 transition-colors hover:border-cyan-500/30 hover:bg-white/5">
         <div className="mb-4 flex items-center gap-3">
           <div className="flex h-10 w-10 items-center justify-center rounded-lg border border-cyan-500/20 bg-cyan-500/10">
             <TrendingUp className="h-5 w-5 text-cyan-400" />
@@ -42,7 +41,6 @@ export default function TradingSummaryWidget() {
             <span className="text-[var(--aston-text)]">{alerts.isLoading ? "..." : `${activeAlerts}`}</span>
           </div>
         </div>
-      </a>
     </Link>
   );
 }

@@ -422,20 +422,14 @@ export default function Home() {
           </div>
 
           <div className="flex flex-wrap gap-2">
-            <Link href="/chat">
-              <a className="inline-flex h-10 items-center justify-center rounded-lg bg-cyan-500 px-4 text-sm font-semibold text-slate-950 transition hover:bg-cyan-400">
-                AI 채팅 열기
-              </a>
+            <Link href="/chat" className="inline-flex h-10 items-center justify-center rounded-lg bg-cyan-500 px-4 text-sm font-semibold text-slate-950 transition hover:bg-cyan-400">
+              AI 채팅 열기
             </Link>
-            <Link href="/google">
-              <a className="inline-flex h-10 items-center justify-center rounded-lg border border-white/10 bg-white/5 px-4 text-sm text-[var(--aston-text)] transition hover:bg-white/10">
-                Google Workspace
-              </a>
+            <Link href="/google" className="inline-flex h-10 items-center justify-center rounded-lg border border-white/10 bg-white/5 px-4 text-sm text-[var(--aston-text)] transition hover:bg-white/10">
+              Google Workspace
             </Link>
-            <Link href="/trading">
-              <a className="inline-flex h-10 items-center justify-center rounded-lg border border-white/10 bg-white/5 px-4 text-sm text-[var(--aston-text)] transition hover:bg-white/10">
-                트레이딩
-              </a>
+            <Link href="/trading" className="inline-flex h-10 items-center justify-center rounded-lg border border-white/10 bg-white/5 px-4 text-sm text-[var(--aston-text)] transition hover:bg-white/10">
+              트레이딩
             </Link>
           </div>
         </div>
@@ -504,18 +498,16 @@ export default function Home() {
 
         <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
           {modules.map(({ href, label, description, icon: Icon }) => (
-            <Link key={href} href={href}>
-              <a className="group rounded-2xl border border-white/10 bg-black/15 p-4 transition hover:border-cyan-500/30 hover:bg-white/5">
-                <div className="flex items-start gap-3">
-                  <div className="flex h-11 w-11 items-center justify-center rounded-xl border border-cyan-500/20 bg-cyan-500/10 text-cyan-300 transition group-hover:bg-cyan-500/20">
-                    <Icon className="h-5 w-5" />
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <div className="text-base font-semibold text-[var(--aston-text)]">{label}</div>
-                    <div className="mt-1 text-sm text-[var(--aston-muted)]">{description}</div>
-                  </div>
+            <Link key={href} href={href} className="group rounded-2xl border border-white/10 bg-black/15 p-4 transition hover:border-cyan-500/30 hover:bg-white/5">
+              <div className="flex items-start gap-3">
+                <div className="flex h-11 w-11 items-center justify-center rounded-xl border border-cyan-500/20 bg-cyan-500/10 text-cyan-300 transition group-hover:bg-cyan-500/20">
+                  <Icon className="h-5 w-5" />
                 </div>
-              </a>
+                <div className="min-w-0 flex-1">
+                  <div className="text-base font-semibold text-[var(--aston-text)]">{label}</div>
+                  <div className="mt-1 text-sm text-[var(--aston-muted)]">{description}</div>
+                </div>
+              </div>
             </Link>
           ))}
         </div>

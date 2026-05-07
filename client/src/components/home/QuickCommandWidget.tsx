@@ -23,10 +23,8 @@ export default function QuickCommandWidget() {
       </div>
       <div className="flex flex-wrap gap-2">
         {commands.map((command) => (
-          <Link key={command} href={`/chat?command=${encodeURIComponent(command)}`}>
-            <a className="rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-xs font-medium text-[var(--aston-text)] transition-colors hover:border-cyan-500/30 hover:bg-cyan-500/10 hover:text-cyan-200">
-              {command}
-            </a>
+          <Link key={command} href={`/chat?command=${encodeURIComponent(command)}`} className="rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-xs font-medium text-[var(--aston-text)] transition-colors hover:border-cyan-500/30 hover:bg-cyan-500/10 hover:text-cyan-200">
+            {command}
           </Link>
         ))}
       </div>

@@ -41,14 +41,14 @@ export default function DocMenu({ onNavigate }: DocMenuProps) {
         <div className="min-h-0 overflow-hidden">
           <div className="mt-2 space-y-1.5">
             {DOC_ITEMS.map((item) => (
-              <Link key={item.anchor} href={`/#${item.anchor}`}>
-                <a
-                  onClick={onNavigate}
-                  className="flex items-center justify-between rounded-lg px-3 py-2 text-sm text-[var(--aston-muted)] transition hover:bg-white/5 hover:text-[var(--aston-text)]"
-                >
-                  <span>{item.label}</span>
-                  <span className="text-[10px] uppercase tracking-[0.18em] text-[var(--aston-muted)]">doc</span>
-                </a>
+              <Link
+                key={item.anchor}
+                href={`/#${item.anchor}`}
+                onClick={onNavigate}
+                className="flex items-center justify-between rounded-lg px-3 py-2 text-sm text-[var(--aston-muted)] transition hover:bg-white/5 hover:text-[var(--aston-text)]"
+              >
+                <span>{item.label}</span>
+                <span className="text-[10px] uppercase tracking-[0.18em] text-[var(--aston-muted)]">doc</span>
               </Link>
             ))}
           </div>

@@ -40,23 +40,19 @@ export default function Navbar() {
     <header className="sticky top-0 z-50 w-full bg-slate-950/80 backdrop-blur-md border-b border-slate-800/60">
       <div className="max-w-5xl mx-auto px-4 h-12 flex items-center gap-3">
         {!isHome ? (
-          <Link href={backHref}>
-            <a className="flex items-center gap-1.5 text-slate-400 hover:text-white transition-colors text-sm mr-1">
-              <ChevronLeft className="w-4 h-4" />
-              <span className="hidden sm:inline">뒤로</span>
-            </a>
+          <Link href={backHref} className="flex items-center gap-1.5 text-slate-400 hover:text-white transition-colors text-sm mr-1">
+            <ChevronLeft className="w-4 h-4" />
+            <span className="hidden sm:inline">뒤로</span>
           </Link>
         ) : null}
 
-        <Link href="/">
-          <a className="flex items-center gap-2 font-bold text-white">
-            <div className="w-6 h-6 rounded-md bg-gradient-to-br from-cyan-500 to-blue-600 flex items-center justify-center">
-              <Bot className="w-3.5 h-3.5 text-white" />
-            </div>
-            <span className="text-sm bg-gradient-to-r from-cyan-400 to-blue-500 bg-clip-text text-transparent hidden sm:inline">
-              GoogleTG 워크스테이션
-            </span>
-          </a>
+        <Link href="/" className="flex items-center gap-2 font-bold text-white">
+          <div className="w-6 h-6 rounded-md bg-gradient-to-br from-cyan-500 to-blue-600 flex items-center justify-center">
+            <Bot className="w-3.5 h-3.5 text-white" />
+          </div>
+          <span className="text-sm bg-gradient-to-r from-cyan-400 to-blue-500 bg-clip-text text-transparent hidden sm:inline">
+            GoogleTG 워크스테이션
+          </span>
         </Link>
 
         <div className="flex-1" />
@@ -65,17 +61,17 @@ export default function Navbar() {
           {NAV_LINKS.map(({ href, icon: Icon, label }) => {
             const isActive = location === href;
             return (
-              <Link key={href} href={href}>
-                <a
-                  className={`flex shrink-0 items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium transition-all ${
-                    isActive
-                      ? "bg-cyan-600/20 text-cyan-400 border border-cyan-600/30"
-                      : "text-slate-400 hover:text-white hover:bg-slate-800"
-                  }`}
-                >
-                  <Icon className="w-3.5 h-3.5" />
-                  <span className="hidden md:inline">{label}</span>
-                </a>
+              <Link
+                key={href}
+                href={href}
+                className={`flex shrink-0 items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium transition-all ${
+                  isActive
+                    ? "bg-cyan-600/20 text-cyan-400 border border-cyan-600/30"
+                    : "text-slate-400 hover:text-white hover:bg-slate-800"
+                }`}
+              >
+                <Icon className="w-3.5 h-3.5" />
+                <span className="hidden md:inline">{label}</span>
               </Link>
             );
           })}

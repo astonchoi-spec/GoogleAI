@@ -1,5 +1,40 @@
 ﻿# TODO.md — 에스턴 워크스테이션
-> 업데이트: 2026-05-07 후속 | 브랜치: codex-google-workspace-expansion
+> 업데이트: 2026-05-07 Phase B-1 | 브랜치: codex-google-workspace-expansion
+
+---
+
+## 2026-05-07 Phase B-1 — Knowledge Pipeline 완료
+
+- ✅ Knowledge Core Phase A 확정 (Wiki=본진 / NotebookLM=분석실 / Workstation=작업환경)
+- ✅ Phase B-0 인터페이스 명세 (8단계 파이프라인, 8종 어댑터)
+- ✅ Phase B-1 CURRENT_TASK 12개 합의 + 구현 완료
+- ✅ TelegramAdapter + 공통 파이프라인 7단계 + 이벤트 stub
+- ✅ Token Dispatcher (정규식 금지, prefix 핸들러 등록 구조)
+- ✅ LLM 실패 vs I/O 실패 분리 (partial 진행 / pending 큐)
+- ✅ 멱등성 Track A (`reprocess_requested` 메타)
+- ✅ 2단계 텔레그램 응답 (`📝 처리중...` + 결과)
+- ✅ 검증: check / build / 492 tests passed (+59)
+
+### 운영 검증 잔여 (회장님 직접)
+- [ ] 텔레그램에서 `/tg 메모내용` → `inbox/telegram/` 저장 확인
+- [ ] 텔레그램에서 `/tg #hannam-644 메모` → `projects/hannam-644/notes/` 저장 확인
+- [ ] 동일 메시지 재전송 → skip 확인 (멱등성)
+- [ ] `/tg` 응답 1차/2차 도착 확인 (5~15초 내 결과)
+- [ ] 기존 `저장해 ...`이 회귀 없이 동작 확인
+- [ ] `.env`에 `ASTON_WIKI_ROOT=G:\내 드라이브\Aston-Wiki` 설정 (운영 전환)
+
+### Phase B-1 후속 (별도 작업 지시서 필요)
+- [ ] `notebooklm-mapping.yaml`에 회장님 30개+ 노트북 매핑 채우기
+- [ ] inbox/_suggested 키워드 힌트 자동 생성 (Phase B-1 보완)
+- [ ] 일괄 재처리 CLI (`scripts/reprocess.ts`, Track B)
+- [ ] 기존 `WIKI_ROOT/YYYY-MM-DD/` 데이터 마이그레이션 (별도 작업)
+
+### Phase B-2 후보 (미착수)
+- [ ] VoiceAdapter (음성 → STT → 파이프라인)
+- [ ] GmailAdapter
+- [ ] MeetingAdapter
+- [ ] NotebookLmAdapter (`/nb` 회수)
+- [ ] KakaoManualAdapter
 
 ---
 

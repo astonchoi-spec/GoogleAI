@@ -8,10 +8,11 @@
 | 항목 | 상태 |
 |------|------|
 | 서버 | ✅ PM2 `aston` online (포트 4000 고정) |
-| 빌드 | `npm run build` ✅ (2026-05-07) |
-| 테스트 | 423 passed (2026-05-07, +20 from 403) |
+| 빌드 | `npm run build` ✅ (2026-05-07 Phase B-1) |
+| 테스트 | **492 passed** (2026-05-07 Phase B-1, +59 신규) |
 | 빌드 스모크 | ✅ `npm run smoke:routes` (라우트 8개 + 산출물 검증) |
-| 브랜치 | `codex-google-workspace-expansion` (HEAD: `7de5869`) |
+| 브랜치 | `codex-google-workspace-expansion` |
+| Knowledge Pipeline | ✅ Phase B-1 완료 (`/tg` 신규, `저장해` 보존) |
 | Redis | 선택적 (없어도 부팅됨, BullMQ lazy init) |
 | Google OAuth | ✅ CLIENT_ID/SECRET 정상 (재로그인 대기) |
 | `.env` 필수 키 | ✅ 5종 모두 설정 (회장님 직접 Google 로그인만 남음) |
@@ -28,6 +29,19 @@
 ---
 
 ## 마지막 완료 작업
+
+**2026-05-07 Phase B-1 | Claude Code (Knowledge Pipeline 레퍼런스 구현)**
+- **설계 문서 3종**: `docs/knowledge-core/{phase-a-b-final, phase-b0-interfaces, phase-b1-readiness-eval}.md`
+- **CURRENT_TASK.md §8**: 12개 합의사항 명시 (회장님 확정 후 진입)
+- **신규 모듈**: `server/knowledge/` (Modular Monolith 도메인 추가)
+  - `adapters/telegram.ts`, `parser/tokenDispatcher.ts` + `handlers/projectToken.ts`
+  - `pipeline/{cleaner,classifier,summarizer,tagger,router,runner}.ts`
+  - `storage/{wikiWriter,pendingQueue}.ts`, `events/pipelineEvents.ts`
+- **인텐트**: `tg_pipeline_capture` 신규 (`knowledge` 도메인). `/tg` prefix 매처 최우선
+- **2단계 응답**: `messageRouter.ts`에 `/tg` 한정 ack 메시지 추가 (11줄)
+- **Phase 1c 보존**: 기존 `wiki_auto_classify` 그대로 — 회귀 0
+- **테스트**: 신규 7개 파일 / 59건 통과
+- 검증: `npm run check` ✅ / `npm run build` ✅ / `npm test` **492 passed** (433→+59)
 
 **2026-05-07 후속 | Claude Code (운영 환경 복구 + Claude Code 자동화)**
 - **wouter Link 중첩 `<a>` hydration 오류 제거** (커밋 `58929f2`)

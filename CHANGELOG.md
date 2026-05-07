@@ -3,6 +3,43 @@
 
 ---
 
+## 2026-05-07 Phase B-1 — Knowledge Pipeline 레퍼런스 구현 (Telegram + 공통 8단계)
+
+### [Claude Code] Knowledge Core Phase A·B-0·B-1 완료
+- **설계 문서 3종**: `docs/knowledge-core/phase-a-b-final.md`, `phase-b0-interfaces.md`, `phase-b1-readiness-eval.md`
+- **CURRENT_TASK.md**: 12개 합의사항 명시 후 구현 진입
+- **신규 모듈**: `server/knowledge/` — Modular Monolith 도메인 추가 (모듈 경계 검사 등록)
+- **TelegramAdapter** (단계 1): `/tg #project 본문` 명령 PipelineInput 변환
+- **Token Dispatcher** (parser): 정규식 한 줄 금지, prefix별 핸들러 등록 구조. `#project` 1종만 등록, 향후 `+`, `@`, `!`, `due:`, `tag:`, `perm` 확장 가능. 미등록 prefix 토큰은 `unknown_tokens`에 보존
+- **Cleaner** (단계 2, LLM 미사용): invisible chars / 스마트쿼트 / 공백 정규화. 원본 보존
+- **Classifier** (단계 3, Gemini): 9개 카테고리. `explicit_project` 있으면 LLM 호출 생략
+- **Summarizer** (단계 4, Gemini): title + summary + key_points + action_item_candidates. 100자 미만은 LLM 생략
+- **Tagger** (단계 5, Gemini): tags / people / companies / importance / permanent_knowledge / privacy_level. command_hints가 LLM 추정값 우선
+- **Router** (단계 6): 자동 promotion 절대 X. `explicit_command` → `projects/{p}/notes/`, 그 외 → `inbox/{source_type}/`
+- **WikiWriter** (단계 7): 신규 frontmatter (18개 필드) + 기존 `categories` 호환성 보존. `ASTON_WIKI_ROOT > WIKI_ROOT > data/test-wiki` 우선순위. 멱등성 (`source_ref + sha256(raw_text)`) + Track A 재처리 (`reprocess_requested: true`)
+- **PipelineRunner**: LLM 실패 inline 폴백 + `step_failures` + `quality: complete/partial/minimal` 마킹. I/O 실패는 `data/wiki-pending/`에 PendingItem으로 보존
+- **PendingQueue**: 동일 source_ref 재실패 시 attempts 누적 + 첫 실패 시각 보존
+- **Pipeline Events** (단계 8 stub): no-op subscriber 인터페이스만 노출
+- **인텐트 등록**: `tg_pipeline_capture` 액션 신규. `knowledge` 도메인 신규. `/tg` 매처를 fallbackIntent 최우선에 배치 (회귀 0)
+- **2단계 응답**: messageRouter.ts에 `/tg` 한정 ack 메시지 (`📝 Wiki 저장 처리중...`) 추가, 본 응답은 핸들러 결과
+- **Phase 1c 보존**: 기존 `wiki_auto_classify` (`저장해`, `자동저장`) 그대로 동작. `/tg`만 신규 경로
+- **수정 파일**:
+  - 신규: `server/knowledge/{types,README,adapters/telegram,parser/tokenDispatcher,parser/handlers/projectToken,pipeline/{cleaner,classifier,summarizer,tagger,router,runner},storage/{wikiWriter,pendingQueue},events/pipelineEvents}.ts`
+  - 신규: `server/intent/handlers/knowledgePipeline.ts`
+  - 신규 테스트 7개 파일, 59 tests
+  - 수정: `server/intent/{types,fallbackIntent,registry}.ts`, `server/llm/telegramBot/messageRouter.ts`(11줄), `scripts/check-module-boundaries.ts`(1줄)
+  - 수정: `server/__tests__/googleSheets.test.ts` (env 격리 보강 — Phase B 무관, 1줄)
+- **검증**: `npm run check` ✅ / `npm run build` ✅ / `npm test` **492 passed** (433→+59), 0 failed
+
+### 합의 외 미구현 (의도적 제외, B-1 범위 밖)
+- NotebookLM 자동화 / Gmail / 음성 STT / 카톡 / MTProto 통합
+- 자체 RAG / 벡터DB
+- 기존 Wiki 마이그레이션
+- 일괄 재처리 CLI (Track B)
+- inbox/_suggested 키워드 힌트 자동 생성 (B-1 후속)
+
+---
+
 ## 2026-05-07 후속 세션 (운영 환경 복구 + Claude Code 자동화, 2 commits)
 
 ### [Claude Code] wouter Link 중첩 `<a>` hydration 오류 제거 (커밋 58929f2)

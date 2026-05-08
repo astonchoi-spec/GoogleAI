@@ -51,6 +51,11 @@ export function isMeetSaveCommand(message: string): boolean {
   return /^\/meet\s+save\s+\S+/i.test(message.trim()) && message.includes("\n");
 }
 
+// /kakao paste {project}\n{body} — 카톡 수동 회수 (V1 기본 경로)
+export function isKakaoPasteCommand(message: string): boolean {
+  return /^\/kakao\s+paste\s+\S+/i.test(message.trim()) && message.includes("\n");
+}
+
 const NOTEBOOKLM_PREFIX_RE = /^(?:노트북(?:lm)?|notebooklm)\s+([\s\S]+)/i;
 
 export function matchNotebookLmQuery(message: string): IntentResult | null {
@@ -106,6 +111,17 @@ export function fallbackIntent(message: string): IntentResult {
     return {
       domain: "notebooklm",
       action: "meet_save",
+      type: "execute",
+      confidence: 0.99,
+      params: { raw: message },
+    };
+  }
+
+  // /kakao paste — 카톡 수동 회수 (OpenClaw 카톡 미지원이므로 V1 기본 경로만 제공)
+  if (isKakaoPasteCommand(message)) {
+    return {
+      domain: "notebooklm",
+      action: "kakao_paste",
       type: "execute",
       confidence: 0.99,
       params: { raw: message },

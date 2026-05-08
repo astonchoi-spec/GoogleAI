@@ -3,6 +3,7 @@ import { handleNbCommand } from "../../notebooklm/notebookQuery.ts";
 import { loadMapping } from "../../notebooklm/mappingLoader.ts";
 import { NotebookLmAdapter, notebookLmAdapter } from "../../knowledge/adapters/notebooklm.ts";
 import { MeetingAdapter, meetingAdapter } from "../../knowledge/adapters/meeting.ts";
+import { KakaoManualAdapter, kakaoManualAdapter } from "../../knowledge/adapters/kakaoManual.ts";
 import { PipelineRunner } from "../../knowledge/pipeline/runner.ts";
 import type { HandlerMap, IntentHandler } from "../types.ts";
 
@@ -185,8 +186,93 @@ const meetSave: IntentHandler = async (intent, options) => {
   };
 };
 
+const kakaoPaste: IntentHandler = async (intent, options) => {
+  const raw = String(intent.params.raw ?? "").trim();
+
+  const parsed = KakaoManualAdapter.parseRaw(raw);
+  if (!parsed) {
+    return {
+      intent,
+      handled: true,
+      requiresConfirmation: false,
+      response: [
+        "❌ 형식 오류. 올바른 형식:",
+        "```",
+        "/kakao paste {project-id} [출처: 단톡방명]",
+        "카톡 본문...",
+        "```",
+        "project-id 목록: `/nb list`",
+      ].join("\n"),
+    };
+  }
+
+  // project ID 검증 (NotebookLM 매핑과 동일 출처 사용)
+  const { notebooks } = loadMapping();
+  const notebook = notebooks.find((n) => n.project === parsed.project);
+  if (!notebook) {
+    const suggestions = notebooks
+      .filter((n) => n.project.includes(parsed.project) || parsed.project.includes(n.project.split("-")[0]))
+      .slice(0, 3)
+      .map((n) => `• \`${n.project}\` — ${n.display_name}`)
+      .join("\n");
+    return {
+      intent,
+      handled: true,
+      requiresConfirmation: false,
+      response: [
+        `❌ project \`${parsed.project}\` 없음.`,
+        ...(suggestions ? ["유사 항목:", suggestions] : ["`/nb list`로 전체 목록 확인"]),
+      ].join("\n"),
+    };
+  }
+
+  const textHash = crypto.createHash("sha256").update(parsed.body).digest("hex").slice(0, 16);
+  const sourceRef = `kakao:${parsed.project}:user:${options.userId}:hash:${textHash}`;
+
+  const input = kakaoManualAdapter.toPipelineInput({
+    project: parsed.project,
+    chatRoom: parsed.chatRoom,
+    body: parsed.body,
+    source_ref: sourceRef,
+    received_at: new Date().toISOString(),
+  });
+
+  const result = await runner.run(input);
+
+  if (!result.ok) {
+    return {
+      intent,
+      handled: true,
+      requiresConfirmation: false,
+      response: `⚠️ 카톡 회수 실패 — pending 큐에 보관됨\n📁 ${result.pending_path}`,
+    };
+  }
+
+  const skipNote = result.was_skipped ? " (중복 — skip)" : "";
+  const qualityNote = result.doc.quality !== "complete" ? ` (quality: ${result.doc.quality})` : "";
+  const chatRoomLine = parsed.chatRoom ? `\n💬 출처: ${parsed.chatRoom}` : "";
+
+  return {
+    intent,
+    handled: true,
+    requiresConfirmation: false,
+    response: [
+      `✅ 카톡 회수 완료${skipNote}${qualityNote}`,
+      `📂 ${notebook.display_name}${chatRoomLine}`,
+      `📝 ${result.doc.title}`,
+      `📁 ${result.entry.saved_path}`,
+    ].join("\n"),
+    data: {
+      saved_path: result.entry.saved_path,
+      was_skipped: result.was_skipped,
+      quality: result.doc.quality,
+    },
+  };
+};
+
 export const notebooklmHandlers: HandlerMap = {
   nb_command: nbCommand,
   nb_save: nbSave,
   meet_save: meetSave,
+  kakao_paste: kakaoPaste,
 };

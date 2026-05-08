@@ -77,4 +77,24 @@ describe("fallbackIntent 명시 규칙 정리", () => {
       expect(r.action).toBe("chat_telegram_recent");
     });
   });
+
+  describe("/kakao paste 라우팅", () => {
+    it("\"/kakao paste {project}\\n본문\"을 kakao_paste로 매칭한다", () => {
+      const r = fallbackIntent("/kakao paste hannam-644\n[홍길동] 카톡 메시지");
+      expect(r.domain).toBe("notebooklm");
+      expect(r.action).toBe("kakao_paste");
+      expect(r.confidence).toBeGreaterThanOrEqual(0.99);
+      expect(r.params.raw).toContain("/kakao paste hannam-644");
+    });
+
+    it("\"/kakao paste {project} 출처: ...\\n본문\" 출처 포함 매칭", () => {
+      const r = fallbackIntent("/kakao paste hannam-644 출처: 한남PFV단톡\n메시지");
+      expect(r.action).toBe("kakao_paste");
+    });
+
+    it("본문 없는 \"/kakao paste {project}\" 단독은 kakao_paste 매칭 안함", () => {
+      const r = fallbackIntent("/kakao paste hannam-644");
+      expect(r.action).not.toBe("kakao_paste");
+    });
+  });
 });

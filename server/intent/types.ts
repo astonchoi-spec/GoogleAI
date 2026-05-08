@@ -54,6 +54,7 @@ export type IntentAction =
   | "nb_command"
   | "nb_save"
   | "meet_save"
+  | "kakao_paste"
   | "execute_placeholder"
   | "chat";
 

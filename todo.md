@@ -1,5 +1,34 @@
 ﻿# TODO.md — 에스턴 워크스테이션
-> 업데이트: 2026-05-08 OpenClaw 연결 복구 | 브랜치: codex-google-workspace-expansion
+> 업데이트: 2026-05-09 Intent Service 리팩토링 Phase 0~7-B 완료 | 브랜치: codex-google-workspace-expansion
+
+---
+
+## 2026-05-08 ~ 05-09 Intent Service 리팩토링 (Phase 0~7-B 완료)
+
+### 완료
+- ✅ **Phase 0~5** (구조 도입) — `parseIntent.ts` 분리 / 프롬프트 외부화 / `intentSchemas.ts` 도입 / `pipeline/{planIntent,dispatchIntent,formatReply}.ts` 분리
+- ✅ **Phase 6-A ~ 6-D-9** (11개 도메인 핸들러 마이그레이션) — google/trading/deals/realestate/finance/intelligence/wiki/chat/agents/approval/knowledgePipeline/notebooklm 모두 `handlerResponse: { kind, text, meta }` 추가
+- ✅ **Phase 7-A** (`kind="error"` 활성화) — 누적 8개 도메인 24개 분기 재분류
+- ✅ **Phase 7-B** (`kind="confirmation"` 활성화) — formatReply 활성 + 직교성 명시 (핸들러 재분류 보류)
+- ✅ public API 시그니처 100% 동결, 응답 문자열 byte-for-byte 100% 보존
+- ✅ 테스트 586 → **719 passed** (+133, 회귀 0건)
+- ✅ 빌드 722.5kb → 738.5kb (+16.0kb)
+
+### 다음 작업 후보 (Phase 8 cleanup, 우선순위 순)
+- [ ] **Phase 8-A** `prompts/` 프로드 번들 esbuild plugin — 현재 `FALLBACK_*` 인메모리 fallback로 동작
+- [ ] **Phase 8-B** `inferKind()` formatReply 본문 활성화 — 현재 export만 됨
+- [ ] **Phase 8-C** `analysisHandler` 본문 중복 버그 수정 (응답 변경 동의 필요)
+- [ ] **Phase 8-D** `feasibility`/`finance` 헤더 인코딩 정상화 (응답 변경 동의 필요)
+- [ ] **Phase 8-E** finance 본문 포맷팅 (`formatDartDisclosures` 추가)
+- [ ] **Phase 9** 핸들러 convention 가이드라인 (`docs/handler-conventions.md`)
+- [ ] **Phase 10** `planIntent` 멀티스텝 분해 실제 구현 (큰 작업)
+
+### 운영 검증 필요 (회장님 직접)
+- [ ] Phase 7-B 적용 후 PM2 재시작 + 텔레그램 라우팅 5종 회귀 확인 (`잔고`, `BTC 분석`, `딜 추가`, `위키 검색`, `오늘 일정`)
+- [ ] `dealRouting.test.ts:91-105` raw object 차단 운영 환경 회귀 확인
+- [ ] `requiresConfirmation: true` 헤더 (execute 인텐트 승인 게이트) 운영 동작 확인
+
+---
 
 ---
 

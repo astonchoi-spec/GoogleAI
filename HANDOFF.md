@@ -1,5 +1,5 @@
 ﻿# HANDOFF.md — 에스턴 워크스테이션
-> 업데이트: 2026-05-08 KakaoManualAdapter + D-day 푸시 | 브랜치: codex-google-workspace-expansion
+> 업데이트: 2026-05-09 Intent Service 리팩토링 Phase 0~7-B 완료 | 브랜치: codex-google-workspace-expansion
 
 ---
 
@@ -7,10 +7,14 @@
 
 | 항목 | 상태 |
 |------|------|
-| 서버 | ✅ PM2 `aston` online (포트 4000) — 재시작 완료 |
-| 빌드 | `npm run build` ✅ (2026-05-08) |
-| 테스트 | **564 passed** (2026-05-08, 543 → +21) |
+| 서버 | ✅ PM2 `aston` online (포트 4000) — 재시작 권장 (intent 리팩토링 반영) |
+| 빌드 | `npm run build` ✅ (2026-05-09, `dist/index.js` 738.5kb) |
+| 테스트 | **719 passed** (2026-05-09, Phase 0 시작 586 → +133, 회귀 0건) |
 | 브랜치 | `codex-google-workspace-expansion` |
+| **Intent 파이프라인** | ✅ `parseIntent → planIntent → dispatchIntent → formatReply` 4단계 분리 완료 |
+| **HandlerResponse 5개 kind** | ✅ list/report/text/error/confirmation 모두 활성 |
+| **11개 도메인 핸들러 마이그레이션** | ✅ google/trading/deals/realestate/finance/intelligence/wiki/chat/agents/approval/knowledgePipeline/notebooklm |
+| **public API 동결** | ✅ `routeIntentMessage`/`formatIntentRouteMessage` 시그니처 byte-for-byte 보존 |
 | **OpenClaw** | ✅ **available=true, simulationMode=false** (2026-05-08 수정) |
 | **카톡 자동화** | ❌ OpenClaw 미지원 확정 → 수동 회수(`/kakao paste`)만 제공 |
 | **D-day 푸시** | ✅ 매일 KST 08:30 자동 (D-7/D-3/D-1/D-DAY/D+1) |
@@ -32,6 +36,28 @@
 ---
 
 ## 마지막 완료 작업
+
+**2026-05-08 ~ 05-09 Intent Service 리팩토링 Phase 0~7-B | Claude Code (대규모 리팩토링)**
+- Connect AI v2 벤치마킹 후 `intentService.ts` 4단계 파이프라인 + HandlerResponse 표준 스키마 점진 도입
+- **public API 시그니처 100% 동결** — `routeIntentMessage`/`formatIntentRouteMessage` byte-for-byte 보존
+- **응답 문자열 100% 보존** — 11개 도메인 ~91개 분기 모두 byte-for-byte 동일
+- **5개 kind 모두 활성화** — list (Phase 6-A) / report (6-B) / text (6-C) / error (7-A) / confirmation (7-B)
+- 신규 파일: `pipeline/{parseIntent,planIntent,dispatchIntent,formatReply}.ts`, `intentSchemas.ts`, `promptLoader.ts`, `prompts/{classifier,planner}.md`
+- 수정: `intentService.ts` 227 → 99줄, `types.ts`(HandlerResponse 정의), 11개 도메인 핸들러
+- 신규 단위 테스트 134건 (`dispatchIntent.test.ts` + `formatReply.test.ts`)
+- 설계서 `docs/refactor/intent-service-refactor-plan.md` (16개 Phase 구현 로그)
+- 검증: `npm run check` ✅ / `npm run build` ✅ / **719 passed** (586 → +133)
+- raw object/사용자 원문/토큰/시크릿 0건 노출 (단위 테스트로 검증)
+
+### 다음 작업 후보 (Phase 8 cleanup)
+- `prompts/` 프로드 번들 esbuild plugin (현재 인메모리 fallback)
+- `inferKind()` formatReply 본문 활성화
+- `analysisHandler` 본문 중복 버그 수정 (응답 변경 동의 필요)
+- `feasibility`/`finance` 헤더 인코딩 정상화 (응답 변경 동의 필요)
+- finance 본문 포맷팅 (`formatDartDisclosures`)
+- `docs/handler-conventions.md` 가이드라인 작성
+
+---
 
 **2026-05-08 KakaoManualAdapter + D-day 푸시 | Claude Code (2nd session)**
 - **OpenClaw 카톡 미지원 발견** — npm 번들 조사 결과 지원: Telegram/Discord/WhatsApp/Slack/MSTeams/Signal/iMessage/LINE/Google Chat. 카카오 없음

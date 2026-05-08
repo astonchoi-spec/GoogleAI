@@ -3,6 +3,80 @@
 
 ---
 
+## 2026-05-08 ~ 05-09 Intent Service 리팩토링 Phase 0~7-B (Claude Code, 대규모)
+
+### 배경
+Connect AI v2 벤치마킹 후 `intentService.ts`를 4단계 파이프라인 + HandlerResponse 표준 스키마로 점진 리팩토링. **public API 시그니처 100% 동결**, **모든 분기 응답 문자열 byte-for-byte 100% 보존**.
+
+### Phase 0~5 — 파이프라인 구조 도입
+- **Phase 0~2** (2026-05-08): `parseIntent.ts` 분리, `prompts/classifier.md` 외부화, `promptLoader.ts` + `intentSchemas.ts` 신규
+- **Phase 3** (05-08): `pipeline/parseIntent.ts` 이동 + `pipeline/planIntent.ts` pass-through stub + `prompts/planner.md` 추가. `parseIntent.ts`는 re-export shim으로 축소
+- **Phase 4** (05-08): `pipeline/dispatchIntent.ts` 분리 — 승인 게이트/handler 조회/execute_placeholder/Gemini fallback/try-catch 5가지 책임 추출. `intentService.ts`는 `parseIntent → planIntent → dispatchIntent` 얇은 오케스트레이터로 변환
+- **Phase 5** (05-08): `pipeline/formatReply.ts` 분리 + `HandlerResponse`/`HandlerResponseKind` 타입 도입 + raw object 차단 헬퍼 export. `intentService.ts`는 `formatIntentRouteMessage`를 backward-compat alias로 유지
+
+### Phase 6 — 11개 도메인 핸들러 마이그레이션
+응답 문자열 byte-for-byte 보존하며 `handlerResponse: { kind, text, meta }` 추가. `formatReply.ts`는 Phase 6-A/6-B/6-C에서 list/report/text 분기 활성화 후 무수정.
+
+| Phase | 도메인 | 핸들러 | 분기 |
+|-------|--------|-------|------|
+| 6-A (05-08) | google | 3 부분 (driveSearch/getEmails/listEvents) | 3 |
+| 6-B (05-08) | trading | 4 (preCheck/reviewReport/techAnalysis/analysisHandler) | 4 |
+| 6-C (05-08) | deals | 1 dispatcher (14 sub-command) | 14 |
+| 6-D-1 (05-08) | realestate | 8 | 8 |
+| 6-D-2 (05-08) | finance | 1 | 1 |
+| 6-D-3 (05-08) | intelligence | 3 | 5 |
+| 6-D-4 (05-08) | wiki | 3 | 5 |
+| 6-D-5 (05-08) | chat | 1 | 4 |
+| 6-D-6 (05-08) | agents | 1 dispatcher (10 sub-command) | 10 |
+| 6-D-7 (05-08) | approval | 3 | 10 |
+| 6-D-8 (05-08) | knowledgePipeline | 1 | 4 |
+| 6-D-9 (05-09) | notebooklm | 4 | 13 |
+| **합계** | **11개** | **~33개** | **~91개** |
+
+### Phase 7 — 마지막 2개 kind 활성화
+- **Phase 7-A** (05-09): 누적 8개 도메인 24개 임시 `kind="text" + meta.status` 분기를 `kind="error"`로 정식 재분류 (deals unknown / monitoring 에러 / wiki_auto_classify 에러 / chat 에러 / agents 4 / approval 4 / knowledgePipeline 3 / notebooklm 9). `formatReply.ts` `handlerText` 추출 조건에 `error` 추가
+- **Phase 7-B** (05-09): `kind="confirmation"` 보조 마커 활성화 — `formatReply.ts` 추출 조건에 추가만, 핸들러 재분류는 보류 (불확실 케이스). `requiresConfirmation`(승인 게이트)와 `kind="confirmation"`(응답 마커) 직교성 명시 주석 추가
+
+### 5개 kind 모두 활성화 완료
+| kind | 활성 Phase | 사용 도메인 |
+|------|-----------|-----------|
+| `list` | 6-A | google, finance, wiki, chat, agents, approval |
+| `report` | 6-B | trading, realestate, intelligence, approval |
+| `text` | 6-C | deals, realestate, wiki, chat, agents, approval, knowledgePipeline, notebooklm |
+| `error` | 7-A | deals, intelligence, wiki, chat, agents, approval, knowledgePipeline, notebooklm |
+| `confirmation` | 7-B | (보조 마커, 사용 핸들러 0건) |
+
+### 누적 검증
+- 테스트: 586 → **719 passed** (+133, 회귀 0건)
+- 빌드: 722.5kb → **738.5kb** (+16.0kb)
+- `npm run check` ✅ 모듈 경계 위반 0건 + `tsc --noEmit` 에러 0건
+- `dealRouting.test.ts:91-105` raw object 차단 회귀 100% 통과
+- 사용자 응답 raw object/사용자 원문/토큰/시크릿 0건 노출
+
+### 주요 신규/수정 파일
+**신규**:
+- `server/intent/pipeline/{parseIntent,planIntent,dispatchIntent,formatReply}.ts`
+- `server/intent/{promptLoader,intentSchemas}.ts`
+- `server/intent/prompts/{classifier,planner}.md`
+- `server/__tests__/{dispatchIntent,formatReply}.test.ts` (테스트 134건 추가)
+- `docs/refactor/intent-service-refactor-plan.md` (설계서 + 16개 Phase 구현 로그)
+
+**수정**:
+- `server/intent/intentService.ts` (227줄 → 99줄, public API 동결)
+- `server/intent/types.ts` (`HandlerResponse`/`HandlerResponseKind` 정의 + `IntentRouteResponse.handlerResponse?` 추가)
+- `server/intent/parseIntent.ts` (re-export shim)
+- 11개 핸들러 (`handlers/{google,trading,deals,realestate,finance,intelligence,wiki,chat,agents,approval,knowledgePipeline,notebooklm}.ts`)
+
+### 남은 작업 (Phase 8 후보)
+- `prompts/` 프로드 번들 esbuild plugin (현재 `FALLBACK_*` 인메모리 fallback 동작)
+- `inferKind()` formatReply 본문 활성화
+- `analysisHandler` 본문 중복 버그 수정 (응답 변경 동의 필요)
+- `feasibility`/`finance` 헤더 인코딩 깨짐 정상화 (응답 변경 동의 필요)
+- finance 본문 포맷팅 (`formatDartDisclosures`)
+- `docs/handler-conventions.md` 가이드라인 작성
+
+---
+
 ## 2026-05-08 KakaoManualAdapter + D-day 자동 푸시 (Claude Code, 2nd session)
 
 ### 발견: OpenClaw KakaoTalk 미지원

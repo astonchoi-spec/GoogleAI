@@ -1,40 +1,13 @@
-import { llmAdapter } from "../_core/llmAdapter.ts";
-import { fallbackIntent } from "./fallbackIntent.ts";
-import { handlerRegistry } from "./registry.ts";
-import {
-  stringifyPreview,
-  type IntentResult,
-  type IntentRouteResponse,
-  type RouteIntentOptions,
+import { normalizeIntent, parseIntent } from "./parseIntent.ts";
+import { planIntent } from "./pipeline/planIntent.ts";
+import { dispatchIntent } from "./pipeline/dispatchIntent.ts";
+import { formatRouteResponse, formatReply } from "./pipeline/formatReply.ts";
+import type { DispatchResult } from "./intentSchemas.ts";
+import type {
+  IntentResult,
+  IntentRouteResponse,
+  RouteIntentOptions,
 } from "./types.ts";
-
-function intentLogName(intent: IntentResult): string {
-  return `${intent.domain}.${intent.action}`;
-}
-
-function logIntentMatched(intent: IntentResult, message: string): void {
-  console.log(`[intent] matched: ${intentLogName(intent)} for input: ${message}`);
-}
-
-function containsRawObjectShape(data: unknown): boolean {
-  if (!data || typeof data !== "object") return false;
-  const record = data as Record<string, unknown>;
-  return "method" in record || "files" in record;
-}
-
-function safeDisplayBody(data: unknown): string {
-  if (data === undefined || data === null) return "";
-  if (typeof data === "string") return data;
-  if (containsRawObjectShape(data)) {
-    console.warn("[intent] raw object response blocked:", stringifyPreview(data, 300));
-    return "⚠️ 내부 데이터가 직접 노출될 수 있어 요약 표시로 전환했습니다.";
-  }
-  if (typeof data === "object") {
-    console.warn("[intent] object response omitted from user output:", stringifyPreview(data, 300));
-    return "";
-  }
-  return String(data);
-}
 
 // 외부 모듈에서 사용 중인 타입을 동일 경로로 노출 — 기존 import 경로 보존
 export type {
@@ -46,182 +19,87 @@ export type {
   RouteIntentOptions,
 } from "./types.ts";
 
-export function normalizeIntent(intent: IntentResult): IntentResult {
-  if (intent.domain === "chat" || intent.action === "chat") {
-    return {
-      domain: "chat",
-      action: "chat",
-      type: "query",
-      confidence: Math.min(intent.confidence || 0.3, 0.3),
-      params: {},
-    };
-  }
-  return intent;
-}
+// Re-export normalizeIntent so existing callers (`import { normalizeIntent }
+// from "./intentService.ts"`) keep working after the Phase 2 split.
+export { normalizeIntent };
 
+// Phase 5 — formatReply lives in pipeline/formatReply.ts. Both new and
+// legacy names are re-exported here so external callers (telegram bot,
+// tRPC routers, dealRouting.test.ts) continue to work without edits.
+export { formatReply };
+
+/**
+ * Backward-compatible alias for the new `parseIntent()` function.
+ * Classification logic moved to `server/intent/pipeline/parseIntent.ts` in
+ * Phase 2 (Connect AI benchmarking — CEO Classifier pattern).
+ */
 export async function classifyIntent(message: string): Promise<IntentResult> {
-  console.log("[INTENT] classifyIntent called:", message.slice(0, 80));
-
-  // Step 1: 키워드 기반 사전 분류 (빠르고 정확)
-  const keywordResult = fallbackIntent(message);
-  console.log("[INTENT] fallback result:", keywordResult.action, "confidence:", keywordResult.confidence);
-  if (keywordResult.confidence >= 0.5) {
-    console.log("[INTENT] keyword match:", keywordResult.action, "confidence:", keywordResult.confidence);
-    logIntentMatched(keywordResult, message);
-    return keywordResult;
-  }
-
-  // Step 2: 키워드 매칭 실패 시에만 LLM 호출
-  const now = new Date().toLocaleString("ko-KR", { timeZone: "Asia/Seoul" });
-  const prompt = `사용자 메시지를 분석해서 JSON으로 응답하세요.
-
-현재 날짜: ${now}
-도메인: trading, realestate, finance, google, deals, chat
-타입: query 또는 execute
-액션:
-- trading_balance
-- trading_positions
-- trading_technical_analysis
-- trading_risk_calculation
-- trading_add_alert
-- realestate_portfolio_summary
-- realestate_feasibility
-- realestate_add_deal
-- realestate_update_deal_stage
-- finance_dart_disclosures
-- google_create_event: 캘린더 일정 생성
-- google_write_sheet: 시트 데이터 쓰기
-- google_drive_search: 구글드라이브 파일 검색 → params: {query: "검색어", maxResults: 10}
-- google_get_emails: 이메일 목록 조회 → params: {maxResults: 5, searchQuery?: "검색어"}
-- google_send_email: 이메일 전송 → params: {to, subject, body}
-- google_list_events: 캘린더 일정 목록 조회 → params: {maxResults: 5}
-- deals_command: "딜 ..."로 시작하는 자료 창고 명령
-- execute_placeholder
-- chat
-
-반드시 JSON만 응답:
-{"domain":"...","action":"...","type":"query|execute","confidence":0.0,"params":{}}
-
-규칙:
-- "드라이브", "구글드라이브", "Drive", "파일 검색", "파일 찾아" → google_drive_search, params.query에 검색 키워드 추출
-- "메일 확인", "받은 메일", "이메일 목록", "Gmail" → google_get_emails
-- "메일 보내", "이메일 전송", "send email" → google_send_email
-- "일정 확인", "오늘 일정", "캘린더 목록", "다음 일정" → google_list_events
-- "일정 추가", "일정 잡아", "미팅 생성" → google_create_event
-- "딜 "로 시작하는 모든 메시지 → deals_command
-- 조회성 작업은 type=query, 변경성 작업(생성/삭제/수정/등록)은 type=execute
-- 파라미터를 최대한 추출
-- JSON 외 텍스트 금지`;
-
-  try {
-    const parsed = await llmAdapter.parseJson<Partial<IntentResult>>(message, prompt);
-    if (!parsed.domain || !parsed.action || !parsed.type) {
-      console.log("[INTENT] LLM returned invalid JSON, using fallbackIntent");
-      const fallback = fallbackIntent(message);
-      logIntentMatched(fallback, message);
-      return fallback;
-    }
-    const result = normalizeIntent({
-      domain: parsed.domain,
-      action: parsed.action,
-      type: parsed.type,
-      confidence: Number.isFinite(parsed.confidence) ? Number(parsed.confidence) : 0,
-      params: parsed.params && typeof parsed.params === "object" ? parsed.params : {},
-    } as IntentResult);
-    console.log("[INTENT] LLM classified:", result.action, "confidence:", result.confidence, "params:", JSON.stringify(result.params).slice(0, 100));
-    logIntentMatched(result, message);
-    return result;
-  } catch (err) {
-    console.log("[INTENT] LLM classify error, using fallbackIntent:", (err as Error).message);
-    const fallback = fallbackIntent(message);
-    logIntentMatched(fallback, message);
-    return fallback;
-  }
+  return parseIntent(message);
 }
 
+/**
+ * Phase 4 adapter — convert the new `DispatchResult` shape back to the
+ * legacy `IntentRouteResponse` so the public API of `routeIntentMessage`
+ * stays frozen. The two interfaces are structurally identical at the time
+ * of Phase 4; this helper is kept as a function (rather than an `as` cast)
+ * so future divergence can be handled here in one place.
+ */
+function dispatchToRouteResponse(d: DispatchResult): IntentRouteResponse {
+  return {
+    intent: d.intent,
+    handled: d.handled,
+    requiresConfirmation: d.requiresConfirmation,
+    response: d.response,
+    ...(d.data !== undefined ? { data: d.data } : {}),
+    ...(d.confirmation ? { confirmation: d.confirmation } : {}),
+    ...(d.handlerResponse ? { handlerResponse: d.handlerResponse } : {}),
+  };
+}
+
+/**
+ * Public API — frozen across all phases.
+ *
+ * Phase 5 final pipeline:
+ *   message
+ *     → parseIntent()        // Phase 2 — classify
+ *     → planIntent()         // Phase 3 — pass-through stub
+ *     → dispatchIntent()     // Phase 4 — execute via handlerRegistry
+ *     → dispatchToRouteResponse()  // legacy IntentRouteResponse adapter
+ *
+ * `formatReply` / `formatIntentRouteMessage` are intentionally NOT called
+ * here — `routeIntentMessage` only returns the routing payload. The
+ * telegram bot and tRPC routers call the formatter on the returned
+ * payload themselves (see server/llm/telegramBot/messageRouter.ts:62 and
+ * server/routers/llm.ts:172). That contract was true before Phase 5 and
+ * remains unchanged.
+ */
 export async function routeIntentMessage(options: RouteIntentOptions): Promise<IntentRouteResponse> {
   console.log("[INTENT] routeIntentMessage:", options.message.slice(0, 80));
-  const intent = await classifyIntent(options.message);
-  console.log("[INTENT] classified as:", intent.domain, "/", intent.action, "type:", intent.type, "confidence:", intent.confidence);
-  const allowExecute = options.allowExecute ?? false;
 
-  // execute 의도는 승인 단계 필요
-  if (intent.type === "execute" && !allowExecute) {
-    return {
-      intent,
-      handled: false,
-      requiresConfirmation: true,
-      response: "실행 요청으로 분류되었습니다. 안전을 위해 확인 단계가 필요합니다.",
-      confirmation: {
-        action: intent.action,
-        domain: intent.domain,
-        params: intent.params,
-      },
-    };
-  }
+  const parsed = await parseIntent(options.message);
+  console.log("[INTENT] classified as:", parsed.domain, "/", parsed.action, "type:", parsed.type, "confidence:", parsed.confidence);
 
-  try {
-    const handler = handlerRegistry[intent.action];
-    if (handler) {
-      return await handler(intent, options);
-    }
+  const plan = await planIntent(parsed, {
+    message: options.message,
+    userId: options.userId,
+  });
+  console.log("[INTENT] planIntent pass-through, steps=", plan.steps.length, "source=", plan.source);
 
-    if (intent.action === "execute_placeholder") {
-      return {
-        intent,
-        handled: false,
-        requiresConfirmation: false,
-        response: "실행 액션 라우팅은 현재 단계적으로 연결 중입니다. 다음 배치에서 실제 실행 경로를 연결합니다.",
-      };
-    }
-
-    console.log("[INTENT] no handler for action:", intent.action, "→ falling back to Gemini");
-    return {
-      intent,
-      handled: false,
-      requiresConfirmation: false,
-      response: "Gemini 일반 대화로 처리합니다.",
-    };
-  } catch (error) {
-    return {
-      intent,
-      handled: false,
-      requiresConfirmation: false,
-      response: `데이터 케이스 실행 중 오류가 발생했습니다: ${error instanceof Error ? error.message : String(error)}`,
-    };
-  }
+  const intent = plan.steps[0];
+  const dispatched = await dispatchIntent(intent, options);
+  return dispatchToRouteResponse(dispatched);
 }
 
+/**
+ * Legacy formatter — kept as a thin alias over `formatRouteResponse`. The
+ * actual logic now lives in `server/intent/pipeline/formatReply.ts`.
+ *
+ * Callers that still import this name:
+ *   - server/llm/telegramBot/messageRouter.ts
+ *   - server/routers/intent.ts
+ *   - server/routers/llm.ts
+ *   - server/__tests__/dealRouting.test.ts
+ */
 export function formatIntentRouteMessage(routed: IntentRouteResponse): string {
-  if (routed.requiresConfirmation) {
-    const paramsPreview = stringifyPreview(routed.confirmation?.params ?? {}, 500);
-    return [
-      "ACTION REQUIRES CONFIRMATION",
-      routed.response,
-      `intent=${routed.intent.domain}/${routed.intent.action} type=${routed.intent.type}`,
-      ...(paramsPreview ? [`params=${paramsPreview}`] : []),
-      "next=allowExecute=true 로 승인 재요청",
-    ].join("\n");
-  }
-
-  if (!routed.handled) {
-    // 빈 문자열 반환 → 호출자가 Gemini 일반 대화로 fallback
-    return "";
-  }
-
-  const data = routed.data as any;
-  const primaryBody =
-    typeof data?.fileList === "string" ? data.fileList
-      : typeof data?.emailList === "string" ? data.emailList
-        : typeof data?.eventList === "string" ? data.eventList
-          : typeof data?.briefing === "string" ? data.briefing
-            : typeof data?.report === "string" ? data.report
-              : typeof data?.summary === "string" ? data.summary
-                : "";
-  const fallbackBody = primaryBody || safeDisplayBody(data);
-
-  return [
-    routed.response,
-    ...(fallbackBody ? [fallbackBody] : []),
-  ].join("\n\n");
+  return formatRouteResponse(routed);
 }

@@ -66,6 +66,31 @@ export type IntentResult = {
   params: Record<string, unknown>;
 };
 
+/**
+ * Phase 5/6-A — handler response standard schema.
+ *
+ * Lives in `types.ts` (rather than `intentSchemas.ts`) so that
+ * `IntentRouteResponse` can reference it without circular imports.
+ * `intentSchemas.ts` re-exports these names for backward compatibility.
+ */
+export type HandlerResponseKind =
+  | "text"          // 단순 텍스트 응답
+  | "list"          // 항목 목록 (일정/메일/파일/딜 등)
+  | "report"        // 긴 분석 리포트 (preCheck, 브리핑, 재무)
+  | "confirmation"  // 실행 승인 요청
+  | "error";        // 처리 실패
+
+export interface HandlerResponse {
+  /** Layout selector — formatter picks behaviour from this field alone. */
+  kind: HandlerResponseKind;
+  /** User-visible body. Already in Korean and ready for telegram/web. */
+  text: string;
+  /** Optional structured items for `kind === "list"`. */
+  items?: string[];
+  /** Diagnostics. Never surfaced to end users. */
+  meta?: Record<string, unknown>;
+}
+
 export type IntentRouteResponse = {
   intent: IntentResult;
   handled: boolean;
@@ -77,6 +102,19 @@ export type IntentRouteResponse = {
     domain: IntentDomain;
     params: Record<string, unknown>;
   };
+  /**
+   * Phase 6-A — optional structured response from migrated handlers.
+   *
+   * Existing handlers continue to return `response` + `data` only. Newly
+   * migrated handlers (Phase 6-A: google_drive_search / google_get_emails
+   * / google_list_events) additionally populate this field so the
+   * formatter can branch on `handlerResponse.kind` instead of greping
+   * `data.fileList`/`emailList`/`eventList`.
+   *
+   * Legacy fields are still populated by migrated handlers — pure
+   * additive change, zero regression risk.
+   */
+  handlerResponse?: HandlerResponse;
 };
 
 export type RouteIntentOptions = {

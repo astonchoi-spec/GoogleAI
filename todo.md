@@ -1,32 +1,23 @@
 ﻿# TODO.md — 에스턴 워크스테이션
-> 업데이트: 2026-05-08 카톡 수동 회수 + D-day 푸시 | 브랜치: codex-google-workspace-expansion
+> 업데이트: 2026-05-08 OpenClaw 연결 복구 | 브랜치: codex-google-workspace-expansion
 
 ---
 
-## 2026-05-08 KakaoManualAdapter + D-day 자동 푸시 (Claude Code 2nd 세션)
+## 2026-05-08 전체 플로우 재정리
 
-### 발견·결정
-- ✅ **OpenClaw 카카오톡 미지원 확정** — npm 번들 직접 조사. 지원: TG/Discord/WhatsApp/Slack/MSTeams/Signal/iMessage/LINE/GoogleChat
-- ✅ **B-5 KakaoMcpAdapter 폐기** (자동화 원천 불가)
-- ✅ A안+D안 병행 채택
+### 완료
+- ✅ OpenClaw gateway caller 수정 (minified bundle 탐색 버그)
+- ✅ OpenClaw available=true, simulationMode=false 확인
 
-### 구현 완료
-- ✅ `/kakao paste {project} [출처: 단톡방명]\n{본문}` — KakaoManualAdapter
-- ✅ 매일 KST 08:30 D-day 푸시 (D-7/D-3/D-1/D-DAY/D+1, dedup, completed/rejected 제외)
-- ✅ 564 tests passed (+21)
+### 보류/폐기 결정
+- 🚫 B-3 GmailAdapter→Wiki **폐기** (필요 없음)
+- ⏸ B-2 VoiceAdapter **보류** (나중에)
+- ⏸ Phase 1c MTProto **보류** (나중에)
+- ⏸ Sheets 워크스페이스 스키마 **불필요** (사용 경로 없음)
 
-### 운영 검증 잔여
-- [ ] 텔레그램에서 `/kakao paste hannam-644 출처: 한남PFV\n본문` 직접 테스트
-- [ ] 2026-05-09 KST 08:30 D-day 푸시 1차 운영 확인
-- [ ] 카톡 단톡방 → /kakao paste 변환 워크플로 회장님 손 익히기
-
-### 카톡 자동화 영구 보류 결정 사항
-- PlayMCP/Playwright 자체 자동화 (B/C 옵션) — 차단 위험으로 진입 X
-- 카톡 PC export 감시 — Phase A 합의 §1 본진 보호와 충돌 적음, 향후 옵션 보존
-- **자체 카톡 릴레이 서버 배포** — 진행 안 함 (2026-05-08 결정)
-  - 채널봇 구조라 단톡방 회수 목적과 다름, `/kakao paste`로 이미 갈음
-  - k.tess.dev 등 외부 카톡 릴레이도 의존 불필요
-  - `openclaw-gateway` PM2는 일반 agent 용도 (카톡과 무관) — 그대로 가동 유지
+### 다음 작업
+- [ ] **B-5 KakaoMcpAdapter** — OpenClaw로 카카오톡 메시지 자동 수집 → Wiki 파이프라인
+  - OpenClaw 연결 완료, 설계 단계
 
 ---
 

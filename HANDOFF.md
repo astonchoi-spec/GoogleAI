@@ -1,5 +1,5 @@
 ﻿# HANDOFF.md — 에스턴 워크스테이션
-> 업데이트: 2026-05-08 OpenClaw 연결 복구 | 브랜치: codex-google-workspace-expansion
+> 업데이트: 2026-05-08 KakaoManualAdapter + D-day 푸시 | 브랜치: codex-google-workspace-expansion
 
 ---
 
@@ -7,11 +7,13 @@
 
 | 항목 | 상태 |
 |------|------|
-| 서버 | ✅ PM2 `aston` online (포트 4000) — 재시작 필요 (새 코드 반영) |
+| 서버 | ✅ PM2 `aston` online (포트 4000) — 재시작 완료 |
 | 빌드 | `npm run build` ✅ (2026-05-08) |
-| 테스트 | **543 passed** (2026-05-08) |
+| 테스트 | **564 passed** (2026-05-08, 543 → +21) |
 | 브랜치 | `codex-google-workspace-expansion` |
 | **OpenClaw** | ✅ **available=true, simulationMode=false** (2026-05-08 수정) |
+| **카톡 자동화** | ❌ OpenClaw 미지원 확정 → 수동 회수(`/kakao paste`)만 제공 |
+| **D-day 푸시** | ✅ 매일 KST 08:30 자동 (D-7/D-3/D-1/D-DAY/D+1) |
 | OpenClaw URL | `http://localhost:8000` (gateway token 정상) |
 | /nb 조회 | ✅ list/show/search/help + 28개 노트북 매핑 |
 | /nb save | ✅ NotebookLmAdapter → `projects/{p}/notebooklm/` |
@@ -29,6 +31,21 @@
 ---
 
 ## 마지막 완료 작업
+
+**2026-05-08 KakaoManualAdapter + D-day 푸시 | Claude Code (2nd session)**
+- **OpenClaw 카톡 미지원 발견** — npm 번들 조사 결과 지원: Telegram/Discord/WhatsApp/Slack/MSTeams/Signal/iMessage/LINE/Google Chat. 카카오 없음
+- **B-5 KakaoMcpAdapter 폐기** → A안(수동 회수) + D안(D-day 푸시) 병행 채택
+- **A안 — `/kakao paste {project} [출처: 단톡방명]\n{본문}`**
+  - `server/knowledge/adapters/kakaoManual.ts` 신규
+  - `server/intent/handlers/notebooklm.ts` kakaoPaste 핸들러 추가 (멱등성 + pending 큐)
+  - 저장 경로: `projects/{project}/notes/` (회의록과 동일)
+- **D안 — 딜 마감/이정표 D-day 자동 푸시**
+  - `server/deals/dealDeadlineNotifier.ts` 신규 (cron 08:30 KST, dedup state JSON)
+  - 임계치: D-7/D-3/D-1/D-DAY/D+1 (지난 일정 제외)
+  - completed/rejected 딜 제외, 이정표는 미완료만
+  - `DEAL_DEADLINE_NOTIFY_HOUR/MINUTE/ENABLED` 환경변수 추가
+- 검증: `npm run check` ✅ / `npm run build` ✅ / **564 passed** (+21)
+- PM2 재시작 완료
 
 **2026-05-08 OpenClaw gateway caller 수정 | Claude Code (1 commit)**
 - `openclawRuntime.loadGatewayCaller()` — minified 번들 `callGateway` 함수명 탐색으로 수정

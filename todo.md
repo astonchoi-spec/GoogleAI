@@ -1,5 +1,28 @@
 ﻿# TODO.md — 에스턴 워크스테이션
-> 업데이트: 2026-05-07 Phase B-1 | 브랜치: codex-google-workspace-expansion
+> 업데이트: 2026-05-08 카톡 수동 회수 + D-day 푸시 | 브랜치: codex-google-workspace-expansion
+
+---
+
+## 2026-05-08 KakaoManualAdapter + D-day 자동 푸시 (Claude Code 2nd 세션)
+
+### 발견·결정
+- ✅ **OpenClaw 카카오톡 미지원 확정** — npm 번들 직접 조사. 지원: TG/Discord/WhatsApp/Slack/MSTeams/Signal/iMessage/LINE/GoogleChat
+- ✅ **B-5 KakaoMcpAdapter 폐기** (자동화 원천 불가)
+- ✅ A안+D안 병행 채택
+
+### 구현 완료
+- ✅ `/kakao paste {project} [출처: 단톡방명]\n{본문}` — KakaoManualAdapter
+- ✅ 매일 KST 08:30 D-day 푸시 (D-7/D-3/D-1/D-DAY/D+1, dedup, completed/rejected 제외)
+- ✅ 564 tests passed (+21)
+
+### 운영 검증 잔여
+- [ ] 텔레그램에서 `/kakao paste hannam-644 출처: 한남PFV\n본문` 직접 테스트
+- [ ] 2026-05-09 KST 08:30 D-day 푸시 1차 운영 확인
+- [ ] 카톡 단톡방 → /kakao paste 변환 워크플로 회장님 손 익히기
+
+### 카톡 자동화 영구 보류 결정 사항
+- PlayMCP/Playwright 자체 자동화 (B/C 옵션) — 차단 위험으로 진입 X
+- 카톡 PC export 감시 — Phase A 합의 §1 본진 보호와 충돌 적음, 향후 옵션 보존
 
 ---
 

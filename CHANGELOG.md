@@ -3,6 +3,52 @@
 
 ---
 
+## 2026-05-08 KakaoManualAdapter + D-day 자동 푸시 (Claude Code, 2nd session)
+
+### 발견: OpenClaw KakaoTalk 미지원
+- OpenClaw npm 번들 직접 조사 결과 지원 플랫폼은 **Telegram/Discord/WhatsApp/Slack/MSTeams/Signal/iMessage/LINE/Google Chat** 뿐
+- 카카오톡(`kakao` 키워드) 어디에도 없음 → **B-5 OpenClaw 기반 KakaoMcpAdapter 원천 불가능**으로 결정
+- 방향 전환: A안(수동 회수만 + V1 기본 경로) + D안(D-day 푸시) 병행 채택
+
+### A안: KakaoManualAdapter 구현
+- 신규 `server/knowledge/adapters/kakaoManual.ts` — `/kakao paste {project} [출처: 단톡방명]\n{본문}` 파싱
+- 신규 `server/intent/handlers/notebooklm.ts` `kakaoPaste` 핸들러 — 멱등성(sha256), pending 큐 폴백
+- 신규 `IntentAction "kakao_paste"` + `isKakaoPasteCommand` matcher
+- 라우팅: `notebooklm` 도메인, `inbox/_suggested/{project}/` 키워드 힌트 → `projects/{project}/notes/`
+- 신규 테스트 11개 (kakaoManualAdapter 11 + fallbackIntentRules 3)
+
+### D안: 딜 마감/이정표 D-day 자동 푸시
+- 신규 `server/deals/dealDeadlineNotifier.ts`
+  - `collectPendingNotifies()` — D-7/D-3/D-1/D-DAY/D+1 임계치 매칭
+  - `runDealDeadlineCheck()` — 텔레그램 발송 + 일별 dedup (data/deal-deadline-notify.json, 7일 이상 자동 정리)
+  - cron: 매일 KST 08:30 (`DEAL_DEADLINE_NOTIFY_HOUR/MINUTE` 환경변수)
+- `server/_core/index.ts` 스케줄러 등록
+- `.env.example`에 `DEAL_DEADLINE_NOTIFY_*` 추가
+- 신규 테스트 7개 — 임계치 필터 / 완료/거절 제외 / 이정표 필터 / 정렬 / dedup / 토큰 미설정 처리
+
+### 수정 파일
+- `server/knowledge/adapters/kakaoManual.ts` (신규)
+- `server/intent/handlers/notebooklm.ts` (kakaoPaste 추가)
+- `server/intent/types.ts` (kakao_paste action)
+- `server/intent/fallbackIntent.ts` (isKakaoPasteCommand + 라우팅)
+- `server/deals/dealDeadlineNotifier.ts` (신규)
+- `server/_core/index.ts` (스케줄러 등록)
+- `.env.example` (DEAL_DEADLINE_NOTIFY_*)
+- `server/__tests__/notebooklm/kakaoManualAdapter.test.ts` (신규, 11)
+- `server/__tests__/dealDeadlineNotifier.test.ts` (신규, 7)
+- `server/__tests__/fallbackIntentRules.test.ts` (+3)
+
+### 검증
+- `npm run check` ✅ / `npm run build` ✅ / `npm test` **564 passed** (543 → +21)
+- PM2 `aston` 재시작 완료
+
+### 남은 이슈
+- 운영 검증: 회장님 텔레그램에서 `/kakao paste hannam-644 출처: 한남PFV\n본문` 직접 확인
+- D-day 푸시 다음 스케줄: 내일(2026-05-09) KST 08:30 자동 발송 예정
+- 폴더 매핑 yaml(`index/notebooklm-mapping.yaml`)에 카톡 본문이 기록될 28개 노트북 그대로 사용
+
+---
+
 ## 2026-05-08 OpenClaw 연결 복구 (Claude Code)
 
 ### OpenClaw gateway caller minified bundle 수정

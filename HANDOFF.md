@@ -14,7 +14,8 @@
 | **OpenClaw** | ✅ **available=true, simulationMode=false** (2026-05-08 수정) |
 | **카톡 자동화** | ❌ OpenClaw 미지원 확정 → 수동 회수(`/kakao paste`)만 제공 |
 | **D-day 푸시** | ✅ 매일 KST 08:30 자동 (D-7/D-3/D-1/D-DAY/D+1) |
-| OpenClaw URL | `http://localhost:8000` (gateway token 정상) |
+| OpenClaw URL | `http://localhost:3000` (model: gpt-5-mini, /health 정상) |
+| **카톡 자체 릴레이** | ❌ 진행 안 함 — `/kakao paste`로 충분, k.tess.dev 등 외부 릴레이는 불필요 (2026-05-08 결정) |
 | /nb 조회 | ✅ list/show/search/help + 28개 노트북 매핑 |
 | /nb save | ✅ NotebookLmAdapter → `projects/{p}/notebooklm/` |
 | /meet save | ✅ MeetingAdapter → `projects/{p}/meetings/` |

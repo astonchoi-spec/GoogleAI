@@ -89,7 +89,19 @@ const tradingTechnicalAnalysis: IntentHandler = async (intent) => {
     .map((candle) => candle.slice(0, 6) as [number, number, number, number, number, number]);
   const analysis = taEngine.analyzeSymbol(normalized);
   const briefing = taEngine.generateBriefing(symbol, analysis);
-  return { intent, handled: true, requiresConfirmation: false, response: `${symbol} 기술적 지표 분석을 완료했습니다.`, data: { analysis, briefing } };
+  // Phase 6-B — `data.briefing` carries the full body; `response` is a short
+  // header. handlerResponse.text mirrors `data.briefing` so the migrated
+  // formatter path produces byte-for-byte identical output.
+  return {
+    intent, handled: true, requiresConfirmation: false,
+    response: `${symbol} 기술적 지표 분석을 완료했습니다.`,
+    data: { analysis, briefing },
+    handlerResponse: {
+      kind: "report",
+      text: briefing,
+      meta: { symbol, timeframe, exchange, candles: normalized.length },
+    },
+  };
 };
 
 const tradingRiskCalculation: IntentHandler = async (intent) => {
@@ -204,11 +216,27 @@ const tradingPreCheck: IntentHandler = async (intent) => {
   try {
     const result = await runPreCheck({ symbol, side, entryPrice, stopLoss, takeProfit });
     const formatted = formatPreCheck(result);
+    // Phase 6-B — full preCheck report lives in `response`. handlerResponse
+    // text is intentionally empty so formatReply does NOT append the body
+    // a second time (which would duplicate the report). The migration
+    // value-add here is the kind+meta signal for telemetry / future
+    // formatter switching.
     return {
       intent,
       handled: true,
       requiresConfirmation: false,
       response: formatted,
+      handlerResponse: {
+        kind: "report",
+        text: "",
+        meta: {
+          symbol,
+          side,
+          entryPrice,
+          hasStopLoss: stopLoss !== undefined,
+          hasTakeProfit: takeProfit !== undefined,
+        },
+      },
     };
   } catch (err) {
     const errMsg = err instanceof Error ? err.message : String(err);
@@ -249,7 +277,27 @@ const tradingReviewReport: IntentHandler = async (intent) => {
         : undefined,
       notes: notesRaw,
     });
-    return { intent, handled: true, requiresConfirmation: false, response: formatReviewReport(result) };
+    // Phase 6-B — full review report lives in `response` (same pattern as
+    // tradingPreCheck above). handlerResponse text is intentionally empty
+    // so the formatter does not duplicate the body.
+    return {
+      intent,
+      handled: true,
+      requiresConfirmation: false,
+      response: formatReviewReport(result),
+      handlerResponse: {
+        kind: "report",
+        text: "",
+        meta: {
+          symbol,
+          side,
+          leverage: leverage ?? null,
+          hasMoney: typeof amountKrwRaw === "number" || typeof amountUsdRaw === "number",
+          hasQuantity: typeof quantityRaw === "number",
+          notesCount: notesRaw.length,
+        },
+      },
+    };
   } catch (err) {
     console.error("[trading] review report failed:", err);
     return {
@@ -279,10 +327,20 @@ const analysisHandler: IntentHandler = async (intent) => {
       .map((candle) => candle.slice(0, 6) as [number, number, number, number, number, number]);
     const analysis = taEngine.analyzeSymbol(normalized);
     const briefing = taEngine.generateBriefing(symbol, analysis);
+    // Phase 6-B — `analysisHandler` historically returns `response = briefing`
+    // AND `data.briefing = briefing`, which the legacy formatter joins as
+    // `briefing\n\nbriefing`. That duplicate is preserved here byte-for-byte;
+    // handlerResponse.text mirrors data.briefing so the migrated path yields
+    // the same output. Fixing the duplicate is out of scope for Phase 6-B.
     return {
       intent, handled: true, requiresConfirmation: false,
       response: briefing,
       data: { analysis, briefing },
+      handlerResponse: {
+        kind: "report",
+        text: briefing,
+        meta: { symbol, timeframe, action: intent.action },
+      },
     };
   } catch (err) {
     console.warn("[INTENT] TA analysis failed:", (err as Error).message);

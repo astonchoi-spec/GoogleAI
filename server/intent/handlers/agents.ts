@@ -94,31 +94,73 @@ const handleAgentCommand: IntentHandler = async (intent, options) => {
   const rest = message.replace(/^에이전트\s*/, "").trim();
 
   if (!rest || /^목록$/.test(rest)) {
-    return { intent, handled: true, requiresConfirmation: false, response: formatTemplateList(await header()) };
+    // Phase 6-D-6 — 템플릿 목록 분기. 의미적 list. response 통합형 + text="".
+    return {
+      intent, handled: true, requiresConfirmation: false,
+      response: formatTemplateList(await header()),
+      handlerResponse: {
+        kind: "list",
+        text: "",
+        meta: { action: "agent_command", subCommand: "list" },
+      },
+    };
   }
   if (/^상태$/.test(rest)) {
-    return { intent, handled: true, requiresConfirmation: false, response: await formatTaskStatus() };
+    // Phase 6-D-6 — 작업 상태 분기. 진행 중 + 최근 결과 list 의미. response 통합.
+    return {
+      intent, handled: true, requiresConfirmation: false,
+      response: await formatTaskStatus(),
+      handlerResponse: {
+        kind: "list",
+        text: "",
+        meta: { action: "agent_command", subCommand: "status" },
+      },
+    };
   }
 
   const resultMatch = rest.match(/^결과\s+(\S+)$/);
   if (resultMatch) {
     const task = getAgentTask(resultMatch[1]);
+    // Phase 6-D-6 — 단일 작업 결과 또는 not_found 안내.
+    // Phase 7-A — found 는 kind="text", not_found 는 kind="error" 로 분리.
     return {
       intent,
       handled: true,
       requiresConfirmation: false,
       response: task ? formatTaskResult(task) : `🚫 작업을 찾지 못했습니다: ${resultMatch[1]}`,
+      handlerResponse: {
+        kind: task ? "text" : "error",
+        text: "",
+        meta: {
+          action: "agent_command",
+          subCommand: "result",
+          taskId: resultMatch[1],
+          status: task ? "found" : "not_found",
+        },
+      },
     };
   }
 
   const cancelMatch = rest.match(/^취소\s+(\S+)$/);
   if (cancelMatch) {
     const task = cancelAgentTask(cancelMatch[1]);
+    // Phase 6-D-6 — 작업 취소 또는 not_found.
+    // Phase 7-A — cancelled 는 kind="text", not_found 는 kind="error" 로 분리.
     return {
       intent,
       handled: true,
       requiresConfirmation: false,
       response: task ? `🛑 취소 요청\n🤖 ${task.templateLabel}\n🆔 ${task.id}\n상태: ${STATUS_LABEL[task.status]}` : `🚫 작업을 찾지 못했습니다: ${cancelMatch[1]}`,
+      handlerResponse: {
+        kind: task ? "text" : "error",
+        text: "",
+        meta: {
+          action: "agent_command",
+          subCommand: "cancel",
+          taskId: cancelMatch[1],
+          status: task ? "cancelled" : "not_found",
+        },
+      },
     };
   }
 
@@ -126,31 +168,70 @@ const handleAgentCommand: IntentHandler = async (intent, options) => {
   if (executeMatch) {
     const parsed = parseExecuteArgs(executeMatch[1]);
     if (!parsed) {
-      return { intent, handled: true, requiresConfirmation: false, response: "⚠️ 사용법: 에이전트 실행 <templateId> <대상>" };
+      // Phase 6-D-6 — 인자 부족. 짧은 사용법 안내.
+      // Phase 7-A — invalid_args 는 kind="error" 로 재분류.
+      return {
+        intent, handled: true, requiresConfirmation: false,
+        response: "⚠️ 사용법: 에이전트 실행 <templateId> <대상>",
+        handlerResponse: {
+          kind: "error",
+          text: "",
+          meta: { action: "agent_command", subCommand: "execute", status: "invalid_args" },
+        },
+      };
     }
     try {
       const task = enqueueAgentTask({ templateId: parsed.templateId, target: parsed.target, inputs: parsed.inputs });
+      // Phase 6-D-6 — 작업 등록 성공. text 분기. taskId / templateId 디버그 메타.
       return {
         intent,
         handled: true,
         requiresConfirmation: false,
         response: [`🤖 에이전트 작업 등록`, `📋 ${task.templateLabel}`, `🆔 ${task.id}`, `🎯 ${task.target}`, "", await header(), "", `결과 확인: 에이전트 결과 ${task.id}`].join("\n"),
+        handlerResponse: {
+          kind: "text",
+          text: "",
+          meta: {
+            action: "agent_command",
+            subCommand: "execute",
+            taskId: task.id,
+            templateId: parsed.templateId,
+            status: "queued",
+          },
+        },
       };
     } catch (err) {
+      // Phase 7-A — 작업 등록 실패를 kind="error" 로 정식 재분류. byte-for-byte 동일.
       return {
         intent,
         handled: true,
         requiresConfirmation: false,
         response: `🚫 작업 등록 실패: ${err instanceof Error ? err.message : String(err)}`,
+        handlerResponse: {
+          kind: "error",
+          text: "",
+          meta: {
+            action: "agent_command",
+            subCommand: "execute",
+            status: "error",
+            errorType: err instanceof Error ? err.name : "unknown",
+          },
+        },
       };
     }
   }
 
+  // Phase 6-D-6 — fallthrough. 사용법 안내. text 분기.
   return {
     intent,
     handled: true,
     requiresConfirmation: false,
     response: "⚠️ 사용법\n- 에이전트 목록\n- 에이전트 실행 <templateId> <대상>\n- 에이전트 상태\n- 에이전트 결과 <task_id>\n- 에이전트 취소 <task_id>",
+    handlerResponse: {
+      kind: "text",
+      text: "",
+      meta: { action: "agent_command", subCommand: "help" },
+    },
   };
 };
 

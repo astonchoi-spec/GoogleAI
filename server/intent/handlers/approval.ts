@@ -115,16 +115,30 @@ const tradingBuySignal: IntentHandler = async (intent) => {
   const market = normalizeMarket(asString(intent.params.market, "KRW-BTC"));
   const requested = asNumber(intent.params.amountKrw, 50_000);
   if (requested > MAX_ORDER_KRW) {
+    // Phase 7-A — 한도 초과 거절을 kind="error" 로 정식 재분류. byte-for-byte 동일.
     return {
       intent,
       handled: true,
       requiresConfirmation: false,
       response: `🚫 단일 주문 한도(${fmtKrw(MAX_ORDER_KRW)})를 초과합니다. 요청: ${fmtKrw(requested)}`,
+      handlerResponse: {
+        kind: "error",
+        text: "",
+        meta: {
+          action: "trading_buy_signal",
+          status: "limit_exceeded",
+          market,
+          requestedKrw: requested,
+          maxOrderKrw: MAX_ORDER_KRW,
+        },
+      },
     };
   }
   const reason = asString(intent.params.reason, "수동 트리거 — 매수 시뮬");
 
   if (!isRealOrdersEnabled()) {
+    // Phase 6-D-7 — 검토 모드. buildReviewModeResponse 가 긴 리뷰 리포트를
+    // 통째로 response 에 반환. kind="report" + text="" 로 본문 중복 방지.
     const response = await buildReviewModeResponse({
       market,
       side: "long",
@@ -132,7 +146,19 @@ const tradingBuySignal: IntentHandler = async (intent) => {
       leverage: asNumber(intent.params.leverage, 0) || undefined,
       reason,
     });
-    return { intent, handled: true, requiresConfirmation: false, response };
+    return {
+      intent, handled: true, requiresConfirmation: false, response,
+      handlerResponse: {
+        kind: "report",
+        text: "",
+        meta: {
+          action: "trading_buy_signal",
+          status: "review_mode",
+          market,
+          amountKrw: requested,
+        },
+      },
+    };
   }
 
   const req = approvalQueue.enqueue({
@@ -147,23 +173,53 @@ const tradingBuySignal: IntentHandler = async (intent) => {
     ? `📡 매수 신호 큐 등록 (id=${req.id.slice(0, 8)})\n⚠️ ${dispatch.warning}`
     : `📡 매수 신호 발송 — 텔레그램에서 승인 버튼을 눌러주세요.\n종목: ${market} / 금액: ${fmtKrw(requested)}`;
 
-  return { intent, handled: true, requiresConfirmation: false, response };
+  // Phase 6-D-7 — 큐 등록 + 텔레그램 발송. 성공/실패 분기.
+  // Phase 7-A — dispatch.warning 발송 실패는 kind="error", 정상 발송은 kind="text".
+  // approval id 는 response 에 8자 접두사로만 노출되므로 meta 에도 동일 형태로
+  // 기록 (full UUID 는 노출 위험으로 meta 에 미포함).
+  return {
+    intent, handled: true, requiresConfirmation: false, response,
+    handlerResponse: {
+      kind: dispatch.warning ? "error" : "text",
+      text: "",
+      meta: {
+        action: "trading_buy_signal",
+        status: dispatch.warning ? "dispatch_warning" : "dispatched",
+        market,
+        amountKrw: requested,
+        approvalIdPrefix: req.id.slice(0, 8),
+        hasMessageId: dispatch.messageId !== null,
+      },
+    },
+  };
 };
 
 const tradingSellSignal: IntentHandler = async (intent) => {
   const market = normalizeMarket(asString(intent.params.market, "KRW-BTC"));
   const volume = asNumber(intent.params.volume, 0.0001);
   if (!(volume > 0)) {
+    // Phase 7-A — 수량 부정확 거절을 kind="error" 로 정식 재분류. byte-for-byte 동일.
     return {
       intent,
       handled: true,
       requiresConfirmation: false,
       response: "🚫 매도 수량이 올바르지 않습니다.",
+      handlerResponse: {
+        kind: "error",
+        text: "",
+        meta: {
+          action: "trading_sell_signal",
+          status: "invalid_volume",
+          market,
+          volume,
+        },
+      },
     };
   }
   const reason = asString(intent.params.reason, "수동 트리거 — 매도 시뮬");
 
   if (!isRealOrdersEnabled()) {
+    // Phase 6-D-7 — 검토 모드. tradingBuySignal 와 동일 패턴 (kind="report" + text="").
     const response = await buildReviewModeResponse({
       market,
       side: "short",
@@ -171,7 +227,19 @@ const tradingSellSignal: IntentHandler = async (intent) => {
       leverage: asNumber(intent.params.leverage, 0) || undefined,
       reason,
     });
-    return { intent, handled: true, requiresConfirmation: false, response };
+    return {
+      intent, handled: true, requiresConfirmation: false, response,
+      handlerResponse: {
+        kind: "report",
+        text: "",
+        meta: {
+          action: "trading_sell_signal",
+          status: "review_mode",
+          market,
+          volume,
+        },
+      },
+    };
   }
 
   const req = approvalQueue.enqueue({
@@ -186,14 +254,43 @@ const tradingSellSignal: IntentHandler = async (intent) => {
     ? `📡 매도 신호 큐 등록 (id=${req.id.slice(0, 8)})\n⚠️ ${dispatch.warning}`
     : `📡 매도 신호 발송 — 텔레그램에서 승인 버튼을 눌러주세요.\n종목: ${market} / 수량: ${volume}`;
 
-  return { intent, handled: true, requiresConfirmation: false, response };
+  // Phase 6-D-7 — 큐 등록 + 발송 결과. tradingBuySignal 동일 패턴.
+  // Phase 7-A — dispatch.warning 발송 실패는 kind="error", 정상 발송은 kind="text".
+  return {
+    intent, handled: true, requiresConfirmation: false, response,
+    handlerResponse: {
+      kind: dispatch.warning ? "error" : "text",
+      text: "",
+      meta: {
+        action: "trading_sell_signal",
+        status: dispatch.warning ? "dispatch_warning" : "dispatched",
+        market,
+        volume,
+        approvalIdPrefix: req.id.slice(0, 8),
+        hasMessageId: dispatch.messageId !== null,
+      },
+    },
+  };
 };
 
 const tradingApprovalList: IntentHandler = async (intent) => {
   approvalQueue.expireOld();
   const items = approvalQueue.list().slice(0, 10);
   if (items.length === 0) {
-    return { intent, handled: true, requiresConfirmation: false, response: "📋 승인 큐가 비어있습니다." };
+    // Phase 6-D-7 — 빈 큐. kind="list" + text="" + meta(빈 큐 표시).
+    return {
+      intent, handled: true, requiresConfirmation: false,
+      response: "📋 승인 큐가 비어있습니다.",
+      handlerResponse: {
+        kind: "list",
+        text: "",
+        meta: {
+          action: "trading_approval_list",
+          queueLength: 0,
+          isEmpty: true,
+        },
+      },
+    };
   }
   const lines = ["📋 승인 큐 (최근 10건)", "━━━━━━━━━━━━"];
   for (const r of items) {
@@ -201,7 +298,22 @@ const tradingApprovalList: IntentHandler = async (intent) => {
     const detail = r.side === "bid" ? fmtKrw(r.amountKrw ?? 0) : `${r.volume} 코인`;
     lines.push(`• ${r.id.slice(0, 8)} ${r.market} ${sideText} ${detail} → ${r.status}`);
   }
-  return { intent, handled: true, requiresConfirmation: false, response: lines.join("\n") };
+  // Phase 6-D-7 — 승인 큐 list. response 에 본문 통합. kind="list" + text="".
+  // approvalQueue 에는 sender id, raw intent params 등 내부 객체 필드가 있으나
+  // response 에는 8자 접두사 + market + sideText + detail + status 만 노출 (의도된).
+  return {
+    intent, handled: true, requiresConfirmation: false,
+    response: lines.join("\n"),
+    handlerResponse: {
+      kind: "list",
+      text: "",
+      meta: {
+        action: "trading_approval_list",
+        queueLength: items.length,
+        isEmpty: false,
+      },
+    },
+  };
 };
 
 export const approvalHandlers: HandlerMap = {

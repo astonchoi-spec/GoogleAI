@@ -12,11 +12,22 @@ const runner = new PipelineRunner();
 const nbCommand: IntentHandler = async (intent) => {
   const raw = String(intent.params.raw ?? "");
   const text = handleNbCommand(raw);
+  // Phase 6-D-9 — `handleNbCommand` 가 매핑 조회/검색/도움말 등 다양한 응답을
+  // 단일 string 으로 반환. response 통합형 + text="". 사용자 입력 raw 는 meta
+  // 에 미포함 (length 만 기록).
   return {
     intent,
     handled: true,
     requiresConfirmation: false,
     response: text,
+    handlerResponse: {
+      kind: "text",
+      text: "",
+      meta: {
+        action: "nb_command",
+        rawLength: raw.length,
+      },
+    },
   };
 };
 
@@ -25,6 +36,7 @@ const nbSave: IntentHandler = async (intent, options) => {
 
   const parsed = NotebookLmAdapter.parseRaw(raw);
   if (!parsed) {
+    // Phase 6-D-9 — 형식 오류. kind="text" + meta.status="invalid_format".
     return {
       intent,
       handled: true,
@@ -37,6 +49,15 @@ const nbSave: IntentHandler = async (intent, options) => {
         "```",
         "project-id 목록: `/nb list`",
       ].join("\n"),
+      handlerResponse: {
+        kind: "error",
+        text: "",
+        meta: {
+          action: "nb_save",
+          status: "invalid_format",
+          rawLength: raw.length,
+        },
+      },
     };
   }
 
@@ -49,6 +70,8 @@ const nbSave: IntentHandler = async (intent, options) => {
       .slice(0, 3)
       .map((n) => `• \`${n.project}\` — ${n.display_name}`)
       .join("\n");
+    // Phase 6-D-9 — project 미발견. kind="text" + meta.status="project_not_found".
+    // requestedProject 는 사용자 입력에서 추출된 영문 enum 형태라 안전.
     return {
       intent,
       handled: true,
@@ -57,6 +80,16 @@ const nbSave: IntentHandler = async (intent, options) => {
         `❌ project \`${parsed.project}\` 없음.`,
         ...(suggestions ? ["유사 항목:", suggestions] : ["`/nb list`로 전체 목록 확인"]),
       ].join("\n"),
+      handlerResponse: {
+        kind: "error",
+        text: "",
+        meta: {
+          action: "nb_save",
+          status: "project_not_found",
+          requestedProject: parsed.project,
+          suggestionCount: suggestions ? suggestions.split("\n").length : 0,
+        },
+      },
     };
   }
 
@@ -73,17 +106,32 @@ const nbSave: IntentHandler = async (intent, options) => {
   const result = await runner.run(input);
 
   if (!result.ok) {
+    // Phase 6-D-9 — 저장 실패 (pending 큐 보관). kind="error" 활성화 금지 제약상
+    // kind="text" + meta.status="error" 임시. Phase 6-D 후반부 일괄 재분류.
     return {
       intent,
       handled: true,
       requiresConfirmation: false,
       response: `⚠️ Wiki 저장 실패 — pending 큐에 보관됨\n📁 ${result.pending_path}`,
+      handlerResponse: {
+        kind: "error",
+        text: "",
+        meta: {
+          action: "nb_save",
+          status: "error",
+          stage: "pipeline_run",
+          project: parsed.project,
+        },
+      },
     };
   }
 
   const skipNote = result.was_skipped ? " (이미 저장된 동일 내용 — skip)" : "";
   const qualityNote = result.doc.quality !== "complete" ? ` (quality: ${result.doc.quality})` : "";
 
+  // Phase 6-D-9 — 저장 성공. response 다중 라인 통합형. kind="text" + text="".
+  // doc.title 은 LLM 추출 결과로 사용자 입력 원문이 아님 (제목 한 줄). hasTitle
+  // boolean 만 meta 에 기록. body / sourceRef / textHash 는 meta 미포함.
   return {
     intent,
     handled: true,
@@ -98,6 +146,19 @@ const nbSave: IntentHandler = async (intent, options) => {
       saved_path: result.entry.saved_path,
       was_skipped: result.was_skipped,
       quality: result.doc.quality,
+    },
+    handlerResponse: {
+      kind: "text",
+      text: "",
+      meta: {
+        action: "nb_save",
+        status: "saved",
+        project: parsed.project,
+        wasSkipped: result.was_skipped,
+        quality: result.doc.quality,
+        hasTitle: typeof result.doc.title === "string" && result.doc.title.length > 0,
+        bodyLength: parsed.body.length,
+      },
     },
   };
 };
@@ -119,6 +180,15 @@ const meetSave: IntentHandler = async (intent, options) => {
         "```",
         "project-id 목록: `/nb list`",
       ].join("\n"),
+      handlerResponse: {
+        kind: "error",
+        text: "",
+        meta: {
+          action: "meet_save",
+          status: "invalid_format",
+          rawLength: raw.length,
+        },
+      },
     };
   }
 
@@ -139,6 +209,16 @@ const meetSave: IntentHandler = async (intent, options) => {
         `❌ project \`${parsed.project}\` 없음.`,
         ...(suggestions ? ["유사 항목:", suggestions] : ["`/nb list`로 전체 목록 확인"]),
       ].join("\n"),
+      handlerResponse: {
+        kind: "error",
+        text: "",
+        meta: {
+          action: "meet_save",
+          status: "project_not_found",
+          requestedProject: parsed.project,
+          suggestionCount: suggestions ? suggestions.split("\n").length : 0,
+        },
+      },
     };
   }
 
@@ -161,6 +241,16 @@ const meetSave: IntentHandler = async (intent, options) => {
       handled: true,
       requiresConfirmation: false,
       response: `⚠️ 회의록 저장 실패 — pending 큐에 보관됨\n📁 ${result.pending_path}`,
+      handlerResponse: {
+        kind: "error",
+        text: "",
+        meta: {
+          action: "meet_save",
+          status: "error",
+          stage: "pipeline_run",
+          project: parsed.project,
+        },
+      },
     };
   }
 
@@ -168,6 +258,8 @@ const meetSave: IntentHandler = async (intent, options) => {
   const qualityNote = result.doc.quality !== "complete" ? ` (quality: ${result.doc.quality})` : "";
   const attendeeLine = parsed.attendees.length > 0 ? `\n👥 참석자: ${parsed.attendees.join(", ")}` : "";
 
+  // Phase 6-D-9 — 회의록 저장 성공. attendees 는 사용자 입력 이름이라 meta 에는
+  // attendeesCount 만 기록 (개별 이름 미포함).
   return {
     intent,
     handled: true,
@@ -182,6 +274,20 @@ const meetSave: IntentHandler = async (intent, options) => {
       saved_path: result.entry.saved_path,
       was_skipped: result.was_skipped,
       quality: result.doc.quality,
+    },
+    handlerResponse: {
+      kind: "text",
+      text: "",
+      meta: {
+        action: "meet_save",
+        status: "saved",
+        project: parsed.project,
+        wasSkipped: result.was_skipped,
+        quality: result.doc.quality,
+        hasTitle: typeof result.doc.title === "string" && result.doc.title.length > 0,
+        attendeesCount: parsed.attendees.length,
+        bodyLength: parsed.body.length,
+      },
     },
   };
 };
@@ -203,6 +309,15 @@ const kakaoPaste: IntentHandler = async (intent, options) => {
         "```",
         "project-id 목록: `/nb list`",
       ].join("\n"),
+      handlerResponse: {
+        kind: "error",
+        text: "",
+        meta: {
+          action: "kakao_paste",
+          status: "invalid_format",
+          rawLength: raw.length,
+        },
+      },
     };
   }
 
@@ -223,6 +338,16 @@ const kakaoPaste: IntentHandler = async (intent, options) => {
         `❌ project \`${parsed.project}\` 없음.`,
         ...(suggestions ? ["유사 항목:", suggestions] : ["`/nb list`로 전체 목록 확인"]),
       ].join("\n"),
+      handlerResponse: {
+        kind: "error",
+        text: "",
+        meta: {
+          action: "kakao_paste",
+          status: "project_not_found",
+          requestedProject: parsed.project,
+          suggestionCount: suggestions ? suggestions.split("\n").length : 0,
+        },
+      },
     };
   }
 
@@ -245,6 +370,16 @@ const kakaoPaste: IntentHandler = async (intent, options) => {
       handled: true,
       requiresConfirmation: false,
       response: `⚠️ 카톡 회수 실패 — pending 큐에 보관됨\n📁 ${result.pending_path}`,
+      handlerResponse: {
+        kind: "error",
+        text: "",
+        meta: {
+          action: "kakao_paste",
+          status: "error",
+          stage: "pipeline_run",
+          project: parsed.project,
+        },
+      },
     };
   }
 
@@ -252,6 +387,8 @@ const kakaoPaste: IntentHandler = async (intent, options) => {
   const qualityNote = result.doc.quality !== "complete" ? ` (quality: ${result.doc.quality})` : "";
   const chatRoomLine = parsed.chatRoom ? `\n💬 출처: ${parsed.chatRoom}` : "";
 
+  // Phase 6-D-9 — 카톡 회수 성공. chatRoom 은 사용자 입력 채팅방명이라 meta 에는
+  // hasChatRoom boolean 만 기록 (이름 미포함).
   return {
     intent,
     handled: true,
@@ -266,6 +403,20 @@ const kakaoPaste: IntentHandler = async (intent, options) => {
       saved_path: result.entry.saved_path,
       was_skipped: result.was_skipped,
       quality: result.doc.quality,
+    },
+    handlerResponse: {
+      kind: "text",
+      text: "",
+      meta: {
+        action: "kakao_paste",
+        status: "saved",
+        project: parsed.project,
+        wasSkipped: result.was_skipped,
+        quality: result.doc.quality,
+        hasTitle: typeof result.doc.title === "string" && result.doc.title.length > 0,
+        hasChatRoom: typeof parsed.chatRoom === "string" && parsed.chatRoom.length > 0,
+        bodyLength: parsed.body.length,
+      },
     },
   };
 };

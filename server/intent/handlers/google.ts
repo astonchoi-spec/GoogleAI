@@ -150,11 +150,22 @@ const driveSearch: IntentHandler = async (intent, options) => {
         data: { files: [] },
       };
     }
-    const fileList = (files as any[]).map((f, i) => `${i + 1}. 📄 ${f.name}`).join("\n");
+    // Phase 6-A — formatted lines per file. `fileList` (joined string) kept
+    // for legacy formatReply path; `handlerResponse` adds the same data
+    // under the new HandlerResponse schema so future formatter logic can
+    // branch on `kind === "list"` instead of greping `data.fileList`.
+    const fileLines = (files as any[]).map((f, i) => `${i + 1}. 📄 ${f.name}`);
+    const fileList = fileLines.join("\n");
     return {
       intent, handled: true, requiresConfirmation: false,
       response: `Google Drive에서 "${query}" 관련 파일 ${files.length}개를 찾았습니다.`,
       data: { files, fileList },
+      handlerResponse: {
+        kind: "list",
+        text: fileList,
+        items: fileLines,
+        meta: { totalFiles: files.length, query },
+      },
     };
   } catch (err) {
     console.error("[INTENT] google_drive_search error:", err);
@@ -176,13 +187,23 @@ const getEmails: IntentHandler = async (intent, options) => {
     if (emails.length === 0) {
       return { intent, handled: true, requiresConfirmation: false, response: "📭 받은 메일이 없습니다.", data: { emails: [] } };
     }
-    const emailList = (emails as any[]).map((e, i) =>
+    // Phase 6-A — emailList stays as the joined string to preserve the
+    // legacy "\n\n" separator. `handlerResponse.text` mirrors it so the
+    // migrated formatter path returns identical output.
+    const emailItems = (emails as any[]).map((e, i) =>
       `${i + 1}. ${e.isRead ? "" : "🔵"} ${e.subject}\n   발신: ${e.from}`
-    ).join("\n\n");
+    );
+    const emailList = emailItems.join("\n\n");
     return {
       intent, handled: true, requiresConfirmation: false,
       response: `📬 최근 이메일 ${emails.length}개를 조회했습니다.`,
       data: { emails, emailList },
+      handlerResponse: {
+        kind: "list",
+        text: emailList,
+        items: emailItems,
+        meta: { totalEmails: emails.length, searchQuery: searchQuery ?? null },
+      },
     };
   } catch (err) {
     if (isGoogleAuthError(err)) {
@@ -287,13 +308,22 @@ const listEvents: IntentHandler = async (intent, options) => {
     if (events.length === 0) {
       return { intent, handled: true, requiresConfirmation: false, response: "📅 예정된 일정이 없습니다.", data: { events: [] } };
     }
-    const eventList = (events as any[]).map((e, i) =>
+    // Phase 6-A — eventList preserves the legacy "\n\n" join separator.
+    // `handlerResponse.text` mirrors it for the migrated formatter path.
+    const eventItems = (events as any[]).map((e, i) =>
       `${i + 1}. 📅 ${e.title || e.summary || "(제목 없음)"}\n   ${e.start?.dateTime || e.start?.date || ""}`
-    ).join("\n\n");
+    );
+    const eventList = eventItems.join("\n\n");
     return {
       intent, handled: true, requiresConfirmation: false,
       response: `📅 다가오는 일정 ${events.length}개를 조회했습니다.`,
       data: { events, eventList },
+      handlerResponse: {
+        kind: "list",
+        text: eventList,
+        items: eventItems,
+        meta: { totalEvents: events.length, maxResults },
+      },
     };
   } catch (err) {
     if (isGoogleAuthError(err)) {

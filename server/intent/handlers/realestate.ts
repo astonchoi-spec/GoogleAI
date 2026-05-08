@@ -19,7 +19,19 @@ const portfolioSummary: IntentHandler = async (intent, options) => {
   const auth = await googleAuthManager.getAuthenticatedClient(options.userId);
   const pipeline = new DealPipeline(auth, spreadsheetIdFromEnv());
   const summary = await pipeline.getPortfolioSummary();
-  return { intent, handled: true, requiresConfirmation: false, response: "PF 포트폴리오 요약을 조회했습니다.", data: { summary } };
+  // Phase 6-D-1 — `data.summary` 는 구조화된 객체이고 formatReply 의 legacy
+  // 경로는 `safeDisplayBody` 로 빈 문자열을 반환한다. 본문이 따로 없으므로
+  // text="" 마커만 추가하여 출력은 response 한 줄 유지.
+  return {
+    intent, handled: true, requiresConfirmation: false,
+    response: "PF 포트폴리오 요약을 조회했습니다.",
+    data: { summary },
+    handlerResponse: {
+      kind: "text",
+      text: "",
+      meta: { action: "portfolio_summary" },
+    },
+  };
 };
 
 const simpleFeasibility: IntentHandler = async (intent) => {
@@ -38,12 +50,26 @@ const simpleFeasibility: IntentHandler = async (intent) => {
 
   const result = calculateFeasibility(feasibilityInput);
   const report = formatSimpleFeasibilityReport(result, feasibilityInput);
+  // Phase 6-D-1 — 분리형 패턴: response 는 짧은 헤더, data.report 가 본문.
+  // handlerResponse.text 는 data.report 와 동일 변수 (`report`) 에서 파생되어
+  // formatReply 의 list/report 우선 경로와 legacy `data.report` 경로가 같은
+  // 문자열을 반환 → byte-for-byte 동일 출력.
   return {
     intent,
     handled: true,
     requiresConfirmation: false,
     response: "간단한 사업성 분석을 완료했습니다.",
     data: { result, report },
+    handlerResponse: {
+      kind: "report",
+      text: report,
+      meta: {
+        action: "simple_feasibility",
+        projectName: feasibilityInput.projectName,
+        totalUnits: feasibilityInput.totalUnits,
+        projectMonths: feasibilityInput.projectMonths,
+      },
+    },
   };
 };
 
@@ -52,12 +78,20 @@ const landUse: IntentHandler = async (intent) => {
   if (!pnu) {
     return { intent, handled: false, requiresConfirmation: false, response: "PNU(필지고유번호)를 입력해주세요." };
   }
+  // Phase 6-D-1 — `data.method` 형태는 formatReply 의 raw object 차단 분기를
+  // 트리거하여 "내부 데이터..." 안내로 대체된다 (dealRouting.test.ts:91 회귀
+  // 테스트 대상). text="" 로 마커만 추가해 차단 동작을 그대로 유지한다.
   return {
     intent,
     handled: true,
     requiresConfirmation: false,
     response: "토지이용규제 정보를 조회했습니다.",
     data: { method: "realestate.landUse", params: { pnu } },
+    handlerResponse: {
+      kind: "text",
+      text: "",
+      meta: { action: "land_use", pnu },
+    },
   };
 };
 
@@ -66,6 +100,7 @@ const landPrice: IntentHandler = async (intent) => {
   if (!pnu) {
     return { intent, handled: false, requiresConfirmation: false, response: "PNU(필지고유번호)를 입력해주세요." };
   }
+  const year = asString(intent.params.year, new Date().getFullYear().toString());
   return {
     intent,
     handled: true,
@@ -73,7 +108,12 @@ const landPrice: IntentHandler = async (intent) => {
     response: "공시지가 정보를 조회했습니다.",
     data: {
       method: "realestate.landPrice",
-      params: { pnu, year: asString(intent.params.year, new Date().getFullYear().toString()) },
+      params: { pnu, year },
+    },
+    handlerResponse: {
+      kind: "text",
+      text: "",
+      meta: { action: "land_price", pnu, year },
     },
   };
 };
@@ -90,6 +130,11 @@ const realTransaction: IntentHandler = async (intent) => {
     requiresConfirmation: false,
     response: "실거래가 정보를 조회했습니다.",
     data: { method: "realestate.realTransaction", params: { regionCode, yearMonth } },
+    handlerResponse: {
+      kind: "text",
+      text: "",
+      meta: { action: "real_transaction", regionCode, yearMonth },
+    },
   };
 };
 
@@ -111,7 +156,24 @@ const feasibility: IntentHandler = async (intent) => {
   };
   const result = runFeasibility(feasibilityInput);
   const report = formatFeasibilityReport(feasibilityInput, result);
-  return { intent, handled: true, requiresConfirmation: false, response: "?ъ뾽??遺꾩꽍???꾨즺?덉뒿?덈떎.", data: { result, report } };
+  // Phase 6-D-1 — 분리형. response 헤더는 인코딩 깨짐이 있으나 byte-for-byte
+  // 보존을 위해 손대지 않는다 (별도 작업 영역). handlerResponse.text 는
+  // data.report 와 동일 본문을 미러링하므로 출력은 변동 없음.
+  return {
+    intent, handled: true, requiresConfirmation: false,
+    response: "?ъ뾽??遺꾩꽍???꾨즺?덉뒿?덈떎.",
+    data: { result, report },
+    handlerResponse: {
+      kind: "report",
+      text: report,
+      meta: {
+        action: "feasibility",
+        projectName: feasibilityInput.projectName,
+        floors: feasibilityInput.floors,
+        loanLTV: feasibilityInput.loanLTV,
+      },
+    },
+  };
 };
 
 const addDeal: IntentHandler = async (intent, options) => {
@@ -131,12 +193,24 @@ const addDeal: IntentHandler = async (intent, options) => {
     notes: asString(intent.params.notes, ""),
   });
 
+  // Phase 6-D-1 — `data.deal` 은 구조화된 객체이고 formatReply 의 legacy
+  // 경로에서 `safeDisplayBody` 가 빈 문자열을 반환한다. text="" 마커만 추가해
+  // 출력은 response 한 줄 유지.
   return {
     intent,
     handled: true,
     requiresConfirmation: false,
     response: "PF 딜이 추가되었습니다.",
     data: { deal: created },
+    handlerResponse: {
+      kind: "text",
+      text: "",
+      meta: {
+        action: "add_deal",
+        projectName: asString(intent.params.projectName, ""),
+        stage: asString(intent.params.stage, ""),
+      },
+    },
   };
 };
 
@@ -159,6 +233,15 @@ const updateDealStage: IntentHandler = async (intent, options) => {
     requiresConfirmation: false,
     response: "PF 딜 단계가 변경되었습니다.",
     data: { deal: updated },
+    handlerResponse: {
+      kind: "text",
+      text: "",
+      meta: {
+        action: "update_deal_stage",
+        id,
+        stage: asString(intent.params.stage, ""),
+      },
+    },
   };
 };
 

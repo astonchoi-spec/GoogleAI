@@ -21,6 +21,7 @@ import { registerTvWebhookRoutes } from "../alerts/tvWebhookServer.ts"; // MODIF
 import { registerMorningBriefingScheduler } from "../intelligence/briefing.ts";
 import { startCollector } from "../intelligence/collector.ts";
 import { registerDealSheetSyncScheduler } from "../deals/dealSheetSync.ts";
+import { registerDealDeadlineNotifier } from "../deals/dealDeadlineNotifier.ts";
 import { startKakaoFolderWatcher, stopKakaoFolderWatcher } from "../deals/folderWatcher.ts"; // MODIFIED: watch KakaoTalk downloads for deal file classification.
 import { startGmailWatcher, stopGmailWatcher } from "../deals/gmailWatcher.ts"; // MODIFIED: poll Gmail deal attachments.
 import { startDownloadWatcher, stopDownloadWatcher } from "../deals/downloadWatcher.ts"; // MODIFIED: watch browser downloads for deal file classification.
@@ -52,6 +53,7 @@ async function startServer() {
 
   registerMorningBriefingScheduler();
   registerDealSheetSyncScheduler();
+  registerDealDeadlineNotifier();
   void startCollector().catch((e) => console.error("[collector] 시작 실패:", e));
 
   const app = express();

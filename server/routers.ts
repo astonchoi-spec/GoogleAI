@@ -21,6 +21,7 @@ import { journalRouter } from "./routers/journal.ts"; // MODIFIED: 1-D 매매일
 import { analysisRouter } from "./routers/analysis.ts"; // MODIFIED: register technical analysis router.
 import { notebooklmRouter } from "./routers/notebooklm.ts"; // MODIFIED: register NotebookLM MCP router.
 import { wikiRouter } from "./routers/wiki.ts"; // MODIFIED: expose Wiki search/category/recent procedures for /wiki page.
+import { ragRouter } from "./routers/rag.ts"; // MODIFIED: expose Aston RAG (Track A NotebookLM catalog + Track B Discovery Engine) router.
 
 const ADMIN_USERNAME = "admin";
 const ADMIN_PASSWORD = "admin123";
@@ -81,6 +82,7 @@ export const appRouter = router({
   analysis: analysisRouter, // MODIFIED: expose technical analysis procedures via appRouter.
   notebooklm: notebooklmRouter, // MODIFIED: expose NotebookLM MCP query/status procedures via appRouter.
   wiki: wikiRouter, // MODIFIED: expose Wiki page data (search/byCategory/recent/status).
+  rag: ragRouter, // MODIFIED: expose Aston RAG mappings (Track A NotebookLM catalog) + Track B Discovery Engine groups.
 });
 
 export type AppRouter = typeof appRouter;

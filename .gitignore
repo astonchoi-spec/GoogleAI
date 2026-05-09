@@ -105,7 +105,8 @@ temp/
 *.db
 *.sqlite
 *.sqlite3
-data/
+data/*
+!data/rag-mapping.yaml
 
 # Claude Code internal
 .claude/

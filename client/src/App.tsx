@@ -17,6 +17,7 @@ const TradingPage = lazy(() => import("./pages/TradingPage")); // MODIFIED: code
 const RealEstatePage = lazy(() => import("./pages/RealEstatePage")); // MODIFIED: code-split the real estate PF bundle.
 const Monitoring = lazy(() => import("./pages/Monitoring")); // MODIFIED: code-split the monitoring dashboard bundle.
 const NotebookLMPage = lazy(() => import("./pages/NotebookLMPage"));
+const KnowledgeRagPage = lazy(() => import("./pages/KnowledgeRagPage")); // MODIFIED: Aston RAG (Track A NotebookLM catalog + Track B Discovery Engine).
 const WikiPage = lazy(() => import("./pages/WikiPage"));
 const AgentControl = lazy(() => import("./pages/AgentControl"));
 
@@ -38,6 +39,7 @@ function Router() {
           <Route path={"/google"} component={Google} />
           <Route path={"/settings"} component={Settings} />
           <Route path={"/notebook-lm"} component={NotebookLMPage} />
+          <Route path={"/knowledge-rag"} component={KnowledgeRagPage} /> {/* MODIFIED: Aston RAG (Track A NotebookLM 28 catalog + Track B Discovery Engine groups). */}
           <Route path={"/wiki"} component={WikiPage} />
           <Route path={"/agents"} component={AgentControl} />
           <Route path={"/monitoring"} component={Monitoring} /> {/* MODIFIED: expose analytics dashboard route. */}

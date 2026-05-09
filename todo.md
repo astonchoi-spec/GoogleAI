@@ -1,5 +1,27 @@
 ﻿# TODO.md — 에스턴 워크스테이션
-> 업데이트: 2026-05-09 Chrome Extension (Aston NotebookLM Bridge) + W-3 .docx 추출 | 브랜치: codex-google-workspace-expansion
+> 업데이트: 2026-05-10 Phase 4-A 설계 완료 (로컬 RAG 주입, 구현 대기) | 브랜치: codex-google-workspace-expansion
+
+---
+
+## 2026-05-10 Phase 4-A — 로컬 NotebookLM 회수 자료 → Web Chat RAG 주입 (설계만)
+
+### 완료 (Claude Code)
+- ✅ 설계 스펙 문서 — `docs/superpowers/specs/2026-05-10-phase4a-local-rag-design.md`
+- ✅ 회장님 결정 확정: 검색 소스=로컬 `*.md` 스캔 / 적용 범위=웹 채팅만
+- ✅ 자율 결정 정리: K=3, snippet 500자, TF+가중치 점수식, 5분 캐시, 인용 절 한국어
+
+### 다음 작업 (구현)
+- [ ] `server/rag/localMdSearch.ts` 구현 (Public API, 토큰화, 점수식, 캐시)
+- [ ] `server/__tests__/localMdSearch.test.ts` 8~10개 케이스
+- [ ] `server/routers/llm.ts` chat fallback 진입점에 RAG 단계 + systemPrompt 주입 + sources field
+- [ ] `formatCitationFooter()` 응답 본문 끝 인용 절 부가
+- [ ] `npm run check && npm run build && npm test` 회귀 0건 확인 (745 → ~755)
+- [ ] 라이브 검증: 웹 채팅에서 "한남 PF 진행 상황" 입력 → 응답에 회수 자료 인용 + 📚 절 (회장님 직접)
+
+### 후속 분리 작업
+- [ ] **Phase 4-B**: Vertex AI Search 통합 — Phase 3-A/3-B (데이터 스토어 9개 + importDocument) 완료 후
+- [ ] **Phase 4-C**: 텔레그램 적용 (`messageRouter.ts`) — 4-A 라이브 검증 통과 후
+- [ ] **Phase 4-D**: chunk-level 검색 + 임베딩 (먼 후순위)
 
 ---
 

@@ -90,6 +90,10 @@
 
     // 2) NotebookLM 챗/응답 selector 우선순위
     const candidates = [
+      // 저작물(보고서·로드맵·시장분석 등) 펼침 모달 — 최우선
+      '[role="dialog"][aria-modal="true"]',
+      '[data-test-id*="artifact"]',
+      '[data-test-id*="studio-output"]',
       // NotebookLM 챗 응답 (최우선 — Google 이 자주 쓰는 패턴)
       'chat-message',
       '[data-testid*="chat-message"]',
@@ -216,14 +220,20 @@
         console.log("[Aston Bridge] 백엔드 응답:", response);
         if (response?.ok) {
           let label;
+          let state = "ok";
+          const proj = response.project ?? "";
+          const v = response.version ?? 1;
+          const kind = response.artifactKind ? ` ${response.artifactKind}` : "";
           if (response.status === "skipped") {
-            label = "✅ 이미 동일 본문 (skip)";
+            label = "⏸ 동일 본문 skip";
+          } else if (response.status === "versioned") {
+            label = `📚 신규 버전 저장 (v${v})`;
           } else if (response.isUnmapped) {
-            label = "⚠️ _unmapped 임시 저장 — yaml 매핑 필요";
+            label = `⚠️ _unmapped${kind} v${v} — yaml 매핑 필요`;
           } else {
-            label = `✅ 위키 적재 완료 (${response.project ?? ""})`;
+            label = `✅ 적재 완료 (${proj}${kind} v${v})`;
           }
-          setButtonState(btn, "ok", label);
+          setButtonState(btn, state, label);
           if (response.mappingHint) {
             console.log("[Aston Bridge] mapping hint:", response.mappingHint);
           }

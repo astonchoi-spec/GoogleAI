@@ -2895,3 +2895,49 @@ Phase 8-A 진행 — prompts/ prod 번들 esbuild plugin (제안):
 - 자동 commit/push 금지
 ```
 
+---
+
+## Phase 8-A 구현 로그 — prompts/ 프로드 번들링 (2026-05-09, Claude Code)
+
+### 변경일
+2026-05-09
+
+### 선택 방식
+**A안: copy script** — `tsx scripts/copy-intent-prompts.ts`를 `npm run build` 마지막 단계에 체이닝.
+B안(esbuild plugin) 미선택 이유: 현재 `package.json` build가 esbuild CLI 한 줄 호출로 충분하므로 별도 esbuild config 파일을 추가하면 구성 복잡도만 늘어남.
+
+### 변경 파일
+- **신규** `scripts/copy-intent-prompts.ts` — `server/intent/prompts/*.md` → `dist/prompts/`로 복사 (45줄)
+- **신규** `server/__tests__/promptLoader.test.ts` — 8개 단위 테스트
+- **수정** `package.json` build 스크립트 — `... --outdir=dist && tsx scripts/copy-intent-prompts.ts` 1줄 추가
+- **수정** `docs/refactor/intent-service-refactor-plan.md` — 본 구현 로그 추가
+
+### 복사 경로
+- src: `server/intent/prompts/{classifier.md, planner.md}`
+- dst: `dist/prompts/{classifier.md, planner.md}`
+- 근거: bundled `dist/index.js`에서 `import.meta.url`이 `dist/index.js`로 해석되므로 `promptLoader.ts`의 `PROMPTS_DIR = path.resolve(path.dirname(...), "prompts")`가 자동으로 `dist/prompts/`를 가리킨다. **`promptLoader.ts` 수정 0줄**.
+
+### Fallback 유지 여부
+**유지**. `FALLBACK_CLASSIFIER_PROMPT` 인메모리 안전망과 `loadIntentPromptSafe(...) ?? FALLBACK_CLASSIFIER_PROMPT` 호출 패턴 모두 그대로. 운영 시 .md 파일이 사라지거나 권한 오류로 읽지 못해도 분류가 멈추지 않는다.
+
+### 테스트 결과
+- `npm run check` ✅ 모듈 경계 위반 0건 + tsc 에러 0건
+- `npm test` ✅ **727 passed** (719 → +8 신규 promptLoader 테스트, 회귀 0건)
+- `npm run build` ✅ vite 5.34s + esbuild + copy-intent-prompts 모두 성공
+- `dist/prompts/classifier.md` (1795B) ✅
+- `dist/prompts/planner.md` (947B) ✅
+
+### 응답 / API 영향
+- `routeIntentMessage` / `formatIntentRouteMessage` public API 변경 0건
+- 핸들러 응답 문자열 byte-for-byte 동일
+- `intent/pipeline/*` 로직 변경 0건
+- `handlerResponse` 스키마 변경 0건
+- 핸들러 파일 수정 0건
+- prompt 내용 변경 0건
+
+### 다음 Phase 제안
+- **Phase 8-B** `inferKind()` formatReply 본문 활성화 — 현재 export만 됨. 미분류 핸들러 응답에 자동 kind 부여 (응답 변경 없음)
+- **Phase 8-C** `analysisHandler` 본문 중복 버그 수정 (응답 변경 동의 필요)
+- **Phase 8-D** `feasibility`/`finance` 헤더 인코딩 깨짐 정상화 (응답 변경 동의 필요)
+- **Phase 8-E** finance 본문 포맷팅 (`formatDartDisclosures`)
+

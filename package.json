@@ -9,7 +9,7 @@
   },
   "scripts": {
     "dev": "cross-env NODE_ENV=development node --experimental-strip-types server/_core/index.ts",
-    "build": "vite build && cross-env esbuild server/_core/index.ts --platform=node --packages=external --bundle --format=esm --outdir=dist",
+    "build": "vite build && cross-env esbuild server/_core/index.ts --platform=node --packages=external --bundle --format=esm --outdir=dist && tsx scripts/copy-intent-prompts.ts",
     "start": "cross-env NODE_ENV=production node dist/index.js",
     "check": "tsx scripts/check-module-boundaries.ts && tsc --noEmit",
     "format": "prettier --write .",

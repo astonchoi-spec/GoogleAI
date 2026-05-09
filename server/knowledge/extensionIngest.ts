@@ -72,6 +72,49 @@ function normalizeNotebookUrl(url: string): string {
   }
 }
 
+export interface VersionIndex {
+  maxVersion: number;
+  hashSet: Set<string>;
+}
+
+export async function buildVersionIndex(
+  projectDir: string,
+  sourceUrl: string,
+): Promise<VersionIndex> {
+  const result: VersionIndex = { maxVersion: 0, hashSet: new Set() };
+  const targetUrl = normalizeNotebookUrl(sourceUrl);
+  let entries: import("node:fs").Dirent[];
+  try {
+    entries = await fs.readdir(projectDir, { withFileTypes: true });
+  } catch {
+    return result;
+  }
+  for (const e of entries) {
+    if (!e.isFile() || !e.name.endsWith(".md")) continue;
+    const full = path.join(projectDir, e.name);
+    let text: string;
+    try {
+      text = await fs.readFile(full, "utf-8");
+    } catch {
+      continue;
+    }
+    // frontmatter 블록 추출 (--- 시작·종료)
+    const fmMatch = text.match(/^---\n([\s\S]*?)\n---/);
+    if (!fmMatch) continue;
+    const fm = fmMatch[1];
+    const urlMatch = fm.match(/^source_url:\s*['"]?(.+?)['"]?$/m);
+    if (!urlMatch) continue;
+    const fileUrl = normalizeNotebookUrl(urlMatch[1].trim());
+    if (fileUrl !== targetUrl) continue;
+    const versionMatch = fm.match(/^version:\s*(\d+)/m);
+    const v = versionMatch ? parseInt(versionMatch[1], 10) : 0;
+    if (v > result.maxVersion) result.maxVersion = v;
+    const hashMatch = fm.match(/^raw_text_hash:\s*['"]?([^\s'"]+)['"]?\s*$/m);
+    if (hashMatch) result.hashSet.add(hashMatch[1]);
+  }
+  return result;
+}
+
 interface IngestPayload {
   sourceUrl: string;
   notebookTitle: string;

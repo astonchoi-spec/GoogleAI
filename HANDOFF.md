@@ -1,24 +1,53 @@
 ﻿# HANDOFF.md — 에스턴 워크스테이션
-> 업데이트: 2026-05-09 Aston RAG Phase 1 완료 (Track A 28개 카탈로그 + /knowledge-rag) | 브랜치: codex-google-workspace-expansion
+> 업데이트: 2026-05-09 Aston RAG Phase 2 완료 (Discovery Engine 클라이언트 + ADC 인증) | 브랜치: codex-google-workspace-expansion
 
 ---
 
-## 마지막 완료 작업 (Aston RAG Phase 1)
+## 마지막 완료 작업 (RAG 페이지 진입점 정리)
 
-**2026-05-09 Aston RAG Phase 1 | Claude Code**
-- `data/rag-mapping.yaml` 28개 노트북 매핑 (기존 NotebookLM 28건 + Track B 데이터 스토어 9개 그룹핑)
-- `server/rag/` 신규 모듈 (types/mappingLoader/README)
+**2026-05-09 Aston RAG 페이지 진입점 통합 | Claude Code (hotfix)**
+- 사이드바 "노트북LM" 메뉴(`/notebook-lm`)가 빈 placeholder 페이지를 가리키고 있던 문제 해결
+- `/notebook-lm` 라우트를 `KnowledgeRagPage` 로 교체, `/knowledge-rag` 는 alias 유지
+- 빈 `NotebookLMPage.tsx` 23줄 삭제 (dead code)
+- 페이지 헤더 제목을 "노트북LM"으로 통일 (회장님 결정 — 사이드바 라벨 일치)
+- 검증: `npm run check` ✅ / `npm run build` ✅ / 744 passed (회귀 0, flaky 1)
+
+---
+
+## Aston RAG Phase 2 (이전 단계)
+
+**2026-05-09 Aston RAG Phase 2 | Claude Code**
+- `@google-cloud/discoveryengine ^2.7.0` 의존성 추가
+- `server/rag/gcpAuth.ts` 신규 — ADC 인증 + path 빌더 (서비스 계정 JSON 미사용)
+- `server/rag/discoveryEngineClient.ts` 신규 — `createDataStore` / `importDocument` / `query` 3개 핵심 메서드
+- tRPC `rag.trackBStatus` (UI 배지) + `rag.queryDataStore` (검색·향후 채팅 RAG 재사용)
+- `/knowledge-rag` 페이지 보강 — Track B 탭에 🟢 ADC / ❓ 미설정 배지 + 환경 안내
+- 검증: `npm run check` ✅ / `npm run build` ✅ 749.8kb (+4.9kb) / **745 passed** (+11 신규)
+- 라이브: `VERTEX_SEARCH_PROJECT_ID=aston-work-station` 환경 + `GET /api/trpc/rag.trackBStatus` → `{configured:true, authMode:"ADC"}` ✅
+
+### 회장님 운영 환경 (확인 완료)
+- GCP 프로젝트: `aston-work-station`
+- 인증: ADC (`gcloud auth application-default login`)
+- 비용: GenAI App Builder Trial credit 142만 원 → Vertex AI Search 100% 커버
+
+### 회장님 후속 액션 (Phase 3 진입 전)
+- [ ] `.env` 에 `VERTEX_SEARCH_PROJECT_ID=aston-work-station` 추가 후 서버 재시작
+- [ ] GCP 콘솔에서 Discovery Engine API 활성화 확인
+- [ ] Phase 3 진행 시점 결정 (데이터 스토어 9개 createDataStore 트리거)
+
+### 다음 단계 (Phase 3 후보)
+- `scripts/rag-bootstrap.ts` — 데이터 스토어 9개 일괄 생성
+- 회수 자료 → `importDocument` 자동 트리거
+- frontmatter 표준화 + Track A Drive Watcher
+
+---
+
+## 2026-05-09 Aston RAG Phase 1 (이전 완료, 참조용)
+- `data/rag-mapping.yaml` 28개 노트북 매핑
+- `server/rag/{types,mappingLoader,README}.ts`
 - tRPC `rag.listMappings` + `rag.listDataStores`
-- `/knowledge-rag` 페이지 (Track A 카탈로그 + Track B 그룹 placeholder, 2개 탭, 카테고리 필터)
-- 검증: `npm run check` ✅ / `npm run build` ✅ / **734 passed** (+7 신규)
-- 라이브: `GET /api/trpc/rag.listMappings` → 28개 / 9 스토어 / 검증 이슈 0건
-- **PM2/dev 재시작 1회** (포트 4000 점유 프로세스 kill 후 npm run dev)
-
-### Track B (Discovery Engine) 진행 전 회장님 확인 필요
-- GCP 프로젝트 ID + Discovery Engine API 활성화 + 서비스 계정 JSON
-- GenAI 크레딧이 Vertex AI Search SKU 까지 커버되는지
-- 28개 노트북 `notebook_url` 채울지 (선택, 채운 카드만 외부 점프 활성)
-- `역복동 PF` (#yeokbuk-pf) → `역북동` 정정 여부
+- `/knowledge-rag` 페이지 골격 (2개 탭 + 카테고리 필터)
+- 727 → 734 passed (+7), 738.5 → 744.9kb (+6.4kb)
 
 ---
 
@@ -26,11 +55,12 @@
 
 | 항목 | 상태 |
 |------|------|
-| 서버 | ✅ `npm run dev` 백그라운드 (포트 4000) — Aston RAG Phase 1 반영 후 재시작 완료 |
-| 빌드 | `npm run build` ✅ (2026-05-09, `dist/index.js` 744.9kb, +6.4kb) |
-| 테스트 | **734 passed** (2026-05-09, Phase 1 RAG +7 / Phase 8-A +8 / Phase 0~7-B +133, 회귀 0건) |
+| 서버 | ✅ `npm run dev` 백그라운드 (포트 4000) — `VERTEX_SEARCH_PROJECT_ID=aston-work-station` 환경 적용 |
+| 빌드 | `npm run build` ✅ (2026-05-09, `dist/index.js` 749.8kb, +4.9kb) |
+| 테스트 | **745 passed** (2026-05-09, Phase 2 RAG +11 / Phase 1 RAG +7 / Phase 8-A +8 / Phase 0~7-B +133, 회귀 0건) |
 | **Aston RAG Phase 1** | ✅ 28개 카탈로그 + `/knowledge-rag` 페이지 + tRPC 라우터 |
-| **Aston RAG Phase 2~4** | ⬜ 대기 (Discovery Engine 클라이언트 / 저장 파이프라인 / 채팅 RAG 주입) |
+| **Aston RAG Phase 2** | ✅ Discovery Engine 클라이언트 + ADC 인증 + `trackBStatus` + `queryDataStore` |
+| **Aston RAG Phase 3~4** | ⬜ 대기 (저장 파이프라인 / Drive Watcher / 채팅 RAG 주입) |
 | 브랜치 | `codex-google-workspace-expansion` |
 | **Intent 파이프라인** | ✅ `parseIntent → planIntent → dispatchIntent → formatReply` 4단계 분리 완료 |
 | **HandlerResponse 5개 kind** | ✅ list/report/text/error/confirmation 모두 활성 |

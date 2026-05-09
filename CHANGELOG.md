@@ -3,6 +3,88 @@
 
 ---
 
+## 2026-05-09 Aston RAG 페이지 진입점 정리 — `/notebook-lm` ↔ `/knowledge-rag` 통합 (Claude Code, hotfix)
+
+### 배경
+Phase 1~2 진행 시 회장님 작업 지시서가 `/knowledge-rag` 경로를 명시했고 CLAUDE.md "기존 UI·라우터 삭제 금지" 규칙 때문에 빈 placeholder `/notebook-lm` 페이지를 그대로 두고 신규 경로에 RAG 페이지를 만들었음. 결과적으로 사이드바 "노트북LM" 메뉴(→ `/notebook-lm` 빈 페이지)와 신규 RAG 페이지(`/knowledge-rag`)가 분리되어 사이드바에서 진입 불가. 회장님 지적 받고 정리.
+
+### 작업 내용
+- `client/src/App.tsx` — `/notebook-lm` 라우트를 `KnowledgeRagPage` 로 교체. `/knowledge-rag` 는 alias 유지 (북마크/직링크 보호)
+- `client/src/pages/NotebookLMPage.tsx` 삭제 — 23줄 빈 placeholder, 실질 dead code
+- `client/src/pages/KnowledgeRagPage.tsx` — 헤더 제목을 "통합 지식 RAG" → **"노트북LM"** (사이드바 라벨 일치, 회장님 결정)
+- 사이드바 메뉴(`/notebook-lm`) 그대로 유지 → 클릭 시 RAG 통합 페이지 즉시 진입
+
+### 검증
+- `npm run check` ✅ / `npm run build` ✅
+- `npm test` — **744 passed** (RAG 회귀 0건, flaky `dealStore > completes milestone` 1건은 `dealSheetSync` 스케줄러 race, 본 작업 무관)
+
+### 응답·API 영향
+- 기능 변경 0건. URL 진입점만 정리.
+- `/notebook-lm` 와 `/knowledge-rag` 모두 동일 페이지로 도달.
+
+---
+
+## 2026-05-09 Aston RAG Phase 2 — Discovery Engine 통신 코어 + ADC 인증 (Claude Code)
+
+### 배경
+회장님 GCP 환경 확정 (프로젝트 `aston-work-station`, ADC 인증, GenAI App Builder Trial 크레딧 142만 원으로 Vertex AI Search 100% 커버) 후 Track B 통신 레이어 1차 구현. 데이터 스토어 자동 생성·문서 인덱싱·검색 요약 3개 핵심 메서드만 구현, 실제 데이터 마이그레이션은 Phase 3 에서.
+
+### 작업 내용
+- **`@google-cloud/discoveryengine ^2.7.0`** 의존성 추가 (npm install --legacy-peer-deps)
+- **`server/rag/gcpAuth.ts` 신규** — ADC 인증 헬퍼 (서비스 계정 JSON 미사용), path 빌더(collection/dataStore/servingConfig), `RagAuthError` 명시적 에러 클래스
+- **`server/rag/discoveryEngineClient.ts` 신규** — 3개 핵심 메서드:
+  - `createDataStore(options)` — DataStoreServiceClient 사용. ALREADY_EXISTS(코드 6) 시 idempotent 반환. LRO promise 처리
+  - `importDocument(input)` — DocumentServiceClient 사용. inline base64 인코딩, structData JSON 메타. 같은 documentId 재호출 시 update 자동 폴백
+  - `query(options)` — SearchServiceClient.search 사용. summarySpec(includeCitations: true) + snippetSpec. summaryText + sources 배열 반환
+  - 모든 메서드 환경변수 미설정 시 `ok=false + error` graceful 응답 (서버 부팅 차단 방지)
+- **tRPC `rag` 라우터 확장** — `trackBStatus` (UI 배지) + `queryDataStore` mutation (수동 검색 + 향후 채팅 RAG 재사용)
+- **`/knowledge-rag` 페이지 보강** — Track B 탭에 🟢 ADC / ❓ 미설정 배지, 환경 미설정 시 `gcloud auth application-default login` 안내
+- **`.env.example` 정정** — `VERTEX_SEARCH_SERVICE_ACCOUNT_JSON` 항목 제거, ADC 사용 명시 + Trial credit 100% 커버 명시
+- **`server/rag/README.md` 갱신** — 인증 섹션, 명령 목록 8개, Phase 2 ✅ 완료
+
+### 수정 파일
+**신규**:
+- `server/rag/gcpAuth.ts`
+- `server/rag/discoveryEngineClient.ts`
+- `server/__tests__/ragDiscoveryEngine.test.ts` (gcpAuth 8 + discoveryEngineClient 3 = 11건)
+
+**수정**:
+- `server/routers/rag.ts` (`trackBStatus` + `queryDataStore` 추가)
+- `client/src/pages/KnowledgeRagPage.tsx` (Track B 배지 + 안내)
+- `package.json` (의존성 추가)
+- `.env.example` (ADC 안내 정정)
+- `server/rag/README.md`
+- `TODO.md` / `HANDOFF.md`
+
+### 검증
+- `npm run check` ✅ 모듈 경계 위반 0건 + tsc 에러 0건 (SDK callback/promise 오버로드는 명시 캐스트로 해소)
+- `npm test` ✅ **745 passed** (734 → +11 신규 ragDiscoveryEngine 테스트, 회귀 0건)
+- `npm run build` ✅ 749.8kb (+4.9kb), copy-intent-prompts 정상
+- 라이브: `VERTEX_SEARCH_PROJECT_ID=aston-work-station npm run dev` 후 `GET /api/trpc/rag.trackBStatus` → `{configured:true, projectId:"aston-work-station", location:"global", authMode:"ADC"}` ✅
+
+### 응답·API 영향
+- public 인텐트 API 변경 0건
+- 기존 페이지/라우트 그대로 보존
+- 신규 tRPC 노출 2개 (`trackBStatus` query / `queryDataStore` mutation)는 Track B 전용
+
+### 회장님 운영 환경 (확인 완료)
+- GCP 프로젝트: `aston-work-station`
+- 인증: ADC (`gcloud auth application-default login` 1회 실행됨)
+- 비용 커버: GenAI App Builder Trial credit 142만 원 → Vertex AI Search 100% 커버
+
+### 회장님 후속 액션
+- `.env` 에 `VERTEX_SEARCH_PROJECT_ID=aston-work-station` 추가 후 서버 재시작
+- GCP 콘솔에서 Discovery Engine API 활성화 확인
+- Phase 3 진행 시점 결정 (데이터 스토어 9개 createDataStore + 회수 파이프라인 연결)
+
+### 다음 단계 (Phase 3 후보)
+- `scripts/rag-bootstrap.ts` — 데이터 스토어 9개 일괄 생성 (idempotent)
+- `projects/{p}/notebooklm/*.md` 저장 트리거 → `importDocument` 자동 호출
+- frontmatter 표준화 (`source / data_store / query / sources`)
+- Track A Drive Watcher (NotebookLM Docs export 폴더)
+
+---
+
 ## 2026-05-09 Aston RAG Phase 1 — Track A NotebookLM 카탈로그 + 페이지 골격 (Claude Code)
 
 ### 배경

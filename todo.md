@@ -1,9 +1,43 @@
 ﻿# TODO.md — 에스턴 워크스테이션
-> 업데이트: 2026-05-09 Aston RAG Phase 1 완료 (28개 노트북 카탈로그 + /knowledge-rag 페이지) | 브랜치: codex-google-workspace-expansion
+> 업데이트: 2026-05-09 Aston RAG Phase 2 완료 (Discovery Engine 클라이언트 + ADC 인증 + tRPC 노출) | 브랜치: codex-google-workspace-expansion
 
 ---
 
-## 2026-05-09 Aston RAG 통합 — Phase 1 (Track A 카탈로그)
+## 2026-05-09 Aston RAG 통합 — Phase 2 (Discovery Engine 통신 코어)
+
+### 완료
+- ✅ `@google-cloud/discoveryengine ^2.7.0` 의존성 추가
+- ✅ `server/rag/gcpAuth.ts` — ADC 인증, path 빌더 (collection/dataStore/servingConfig)
+- ✅ `server/rag/discoveryEngineClient.ts` — `createDataStore` / `importDocument` / `query` 3개 핵심 메서드 + 에러 분기
+- ✅ tRPC 신규 — `rag.trackBStatus` (UI 배지) + `rag.queryDataStore` (수동 검색·향후 채팅 RAG 재사용)
+- ✅ `/knowledge-rag` 페이지 — Track B 탭 배지(🟢 ADC / ❓ 미설정) + 환경변수 안내 텍스트
+- ✅ `.env.example` 정정 — JSON 키 항목 제거, ADC 사용 명시
+- ✅ 단위 테스트 11건 추가 (734 → 745 passed, 회귀 0건)
+- ✅ 빌드: 744.9kb → 749.8kb (+4.9kb)
+- ✅ 라이브 검증: `GET /api/trpc/rag.trackBStatus` → `{configured:true, projectId:"aston-work-station", authMode:"ADC"}`
+
+### 회장님 운영 환경 확인
+- ✅ GCP 프로젝트 ID: `aston-work-station`
+- ✅ 인증 방식: ADC (`gcloud auth application-default login`)
+- ✅ 비용 커버: GenAI App Builder Trial credit 142만 원 잔여 → Vertex AI Search 100% 커버
+
+### Phase 2 진행 후 회장님 직접 확인 필요
+- [ ] `.env` 에 `VERTEX_SEARCH_PROJECT_ID=aston-work-station` 추가 후 서버 재시작
+- [ ] GCP 콘솔에서 Discovery Engine API 활성화 확인 (Vertex AI Search > APIs)
+- [ ] (Phase 3 진입 전) 첫 데이터 스토어 1개 createDataStore 트리거 시점 결정
+
+### 다음 작업 후보 (Phase 3~4)
+- [ ] **Phase 3-A** 데이터 스토어 9개 일괄 생성 스크립트 (`scripts/rag-bootstrap.ts` — createDataStore 호출, idempotent)
+- [ ] **Phase 3-B** 회수 자료 → `importDocument` 자동 트리거 (`projects/{p}/notebooklm/*.md` 저장 시 동기화)
+- [ ] **Phase 3-C** frontmatter 표준화 — `source / data_store / query / sources` 보존
+- [ ] **Phase 3-D** Track A Drive Watcher (NotebookLM Docs export 폴더 polling)
+- [ ] **Phase 4** 채팅 RAG 컨텍스트 주입 (`intent/handlers/chat.ts` ↔ `rag.queryDataStore`)
+- [ ] 28개 노트북 `notebook_url` 채우기 (회장님 직접, yaml 편집)
+- [ ] `역복동 PF` (#yeokbuk-pf) → `역북동` 정정 여부
+
+---
+
+## 2026-05-09 Aston RAG 통합 — Phase 1 (Track A 카탈로그, 완료)
 
 ### 완료
 - ✅ `data/rag-mapping.yaml` — 28개 노트북 + 9개 데이터 스토어 매핑
@@ -11,21 +45,8 @@
 - ✅ tRPC `rag.listMappings` + `rag.listDataStores`
 - ✅ `/knowledge-rag` 페이지 (Track A 카탈로그 + Track B 그룹 placeholder, 2개 탭)
 - ✅ 모듈 경계 등록 (`scripts/check-module-boundaries.ts` DOMAIN_MODULES + "rag")
-- ✅ `.env.example` 에 Phase 2 환경변수 placeholder 추가
 - ✅ 단위 테스트 7건 추가 (727 → 734 passed, 회귀 0건)
 - ✅ 빌드: 738.5kb → 744.9kb (+6.4kb)
-
-### 다음 작업 후보 (Phase 2~4)
-- [ ] **Phase 2** GCP Discovery Engine 클라이언트 — `server/rag/gcpAuth.ts` + `discoveryEngineClient.ts` (createDataStore / importDocument / query)
-- [ ] **Phase 3** 저장 파이프라인 + frontmatter 표준화 (`projects/{p}/rag/*.md`, source/data_store/query/sources 메타)
-- [ ] **Phase 4** 채팅 RAG 컨텍스트 주입 (`intent/handlers/chat.ts` ↔ `rag.queryDataStore`)
-- [ ] Track A Drive Watcher (NotebookLM Docs export 폴더 polling) — Phase 3 일부
-
-### 회장님 확인 필요
-- [ ] GCP 프로젝트 ID / Discovery Engine API 활성화 / 서비스 계정 JSON 발급
-- [ ] GenAI 크레딧이 Vertex AI Search SKU 까지 커버하는지 Billing → Credits 확인
-- [ ] 28개 노트북에 `notebook_url` 채워넣기 (자주 쓰는 것부터, 빈 카드는 외부 점프 비활성)
-- [ ] `역복동 PF` (#yeokbuk-pf) — 실제 명칭이 `역북동`인지 확인 후 정정 결정
 
 ---
 

@@ -3,6 +3,53 @@
 
 ---
 
+## 2026-05-09 Aston RAG Phase 1 — Track A NotebookLM 카탈로그 + 페이지 골격 (Claude Code)
+
+### 배경
+회장님이 운영 중인 외부 NotebookLM 28개 노트북 + 향후 도입할 GCP Discovery Engine 기반 내부 RAG를 병행 운영하는 **하이브리드 RAG 아키텍처** 1차 단계. Phase 1은 카탈로그 + UI 골격만 (실제 GCP 연동은 Phase 2).
+
+### 작업 내용
+- **`data/rag-mapping.yaml` 신규** — 28개 노트북 매핑 (기존 `index/notebooklm-mapping.yaml`을 베이스로 `data_store`+`data_store_filter` 필드 부여)
+- **9개 데이터 스토어 그룹핑** — ds-real-estate-deals(11) / ds-trading-research(2: trading+system) / ds-learning-ai(6) / ds-research-macro(3) / ds-legal-contracts(1) / ds-business-operations(1) / ds-mongolia-business(1) / ds-personal-strategy(2) / ds-personal-health(1)
+- **`server/rag/` 신규 모듈** — types.ts / mappingLoader.ts / README.md (도메인 경계 위반 0)
+- **tRPC `rag` 라우터 신규** — `listMappings` + `listDataStores` 2개 query
+- **`/knowledge-rag` 페이지 신규** — 2개 탭(Track A 카탈로그 / Track B placeholder), 카테고리 칩 10종, 노트북 카드 28개, 검색·필터, 외부 링크 슬롯(notebook_url 채워지면 활성)
+- **모듈 경계 등록** — `DOMAIN_MODULES` 에 "rag" 추가
+- **`.env.example`** — Phase 2 환경변수 placeholder 추가 (`VERTEX_SEARCH_PROJECT_ID/LOCATION/SERVICE_ACCOUNT_JSON`, `DRIVE_WATCHER_FOLDER_ID`)
+
+### 수정 파일
+**신규**:
+- `data/rag-mapping.yaml`
+- `server/rag/{types.ts, mappingLoader.ts, README.md}`
+- `server/routers/rag.ts`
+- `client/src/pages/KnowledgeRagPage.tsx`
+- `server/__tests__/ragMappingLoader.test.ts`
+
+**수정**:
+- `server/routers.ts` (rag 라우터 등록)
+- `client/src/App.tsx` (라우트 + lazy import)
+- `scripts/check-module-boundaries.ts` (DOMAIN_MODULES "rag" 추가)
+- `.env.example` (Phase 2 환경변수)
+- `TODO.md` / `HANDOFF.md`
+
+### 검증
+- `npm run check` ✅ 모듈 경계 위반 0건 + tsc 에러 0건
+- `npm test` ✅ **734 passed** (727 → +7 신규 ragMappingLoader 테스트, 회귀 0건)
+- `npm run build` ✅ vite 5.12s + esbuild 744.9kb (+6.4kb) + copy-intent-prompts 정상
+- 라이브 검증: `GET /api/trpc/rag.listMappings` → `{total: 28, stores: 9, issues: 0}` ✅
+
+### 응답·API 영향
+- public 인텐트 API 변경 0건
+- 기존 `/notebook-lm` 페이지 (placeholder) 그대로 유지 (회장님이 향후 통합 결정 시 별도 작업)
+- 기존 `index/notebooklm-mapping.yaml` 그대로 보존 (Track A 회수 모듈 영향 0)
+
+### 다음 단계 (Phase 2 후보)
+- `server/rag/gcpAuth.ts` (서비스 계정 인증)
+- `server/rag/discoveryEngineClient.ts` (createDataStore / importDocument / query)
+- 회장님이 GCP 프로젝트 ID + 서비스 계정 JSON 제공 후 진행
+
+---
+
 ## 2026-05-08 ~ 05-09 Intent Service 리팩토링 Phase 0~7-B (Claude Code, 대규모)
 
 ### 배경

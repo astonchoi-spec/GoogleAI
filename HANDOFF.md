@@ -1,5 +1,24 @@
 ﻿# HANDOFF.md — 에스턴 워크스테이션
-> 업데이트: 2026-05-09 Intent Service 리팩토링 Phase 0~7-B 완료 | 브랜치: codex-google-workspace-expansion
+> 업데이트: 2026-05-09 Aston RAG Phase 1 완료 (Track A 28개 카탈로그 + /knowledge-rag) | 브랜치: codex-google-workspace-expansion
+
+---
+
+## 마지막 완료 작업 (Aston RAG Phase 1)
+
+**2026-05-09 Aston RAG Phase 1 | Claude Code**
+- `data/rag-mapping.yaml` 28개 노트북 매핑 (기존 NotebookLM 28건 + Track B 데이터 스토어 9개 그룹핑)
+- `server/rag/` 신규 모듈 (types/mappingLoader/README)
+- tRPC `rag.listMappings` + `rag.listDataStores`
+- `/knowledge-rag` 페이지 (Track A 카탈로그 + Track B 그룹 placeholder, 2개 탭, 카테고리 필터)
+- 검증: `npm run check` ✅ / `npm run build` ✅ / **734 passed** (+7 신규)
+- 라이브: `GET /api/trpc/rag.listMappings` → 28개 / 9 스토어 / 검증 이슈 0건
+- **PM2/dev 재시작 1회** (포트 4000 점유 프로세스 kill 후 npm run dev)
+
+### Track B (Discovery Engine) 진행 전 회장님 확인 필요
+- GCP 프로젝트 ID + Discovery Engine API 활성화 + 서비스 계정 JSON
+- GenAI 크레딧이 Vertex AI Search SKU 까지 커버되는지
+- 28개 노트북 `notebook_url` 채울지 (선택, 채운 카드만 외부 점프 활성)
+- `역복동 PF` (#yeokbuk-pf) → `역북동` 정정 여부
 
 ---
 
@@ -7,9 +26,11 @@
 
 | 항목 | 상태 |
 |------|------|
-| 서버 | ✅ PM2 `aston` online (포트 4000) — 재시작 권장 (intent 리팩토링 반영) |
-| 빌드 | `npm run build` ✅ (2026-05-09, `dist/index.js` 738.5kb) |
-| 테스트 | **719 passed** (2026-05-09, Phase 0 시작 586 → +133, 회귀 0건) |
+| 서버 | ✅ `npm run dev` 백그라운드 (포트 4000) — Aston RAG Phase 1 반영 후 재시작 완료 |
+| 빌드 | `npm run build` ✅ (2026-05-09, `dist/index.js` 744.9kb, +6.4kb) |
+| 테스트 | **734 passed** (2026-05-09, Phase 1 RAG +7 / Phase 8-A +8 / Phase 0~7-B +133, 회귀 0건) |
+| **Aston RAG Phase 1** | ✅ 28개 카탈로그 + `/knowledge-rag` 페이지 + tRPC 라우터 |
+| **Aston RAG Phase 2~4** | ⬜ 대기 (Discovery Engine 클라이언트 / 저장 파이프라인 / 채팅 RAG 주입) |
 | 브랜치 | `codex-google-workspace-expansion` |
 | **Intent 파이프라인** | ✅ `parseIntent → planIntent → dispatchIntent → formatReply` 4단계 분리 완료 |
 | **HandlerResponse 5개 kind** | ✅ list/report/text/error/confirmation 모두 활성 |

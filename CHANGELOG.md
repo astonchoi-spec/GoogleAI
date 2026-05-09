@@ -3,6 +3,46 @@
 
 ---
 
+## 2026-05-09 Aston RAG Phase W-1 — 외부 NotebookLM ↔ Wiki 자동 회수 (웹 붙여넣기) (Claude Code)
+
+### 배경
+회장님 1순위 목표("외부 NotebookLM 분석 자료 → 워크스테이션 위키 자동 저장") 직접 구현. 텔레그램 `/nb save` 만 가능하던 회수 경로를 웹 페이지에서도 가능하게 확장. 회장님 동선: 노트북LM 답변 복사 → `/notebook-lm` 페이지에서 카드 선택 → 붙여넣기 → "Wiki 저장" 클릭. 끝.
+
+### 작업 내용
+- **tRPC `rag.saveAnalysis` mutation 신규** — 매핑 yaml(28건) project 화이트리스트 + `NotebookLmAdapter.toPipelineInput` + `PipelineRunner.run` 재사용. `source_ref = web:{sha256}` 멱등성 키. sourceLabel 옵션은 본문 끝 "출처: ..." 라인으로 첨부
+- **tRPC `rag.listSavedNotes` query 신규** — `{WIKI_ROOT}/projects/{project}/notebooklm/*.md` 스캔, mtime 역순, 단일/전체(28개 매핑 순회) 선택 지원, 30건 제한
+- **tRPC `rag.readSavedNote` query 신규** — 본문 markdown 반환. **3중 보안 가드**: project 화이트리스트(매핑 yaml) + 파일명 검증(슬래시·`..`·확장자) + `path.relative` 기반 isWithin 체크 → 경로 traversal 차단
+- **`/notebook-lm` 페이지 보강** — 노트북 카드 클릭 시 선택 토글(체크 마크 + cyan 배경), "분석 결과 회수" 폼 (textarea ≥10자 + 출처 라벨 + Wiki 저장 버튼), 저장 결과 토스트(✅/❌), 저장 후 즉시 `listSavedNotes` invalidate, 회수된 자료 카드 목록(상대 시각 + 크기), 본문 미리보기 모달(esc/외부 클릭으로 닫힘)
+
+### 수정 파일
+**수정**:
+- `server/routers/rag.ts` (mutation 1 + query 2 추가)
+- `client/src/pages/KnowledgeRagPage.tsx` (입력 폼 + 회수 자료 + 미리보기 모달)
+
+### 검증
+- `npm run check` ✅ 모듈 경계 위반 0건 + tsc 에러 0건
+- `npm test` ✅ **745 passed** (회귀 0건)
+- `npm run build` ✅
+- 라이브: `POST /api/trpc/rag.saveAnalysis` → 응답 ok=false + pending 큐 graceful 폴백 (dev 환경에 G: 드라이브 미마운트 → `EINVAL: mkdir 'G:'`). 운영 환경(회장님 PC, G: 마운트)에서는 정상 저장 예상
+- 파이프라인 검증: pending 큐 JSON 으로 cleaner→classifier→summarizer→tagger 통과 + router 경로 결정(`projects/hannam-644/notebooklm`) 모두 확인
+
+### 응답·API 영향
+- public 인텐트 API 변경 0건
+- 텔레그램 `/nb save` 흐름 그대로 작동 (코드 변경 없음, 같은 어댑터·파이프라인 공유)
+- 신규 tRPC 노출 3개 (`saveAnalysis` mutation / `listSavedNotes` query / `readSavedNote` query)
+
+### 회장님 운영 검증 (직접 확인 필요)
+- http://localhost:4000/notebook-lm → 노트북 카드 1개 클릭 → NotebookLM 분석 텍스트 붙여넣기 → "Wiki 저장" → `G:\내 드라이브\Aston-Wiki\projects\{project}\notebooklm\*.md` 생성 확인
+- 저장 후 페이지 하단 "회수된 분석 자료" 섹션 즉시 갱신 + 카드 클릭 시 본문 미리보기 모달 동작 확인
+- 같은 본문 재저장 시 `was_skipped: true` 멱등성 동작 확인
+
+### 다음 단계 (W-2 ~ Phase 4)
+- W-2: NotebookLM Docs export → Drive Watcher 자동 회수 (회장님 1클릭). NotebookLM 화면 메뉴 확인 필요
+- W-3: 회수 자료 검색·카테고리 필터 (`/wiki` 페이지에 #notebooklm 태그)
+- Phase 4: 채팅 RAG 컨텍스트 주입 (`intent/handlers/chat.ts` ↔ 회수된 `*.md` 자동 인용)
+
+---
+
 ## 2026-05-09 Aston RAG 페이지 진입점 정리 — `/notebook-lm` ↔ `/knowledge-rag` 통합 (Claude Code, hotfix)
 
 ### 배경

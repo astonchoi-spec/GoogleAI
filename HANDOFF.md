@@ -1,9 +1,30 @@
 ﻿# HANDOFF.md — 에스턴 워크스테이션
-> 업데이트: 2026-05-09 Aston RAG Phase 2 완료 (Discovery Engine 클라이언트 + ADC 인증) | 브랜치: codex-google-workspace-expansion
+> 업데이트: 2026-05-09 Aston RAG Phase W-1 완료 (외부 NotebookLM ↔ Wiki 회수, 웹 붙여넣기) | 브랜치: codex-google-workspace-expansion
 
 ---
 
-## 마지막 완료 작업 (RAG 페이지 진입점 정리)
+## 마지막 완료 작업 (Phase W-1 — 1순위 목표 달성)
+
+**2026-05-09 Aston RAG Phase W-1 | Claude Code**
+- 회장님 1순위 ("외부 NotebookLM 분석 → Wiki 자동 저장") 웹에서 동작 가능
+- tRPC `rag.saveAnalysis` mutation + `rag.listSavedNotes`/`rag.readSavedNote` query (3중 경로 보안 가드)
+- `/notebook-lm` 페이지 — 노트북 카드 선택 → 붙여넣기 폼 → 즉시 회수 자료 갱신 → 본문 미리보기 모달
+- 텔레그램 `/nb save` 흐름과 동일한 `NotebookLmAdapter` + `PipelineRunner` 재사용 (회귀 0건)
+- 검증: check ✅ / build ✅ / **745 passed** / 라이브 mutation API 응답 정상
+- dev 환경 한계: G: 드라이브 미마운트로 실제 파일 쓰기는 pending 큐 폴백. 회장님 PC(G: 마운트)에서 운영 검증 필요
+
+### 회장님 운영 검증
+- [ ] http://localhost:4000/notebook-lm → 카드 클릭 → 텍스트 붙여넣기 → 저장 → `G:\내 드라이브\Aston-Wiki\projects\{p}\notebooklm\*.md` 생성 확인
+- [ ] 회수 자료 목록 즉시 갱신 + 본문 미리보기 모달 동작
+- [ ] 동일 본문 재저장 시 멱등성(was_skipped) 확인
+
+### 다음 단계
+- W-2 NotebookLM Docs export → Drive Watcher (회장님 1클릭) — NotebookLM 메뉴 확인 후 진행
+- Phase 4 채팅 RAG 컨텍스트 주입
+
+---
+
+## 이전 완료 (RAG 페이지 진입점 정리)
 
 **2026-05-09 Aston RAG 페이지 진입점 통합 | Claude Code (hotfix)**
 - 사이드바 "노트북LM" 메뉴(`/notebook-lm`)가 빈 placeholder 페이지를 가리키고 있던 문제 해결
@@ -60,7 +81,8 @@
 | 테스트 | **745 passed** (2026-05-09, Phase 2 RAG +11 / Phase 1 RAG +7 / Phase 8-A +8 / Phase 0~7-B +133, 회귀 0건) |
 | **Aston RAG Phase 1** | ✅ 28개 카탈로그 + `/knowledge-rag` 페이지 + tRPC 라우터 |
 | **Aston RAG Phase 2** | ✅ Discovery Engine 클라이언트 + ADC 인증 + `trackBStatus` + `queryDataStore` |
-| **Aston RAG Phase 3~4** | ⬜ 대기 (저장 파이프라인 / Drive Watcher / 채팅 RAG 주입) |
+| **Aston RAG Phase W-1** | ✅ 1순위 — 외부 NotebookLM ↔ Wiki 자동 회수 (웹 붙여넣기) |
+| **Aston RAG Phase W-2~4** | ⬜ 대기 (Drive Watcher / 검색·필터 통합 / 채팅 RAG 주입) |
 | 브랜치 | `codex-google-workspace-expansion` |
 | **Intent 파이프라인** | ✅ `parseIntent → planIntent → dispatchIntent → formatReply` 4단계 분리 완료 |
 | **HandlerResponse 5개 kind** | ✅ list/report/text/error/confirmation 모두 활성 |

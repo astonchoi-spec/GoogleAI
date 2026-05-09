@@ -1,5 +1,28 @@
 ﻿# TODO.md — 에스턴 워크스테이션
-> 업데이트: 2026-05-09 Aston RAG Phase 2 완료 (Discovery Engine 클라이언트 + ADC 인증 + tRPC 노출) | 브랜치: codex-google-workspace-expansion
+> 업데이트: 2026-05-09 Aston RAG Phase W-1 완료 (외부 NotebookLM ↔ Wiki 자동 회수, 웹 붙여넣기) | 브랜치: codex-google-workspace-expansion
+
+---
+
+## 2026-05-09 Aston RAG 통합 — Phase W-1 (1순위: 외부 NotebookLM ↔ Wiki 회수)
+
+### 완료
+- ✅ tRPC `rag.saveAnalysis` mutation — 웹에서 분석 결과 붙여넣기 → Wiki 자동 저장 (텔레그램 `/nb save` 의 웹 버전)
+- ✅ tRPC `rag.listSavedNotes` query — `projects/{p}/notebooklm/*.md` 스캔, mtime 역순
+- ✅ tRPC `rag.readSavedNote` query — 본문 반환 (경로 traversal 차단)
+- ✅ `/notebook-lm` 페이지 보강 — 노트북 카드 선택 → 입력 폼 + 회수 자료 목록 + 본문 미리보기 모달
+- ✅ 검증: `npm run check` ✅ / `npm run build` ✅ / **745 passed** (회귀 0건)
+- ✅ 라이브: `POST /api/trpc/rag.saveAnalysis` → 응답 ok, pipeline 정상, pending 큐 graceful 폴백
+
+### 회장님 직접 확인 (운영 검증)
+- [ ] http://localhost:4000/notebook-lm 접속 → 노트북 카드 1개 클릭 → 분석 텍스트 붙여넣기 → "Wiki 저장" → `G:\내 드라이브\Aston-Wiki\projects\{project}\notebooklm\` 에 `.md` 생성 확인
+- [ ] 저장 후 페이지 하단 회수 자료 목록 즉시 갱신 + 본문 미리보기 모달 동작
+- [ ] 같은 본문 재저장 시 멱등성(was_skipped: true) 표시 확인
+
+### 다음 작업 후보 (W-2 ~ W-3, Phase 4)
+- [ ] **W-2** NotebookLM Docs export → Drive Watcher 자동 회수 (회장님 1클릭)
+  - 회장님이 NotebookLM 화면에서 "Docs로 보내기" 메뉴 존재 여부 먼저 확인 필요
+- [ ] **W-3** 회수 자료 본문 검색 + 카테고리 필터 (`/wiki` 페이지에 #notebooklm 태그 노출)
+- [ ] **Phase 4** 채팅 RAG 컨텍스트 주입 (`intent/handlers/chat.ts` ↔ 회수된 `*.md` 자동 인용)
 
 ---
 

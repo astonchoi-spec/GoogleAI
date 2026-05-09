@@ -27,6 +27,10 @@ import { startGmailWatcher, stopGmailWatcher } from "../deals/gmailWatcher.ts"; 
 import { startDownloadWatcher, stopDownloadWatcher } from "../deals/downloadWatcher.ts"; // MODIFIED: watch browser downloads for deal file classification.
 import { startDriveSync, stopDriveSync, setAllowedProjects as setRagAllowedProjects } from "../knowledge/driveSync.ts"; // MODIFIED: NotebookLM exports 폴더 자동 회수 (Phase W-2).
 import { loadRagMapping } from "../rag/mappingLoader.ts"; // MODIFIED: rag 매핑을 부팅 시 driveSync 에 주입.
+import {
+  handleExtensionIngest,
+  setExtensionUrlMappings,
+} from "../knowledge/extensionIngest.ts"; // MODIFIED: Chrome Extension 수신 엔드포인트.
 
 function isPortAvailable(port: number): Promise<boolean> {
   return new Promise(resolve => {
@@ -70,6 +74,10 @@ async function startServer() {
   setAgentNotifier(agentTelegramNotifier); // MODIFIED: hook telegram notifications into agent queue.
   void probeOpenClaw(); // MODIFIED: startup OpenClaw auto-detection keeps simulation fallback on failure.
   registerAgentRoutes(app); // MODIFIED: register Agent Control /api/agents/* routes.
+
+  // Aston NotebookLM Bridge (Chrome Extension) 수신 엔드포인트 — Phase W-2 보완
+  app.options("/api/rag/extension-ingest", handleExtensionIngest);
+  app.post("/api/rag/extension-ingest", handleExtensionIngest);
 
   // TradingView webhook route
   registerTvWebhookRoutes(app); // MODIFIED: POST /api/tv-webhook handler.
@@ -132,6 +140,14 @@ async function startServer() {
   try {
     const ragMapping = loadRagMapping();
     setRagAllowedProjects(ragMapping.notebooks.map((n) => n.project));
+    // Chrome Extension 의 URL→project 매핑도 함께 주입.
+    const urlMappings = ragMapping.notebooks
+      .filter((n) => n.notebook_url && n.notebook_url.trim().length > 0)
+      .map((n) => ({ url: n.notebook_url as string, project: n.project }));
+    setExtensionUrlMappings(urlMappings);
+    console.log(
+      `[rag/extension] URL→project 매핑 ${urlMappings.length}건 등록됨 (yaml 의 notebook_url 채워진 노트북)`,
+    );
   } catch (e) {
     console.error("[rag/driveSync] 매핑 로드 실패:", e);
   }

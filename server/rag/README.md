@@ -22,22 +22,33 @@ Aston Workstation의 **통합 지식 RAG**를 담당한다. 두 트랙을 병행
 - 매핑: `data/rag-mapping.yaml` (28개 노트북 + Track B 데이터 스토어 매핑)
 - 회수 자료: `projects/{project}/notebooklm/*.md` (Track A) 또는 `projects/{project}/rag/*.md` (Track B)
 
-## 환경 변수 (Phase 2 이후 활성)
+## 환경 변수
 
 ```
-VERTEX_SEARCH_PROJECT_ID=<GCP project ID>
-VERTEX_SEARCH_LOCATION=global
-VERTEX_SEARCH_SERVICE_ACCOUNT_JSON=<서비스 계정 키 JSON 경로>
-DRIVE_WATCHER_FOLDER_ID=<Track A 회수용 Drive 폴더 ID>
+# Phase 2 활성 (Discovery Engine 통신)
+VERTEX_SEARCH_PROJECT_ID=<GCP project ID>            # 예: aston-work-station
+VERTEX_SEARCH_LOCATION=global                         # 또는 us / eu / asia-northeast3
+
+# Phase 3 활성 (Track A Drive Watcher)
+DRIVE_WATCHER_FOLDER_ID=<Drive 폴더 ID>
 ```
+
+## 인증
+
+**ADC (Application Default Credentials) 사용. JSON 키 파일 미사용.**
+
+운영자는 1회 `gcloud auth application-default login` 으로 인증을 끝낸다.
+이후 `new DataStoreServiceClient()` 등 SDK 클라이언트가 자동으로 ADC 토큰을 사용한다.
 
 ## 명령
 
 본 모듈은 tRPC를 통해 노출:
 
 - `rag.listMappings()` — 28개 노트북 + 데이터 스토어 그룹 정보 (Phase 1)
-- `rag.queryDataStore(...)` — Discovery Engine 쿼리 (Phase 2)
-- `rag.importDocument(...)` — 문서 업로드 + 인덱싱 (Phase 2)
+- `rag.listDataStores()` — 9개 데이터 스토어 + 매핑 프로젝트 목록 (Phase 1)
+- `rag.trackBStatus()` — GCP 환경·인증 상태 (Phase 2)
+- `rag.queryDataStore({ dataStoreId, query, filter? })` — Discovery Engine 검색 + 요약 (Phase 2)
+- 내부 함수 (tRPC 미노출) — `createDataStore` / `importDocument` / `query` (Phase 2)
 - `rag.statusByProject(...)` — 프로젝트별 회수 자료 + 인덱싱 상태 (Phase 3)
 
 ## 의존성
@@ -49,8 +60,8 @@ DRIVE_WATCHER_FOLDER_ID=<Track A 회수용 Drive 폴더 ID>
 | Phase | 범위 | 상태 |
 |-------|------|------|
 | 1 | yaml 매핑 + 카탈로그 페이지 | ✅ 완료 (2026-05-09) |
-| 2 | Discovery Engine 클라이언트 + 인증 | ⬜ |
-| 3 | 저장 파이프라인 + frontmatter 표준화 | ⬜ |
+| 2 | Discovery Engine 클라이언트 + ADC 인증 + tRPC 노출 | ✅ 완료 (2026-05-09) |
+| 3 | 저장 파이프라인 + frontmatter 표준화 + Drive Watcher | ⬜ |
 | 4 | 채팅 RAG 컨텍스트 주입 | ⬜ |
 
 ## 모듈 경계

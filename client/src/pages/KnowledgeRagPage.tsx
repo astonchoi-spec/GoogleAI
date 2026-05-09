@@ -13,6 +13,9 @@ import {
   X,
   CheckCircle2,
   ChevronRight,
+  RefreshCw,
+  HardDrive,
+  Folder,
 } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 
@@ -66,16 +69,29 @@ export default function KnowledgeRagPage() {
   const mappings = trpc.rag.listMappings.useQuery();
   const dataStores = trpc.rag.listDataStores.useQuery();
   const trackBStatus = trpc.rag.trackBStatus.useQuery();
+  const driveStatus = trpc.rag.driveWatcherStatus.useQuery(undefined, {
+    refetchInterval: 30_000,
+  });
   const savedNotes = trpc.rag.listSavedNotes.useQuery({
     project: selectedProject ?? undefined,
     limit: 30,
   });
+  const sourceFiles = trpc.rag.listSourceFiles.useQuery(
+    { project: selectedProject ?? "_disabled_" },
+    { enabled: !!selectedProject },
+  );
   const noteContent = trpc.rag.readSavedNote.useQuery(
     previewKey ?? { project: "_disabled_", filename: "_disabled_.md" },
     { enabled: !!previewKey },
   );
 
   const utils = trpc.useUtils();
+  const triggerScan = trpc.rag.triggerDriveScan.useMutation({
+    onSuccess: () => {
+      utils.rag.driveWatcherStatus.invalidate();
+      utils.rag.listSavedNotes.invalidate();
+    },
+  });
   const saveAnalysis = trpc.rag.saveAnalysis.useMutation({
     onSuccess: (res) => {
       if (res.ok) {
@@ -188,6 +204,14 @@ export default function KnowledgeRagPage() {
             savedTotal={savedNotes.data?.totalScanned ?? 0}
             isLoadingSaved={savedNotes.isLoading}
             onPreview={(project, filename) => setPreviewKey({ project, filename })}
+            driveStatus={driveStatus.data}
+            onScan={() => triggerScan.mutate()}
+            isScanning={triggerScan.isPending}
+            scanResult={triggerScan.data}
+            sourceFiles={sourceFiles.data?.ok ? sourceFiles.data.files : []}
+            sourceFolderPath={sourceFiles.data?.ok ? sourceFiles.data.sourceFolder : null}
+            exportFolderPath={sourceFiles.data?.ok ? sourceFiles.data.exportFolder : null}
+            isLoadingSources={sourceFiles.isLoading}
           />
         ) : (
           <TrackBPanel
@@ -247,6 +271,33 @@ interface SavedNoteItem {
   titleHint: string;
 }
 
+interface SourceFileItem {
+  filename: string;
+  sizeBytes: number;
+  mtime: string;
+  extension: string;
+}
+
+interface DriveStatus {
+  enabled: boolean;
+  watchedRoot: string;
+  watchedProjects: string[];
+  startedAt: string | null;
+  lastEventAt: string | null;
+  ingestedCount: number;
+  recentEvents: Array<{
+    filePath: string;
+    project: string;
+    ingestedAt: string;
+    reason: string;
+    savedPath?: string;
+    error?: string;
+  }>;
+  exportsRoot: string;
+  sourcesRoot: string;
+  wikiRoot: string;
+}
+
 type SaveResult =
   | { kind: "ok"; savedPath: string; wasSkipped: boolean }
   | { kind: "err"; message: string }
@@ -290,6 +341,15 @@ interface TrackAPanelProps {
   savedTotal: number;
   isLoadingSaved: boolean;
   onPreview: (project: string, filename: string) => void;
+  // Phase W-2
+  driveStatus?: DriveStatus;
+  onScan: () => void;
+  isScanning: boolean;
+  scanResult?: { scanned: number; newlyIngested: number };
+  sourceFiles: SourceFileItem[];
+  sourceFolderPath: string | null;
+  exportFolderPath: string | null;
+  isLoadingSources: boolean;
 }
 
 function TrackAPanel({
@@ -318,10 +378,26 @@ function TrackAPanel({
   savedTotal,
   isLoadingSaved,
   onPreview,
+  driveStatus,
+  onScan,
+  isScanning,
+  scanResult,
+  sourceFiles,
+  sourceFolderPath,
+  exportFolderPath,
+  isLoadingSources,
 }: TrackAPanelProps) {
   const selectedNotebook = notebooks.find((n) => n.project === selectedProject) ?? null;
   return (
     <>
+      {/* Drive Watcher Status */}
+      <DriveWatcherCard
+        status={driveStatus}
+        onScan={onScan}
+        isScanning={isScanning}
+        scanResult={scanResult}
+      />
+
       {/* Search */}
       <div className="mt-6 mb-4 relative">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[var(--aston-muted)]" />
@@ -403,6 +479,15 @@ function TrackAPanel({
           ))}
         </div>
       )}
+
+      {/* 소스 자료 (NotebookLM 입력) */}
+      <SourceFilesSection
+        selectedNotebook={selectedNotebook}
+        files={sourceFiles}
+        sourceFolderPath={sourceFolderPath}
+        exportFolderPath={exportFolderPath}
+        isLoading={isLoadingSources}
+      />
 
       {/* 회수 입력 폼 */}
       <PasteForm
@@ -773,6 +858,198 @@ function PreviewModal({
       </div>
     </div>
   );
+}
+
+function DriveWatcherCard({
+  status,
+  onScan,
+  isScanning,
+  scanResult,
+}: {
+  status?: DriveStatus;
+  onScan: () => void;
+  isScanning: boolean;
+  scanResult?: { scanned: number; newlyIngested: number };
+}) {
+  const enabled = status?.enabled ?? false;
+  const recent = status?.recentEvents ?? [];
+  return (
+    <div
+      className={`mt-6 rounded-xl border p-4 ${
+        enabled
+          ? "border-emerald-500/30 bg-emerald-500/5"
+          : "border-amber-500/30 bg-amber-500/5"
+      }`}
+    >
+      <div className="flex items-center justify-between gap-2 mb-2">
+        <div className="flex items-center gap-2">
+          <HardDrive className={`h-4 w-4 ${enabled ? "text-emerald-300" : "text-amber-300"}`} />
+          <div className="text-sm font-medium">
+            {enabled ? "🟢" : "❓"} NotebookLM Drive 자동 동기화
+          </div>
+        </div>
+        <button
+          onClick={onScan}
+          disabled={isScanning || !enabled}
+          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border border-cyan-500/40 bg-cyan-500/10 text-cyan-100 hover:bg-cyan-500/20 disabled:opacity-40 disabled:cursor-not-allowed"
+        >
+          <RefreshCw className={`h-3 w-3 ${isScanning ? "animate-spin" : ""}`} />
+          {isScanning ? "스캔 중…" : "지금 동기화"}
+        </button>
+      </div>
+      {enabled ? (
+        <div className="text-xs text-emerald-200/80 leading-relaxed space-y-1">
+          <div>
+            감시 폴더 <code className="bg-emerald-500/15 px-1 rounded">{status?.exportsRoot}</code>
+            {" "}({status?.watchedProjects.length}개 노트북 폴더 감시 중)
+          </div>
+          <div>
+            누적 회수 <span className="text-emerald-100 font-medium">{status?.ingestedCount}건</span>
+            {status?.lastEventAt && (
+              <span className="ml-2 opacity-70">— 최근: {formatRelativeMtime(status.lastEventAt)}</span>
+            )}
+          </div>
+          {scanResult && (
+            <div className="mt-1.5 px-2 py-1 rounded bg-emerald-500/15 text-emerald-100">
+              ✅ 즉시 스캔: {scanResult.scanned}개 파일 점검 / 신규 회수 {scanResult.newlyIngested}건
+            </div>
+          )}
+          {recent.length > 0 && (
+            <details className="mt-2">
+              <summary className="cursor-pointer text-emerald-200/90 hover:text-white">
+                최근 이벤트 {recent.length}건 보기
+              </summary>
+              <ul className="mt-2 space-y-1 text-[11px] font-mono">
+                {recent.slice(0, 8).map((ev, i) => (
+                  <li key={i} className="flex items-start gap-2 opacity-90">
+                    <span className="shrink-0">
+                      {ev.reason === "auto-ingest" ? "✅" : ev.reason === "meta-only" ? "📋" : ev.reason === "skipped" ? "⏭" : "❌"}
+                    </span>
+                    <span className="break-all">
+                      [{ev.project}] {ev.filePath.split(/[/\\]/).pop()}
+                      {ev.error && <span className="text-rose-300"> — {ev.error}</span>}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </details>
+          )}
+        </div>
+      ) : (
+        <div className="text-xs text-amber-200/80 leading-relaxed">
+          Drive Watcher 비활성화 상태. <code className="bg-amber-500/15 px-1 rounded">ASTON_WIKI_ROOT</code>{" "}
+          가 설정되어 있고 <code className="bg-amber-500/15 px-1 rounded">DRIVE_WATCHER_ENABLED</code>{" "}
+          가 false 가 아니면 자동 시작됩니다. 서버 재시작 필요.
+        </div>
+      )}
+      <div className="mt-2 text-[11px] text-[var(--aston-muted)] leading-relaxed">
+        <b>운영 약속</b>: NotebookLM에서 노트 → "Google Docs로 보내기" 또는 .md/.txt 다운로드 →{" "}
+        <code className="bg-white/[0.05] px-1 rounded">{"{Wiki}/notebooklm-exports/{project}/"}</code>{" "}
+        폴더에 저장하면 자동 회수.{" "}
+        <span className="text-amber-200">.md/.txt 본문 자동 추출, .docx/.pdf/.gdoc 은 메타만 기록 (운영자가 .md 변환 후 재업로드 권장).</span>
+      </div>
+    </div>
+  );
+}
+
+function SourceFilesSection({
+  selectedNotebook,
+  files,
+  sourceFolderPath,
+  exportFolderPath,
+  isLoading,
+}: {
+  selectedNotebook: TrackAPanelProps["notebooks"][number] | null;
+  files: SourceFileItem[];
+  sourceFolderPath: string | null;
+  exportFolderPath: string | null;
+  isLoading: boolean;
+}) {
+  if (!selectedNotebook) return null;
+  return (
+    <div className="mt-6 rounded-xl border border-white/10 bg-white/[0.02] p-4">
+      <div className="flex items-center justify-between mb-2">
+        <div className="flex items-center gap-2">
+          <Folder className="h-4 w-4 text-cyan-300" />
+          <div className="text-sm font-medium">
+            NotebookLM 입력 자료 — <span className="text-cyan-200">{selectedNotebook.display_name}</span>
+          </div>
+        </div>
+        <span className="text-xs text-[var(--aston-muted)]">{files.length}개</span>
+      </div>
+      {sourceFolderPath && (
+        <div className="text-[11px] text-[var(--aston-muted)] font-mono mb-2 break-all">
+          📁 소스: {sourceFolderPath}
+          {exportFolderPath && (
+            <>
+              <br />
+              📤 회수 대상: {exportFolderPath}
+            </>
+          )}
+        </div>
+      )}
+      {isLoading ? (
+        <div className="text-center py-4 text-[var(--aston-muted)] text-xs">로딩 중…</div>
+      ) : files.length === 0 ? (
+        <div className="text-center py-4 text-[var(--aston-muted)] text-xs">
+          이 노트북 폴더에 소스 자료가 없습니다. 위 경로에 PDF·Docs 를 두면 NotebookLM 입력 + 페이지 인덱스 둘 다 됩니다.
+        </div>
+      ) : (
+        <ul className="space-y-1 mt-2">
+          {files.map((f) => (
+            <li
+              key={f.filename}
+              className="flex items-center justify-between gap-2 rounded-lg border border-white/10 bg-white/[0.03] px-3 py-1.5"
+            >
+              <div className="min-w-0 flex-1 flex items-center gap-2">
+                <span className="text-xs">{extensionEmoji(f.extension)}</span>
+                <div className="min-w-0">
+                  <div className="text-xs font-medium text-[var(--aston-text)] truncate">
+                    {f.filename}
+                  </div>
+                </div>
+              </div>
+              <div className="flex items-center gap-2 shrink-0 text-[10px] text-[var(--aston-muted)]">
+                <span>{formatRelativeMtime(f.mtime)}</span>
+                <span>{(f.sizeBytes / 1024).toFixed(1)}KB</span>
+              </div>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
+
+function extensionEmoji(ext: string): string {
+  switch (ext) {
+    case ".pdf":
+      return "📕";
+    case ".docx":
+    case ".doc":
+    case ".gdoc":
+      return "📘";
+    case ".xlsx":
+    case ".xls":
+    case ".gsheet":
+      return "📗";
+    case ".pptx":
+    case ".ppt":
+    case ".gslides":
+      return "📙";
+    case ".md":
+      return "📝";
+    case ".txt":
+      return "📄";
+    case ".png":
+    case ".jpg":
+    case ".jpeg":
+    case ".gif":
+    case ".webp":
+      return "🖼";
+    default:
+      return "📎";
+  }
 }
 
 function formatRelativeMtime(iso: string): string {

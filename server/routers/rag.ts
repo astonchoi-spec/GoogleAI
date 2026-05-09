@@ -17,6 +17,15 @@ import { query as queryDiscoveryEngine } from "../rag/discoveryEngineClient.ts";
 import { NotebookLmAdapter } from "../knowledge/adapters/notebooklm.ts";
 import { PipelineRunner } from "../knowledge/pipeline/runner.ts";
 import { resolveWikiRoot } from "../knowledge/storage/wikiWriter.ts";
+import {
+  getDriveSyncStatus,
+  triggerManualScan,
+  listSourceFiles,
+  exportsRootDir,
+  exportsProjectDir,
+  sourcesRootDir,
+  sourcesProjectDir,
+} from "../knowledge/driveSync.ts";
 
 // Wiki 회수 자료 — Track A 경로
 function notebookProjectDir(projectId: string): string {
@@ -232,6 +241,42 @@ export const ragRouter = router({
       return {
         items: items.slice(0, limit),
         totalScanned: items.length,
+      };
+    }),
+
+  // Phase W-2 — Drive Watcher 상태 (페이지 상단 카드 표시용).
+  driveWatcherStatus: publicProcedure.query(() => {
+    const sync = getDriveSyncStatus();
+    return {
+      ...sync,
+      exportsRoot: exportsRootDir(),
+      sourcesRoot: sourcesRootDir(),
+      wikiRoot: resolveWikiRoot(),
+    };
+  }),
+
+  // Phase W-2 — 즉시 1회 폴링 (회장님이 NotebookLM 에서 export 직후 페이지 버튼 클릭).
+  triggerDriveScan: publicProcedure.mutation(async () => {
+    return await triggerManualScan();
+  }),
+
+  // Phase W-2 — 특정 노트북의 NotebookLM 소스 자료 목록.
+  // notebooklm-sources/{project}/ 폴더에 회장님이 둔 PDF·Docs 메타.
+  listSourceFiles: publicProcedure
+    .input(z.object({ project: z.string().min(1).max(80) }))
+    .query(async ({ input }) => {
+      // 매핑 yaml 화이트리스트
+      const mapping = loadRagMapping();
+      const valid = mapping.notebooks.find((n) => n.project === input.project);
+      if (!valid) {
+        return { ok: false as const, error: "등록되지 않은 project ID", files: [] };
+      }
+      const files = await listSourceFiles(input.project);
+      return {
+        ok: true as const,
+        files,
+        sourceFolder: sourcesProjectDir(input.project),
+        exportFolder: exportsProjectDir(input.project),
       };
     }),
 

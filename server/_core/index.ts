@@ -25,6 +25,8 @@ import { registerDealDeadlineNotifier } from "../deals/dealDeadlineNotifier.ts";
 import { startKakaoFolderWatcher, stopKakaoFolderWatcher } from "../deals/folderWatcher.ts"; // MODIFIED: watch KakaoTalk downloads for deal file classification.
 import { startGmailWatcher, stopGmailWatcher } from "../deals/gmailWatcher.ts"; // MODIFIED: poll Gmail deal attachments.
 import { startDownloadWatcher, stopDownloadWatcher } from "../deals/downloadWatcher.ts"; // MODIFIED: watch browser downloads for deal file classification.
+import { startDriveSync, stopDriveSync, setAllowedProjects as setRagAllowedProjects } from "../knowledge/driveSync.ts"; // MODIFIED: NotebookLM exports 폴더 자동 회수 (Phase W-2).
+import { loadRagMapping } from "../rag/mappingLoader.ts"; // MODIFIED: rag 매핑을 부팅 시 driveSync 에 주입.
 
 function isPortAvailable(port: number): Promise<boolean> {
   return new Promise(resolve => {
@@ -111,6 +113,14 @@ async function startServer() {
   startKakaoFolderWatcher();
   startGmailWatcher();
   startDownloadWatcher();
+  // RAG 매핑 yaml 의 28개 project 목록을 driveSync 화이트리스트로 주입 후 watcher 시작.
+  try {
+    const ragMapping = loadRagMapping();
+    setRagAllowedProjects(ragMapping.notebooks.map((n) => n.project));
+  } catch (e) {
+    console.error("[rag/driveSync] 매핑 로드 실패:", e);
+  }
+  void startDriveSync().catch((e) => console.error("[rag/driveSync] 시작 실패:", e));
 
   // Merge ghost Telegram conversations (userId=1) into real web user on startup
   try {

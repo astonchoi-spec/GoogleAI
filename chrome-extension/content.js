@@ -220,12 +220,11 @@
         console.log("[Aston Bridge] 백엔드 응답:", response);
         if (response?.ok) {
           let label;
-          let state = "ok";
           const proj = response.project ?? "";
           const v = response.version ?? 1;
           const kind = response.artifactKind ? ` ${response.artifactKind}` : "";
           if (response.status === "skipped") {
-            label = "⏸ 동일 본문 skip";
+            label = `⏸ 동일 본문 skip (v${v} 유지)`;
           } else if (response.status === "versioned") {
             label = `📚 신규 버전 저장 (v${v})`;
           } else if (response.isUnmapped) {
@@ -233,7 +232,7 @@
           } else {
             label = `✅ 적재 완료 (${proj}${kind} v${v})`;
           }
-          setButtonState(btn, state, label);
+          setButtonState(btn, "ok", label);
           if (response.mappingHint) {
             console.log("[Aston Bridge] mapping hint:", response.mappingHint);
           }

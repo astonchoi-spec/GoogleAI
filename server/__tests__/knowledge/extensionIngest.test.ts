@@ -6,6 +6,7 @@ import {
   detectArtifactKind,
   generateArtifactSlug,
   buildVersionIndex,
+  buildArtifactFrontmatter,
 } from "../../knowledge/extensionIngest.ts";
 
 describe("detectArtifactKind", () => {
@@ -153,5 +154,45 @@ describe("buildVersionIndex", () => {
     );
     const result = await buildVersionIndex(tmpDir, "https://notebooklm.google.com/notebook/ABC/?utm=x");
     expect(result.maxVersion).toBe(1);
+  });
+});
+
+describe("buildArtifactFrontmatter", () => {
+  it("모든 필수 필드 포함 + 한글 따옴표 처리", () => {
+    const fm = buildArtifactFrontmatter({
+      kind: "market-analysis",
+      title: "[시장 분석 가이드] '몽탄 신도시' 몽골",
+      project: "mongolia-whitelier",
+      notebookTitle: "화이트리어 역삼·몽골 공동창업",
+      sourceUrl: "https://notebooklm.google.com/notebook/9a7481fc-45a9-4db6-981b-3c6d99d4f11c",
+      capturedAt: "2026-05-09T14:29:10.698Z",
+      hash: "61396407c28892f2",
+      version: 2,
+    });
+    expect(fm).toMatch(/^---\n/);
+    expect(fm).toMatch(/\n---\n$/);
+    expect(fm).toContain('type: notebooklm-artifact');
+    expect(fm).toContain('artifact_kind: market-analysis');
+    expect(fm).toContain('project: mongolia-whitelier');
+    expect(fm).toContain('source_url: https://notebooklm.google.com/notebook/9a7481fc-45a9-4db6-981b-3c6d99d4f11c');
+    expect(fm).toContain('captured_at: 2026-05-09T14:29:10.698Z');
+    expect(fm).toContain('raw_text_hash: 61396407c28892f2');
+    expect(fm).toContain('version: 2');
+    // 따옴표 포함된 제목 안전하게 escape
+    expect(fm).toMatch(/title: ".*몽탄 신도시.*"/);
+  });
+
+  it("따옴표 포함 제목은 JSON 직렬화", () => {
+    const fm = buildArtifactFrontmatter({
+      kind: "report",
+      title: 'He said "hi"',
+      project: "p",
+      notebookTitle: "nb",
+      sourceUrl: "https://x.test/n/1",
+      capturedAt: "2026-05-09T00:00:00Z",
+      hash: "h",
+      version: 1,
+    });
+    expect(fm).toContain('title: "He said \\"hi\\""');
   });
 });

@@ -115,6 +115,35 @@ export async function buildVersionIndex(
   return result;
 }
 
+export interface ArtifactFrontmatterInput {
+  kind: ArtifactKind;
+  title: string;
+  project: string;
+  notebookTitle: string;
+  sourceUrl: string;
+  capturedAt: string;
+  hash: string;
+  version: number;
+}
+
+export function buildArtifactFrontmatter(input: ArtifactFrontmatterInput): string {
+  const lines = [
+    "---",
+    `type: notebooklm-artifact`,
+    `artifact_kind: ${input.kind}`,
+    `title: ${JSON.stringify(input.title)}`,
+    `project: ${input.project}`,
+    `notebook_title: ${JSON.stringify(input.notebookTitle)}`,
+    `source_url: ${input.sourceUrl}`,
+    `captured_at: ${input.capturedAt}`,
+    `raw_text_hash: ${input.hash}`,
+    `version: ${input.version}`,
+    "---",
+    "",
+  ];
+  return lines.join("\n");
+}
+
 interface IngestPayload {
   sourceUrl: string;
   notebookTitle: string;

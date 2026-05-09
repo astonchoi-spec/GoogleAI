@@ -9,6 +9,7 @@ import {
   buildArtifactFrontmatter,
   saveArtifact,
   setExtensionUrlMappings,
+  handleExtensionIngest,
 } from "../../knowledge/extensionIngest.ts";
 
 describe("detectArtifactKind", () => {
@@ -277,5 +278,92 @@ describe("saveArtifact (integration)", () => {
     expect(result.project).toBe("_unmapped");
     expect(result.isUnmapped).toBe(true);
     expect(result.mappingHint).toBeDefined();
+  });
+});
+
+function mockReqRes(method: string, body?: unknown) {
+  const headers: Record<string, string> = {};
+  let statusCode = 200;
+  let jsonBody: unknown = null;
+  let ended = false;
+  const req = { method, body } as any;
+  const res: any = {
+    setHeader: (k: string, v: string) => { headers[k] = v; },
+    status: (c: number) => { statusCode = c; return res; },
+    json: (b: unknown) => { jsonBody = b; },
+    end: () => { ended = true; },
+  };
+  return { req, res, get: () => ({ statusCode, jsonBody, headers, ended }) };
+}
+
+describe("handleExtensionIngest", () => {
+  let tmpRoot: string;
+  let originalWiki: string | undefined;
+
+  beforeEach(async () => {
+    tmpRoot = await fs.mkdtemp(path.join(os.tmpdir(), "ext-handle-"));
+    originalWiki = process.env.ASTON_WIKI_ROOT;
+    process.env.ASTON_WIKI_ROOT = tmpRoot;
+    setExtensionUrlMappings([
+      {
+        url: "https://notebooklm.google.com/notebook/9a7481fc-45a9-4db6-981b-3c6d99d4f11c",
+        project: "mongolia-whitelier",
+      },
+    ]);
+  });
+
+  afterEach(async () => {
+    if (originalWiki === undefined) delete process.env.ASTON_WIKI_ROOT;
+    else process.env.ASTON_WIKI_ROOT = originalWiki;
+    await fs.rm(tmpRoot, { recursive: true, force: true });
+    setExtensionUrlMappings([]);
+  });
+
+  it("OPTIONS → 204", async () => {
+    const m = mockReqRes("OPTIONS");
+    await handleExtensionIngest(m.req, m.res);
+    expect(m.get().ended).toBe(true);
+    expect(m.get().statusCode).toBe(204);
+  });
+
+  it("GET → 헬스체크 JSON", async () => {
+    const m = mockReqRes("GET");
+    await handleExtensionIngest(m.req, m.res);
+    expect(m.get().statusCode).toBe(200);
+    expect((m.get().jsonBody as any).ok).toBe(true);
+    expect((m.get().jsonBody as any).urlMappings).toBe(1);
+  });
+
+  it("POST 정상 → 201 + status=created", async () => {
+    const m = mockReqRes("POST", {
+      sourceUrl: "https://notebooklm.google.com/notebook/9a7481fc-45a9-4db6-981b-3c6d99d4f11c",
+      notebookTitle: "[시장 분석 가이드] 몽탄 신도시 몽골 외식",
+      noteText: "충분히 긴 본문 텍스트 내용 — 시장 분석 결과 요약.",
+      capturedAt: "2026-05-09T14:29:10.698Z",
+    });
+    await handleExtensionIngest(m.req, m.res);
+    const out = m.get();
+    expect(out.statusCode).toBe(201);
+    expect((out.jsonBody as any).status).toBe("created");
+    expect((out.jsonBody as any).project).toBe("mongolia-whitelier");
+    expect((out.jsonBody as any).artifactKind).toBe("market-analysis");
+    expect((out.jsonBody as any).version).toBe(1);
+  });
+
+  it("POST 본문 누락 → 400", async () => {
+    const m = mockReqRes("POST", { sourceUrl: "https://x.test/n/1" });
+    await handleExtensionIngest(m.req, m.res);
+    expect(m.get().statusCode).toBe(400);
+  });
+
+  it("POST 본문 너무 짧음 → 400", async () => {
+    const m = mockReqRes("POST", {
+      sourceUrl: "https://x.test/n/1",
+      notebookTitle: "t",
+      noteText: "짧음",
+      capturedAt: "2026-05-09T00:00:00Z",
+    });
+    await handleExtensionIngest(m.req, m.res);
+    expect(m.get().statusCode).toBe(400);
   });
 });

@@ -4,13 +4,9 @@
 
 import { type Request, type Response } from "express";
 import fs from "node:fs/promises";
-import fsSync from "node:fs";
 import path from "node:path";
 import crypto from "node:crypto";
-import { NotebookLmAdapter } from "./adapters/notebooklm.ts";
-import { PipelineRunner } from "./pipeline/runner.ts";
 import { resolveWikiRoot } from "./storage/wikiWriter.ts";
-import { exportsProjectDir } from "./driveSync.ts";
 
 export type ArtifactKind =
   | "market-analysis"
@@ -228,45 +224,8 @@ export async function saveArtifact(payload: IngestPayload): Promise<SaveArtifact
   };
 }
 
-interface ExistingHashIndex {
-  [hash: string]: string; // hash → relative path
-}
-
-const pipelineRunner = new PipelineRunner();
-
-/** 기존 회수 자료의 SHA-256 해시 인덱스 — frontmatter 의 raw_text_hash 또는 본문 직접 hash. */
-async function buildExistingHashIndex(projectDir: string): Promise<ExistingHashIndex> {
-  const out: ExistingHashIndex = {};
-  let entries: import("node:fs").Dirent[];
-  try {
-    entries = await fs.readdir(projectDir, { withFileTypes: true });
-  } catch {
-    return out;
-  }
-  for (const e of entries) {
-    if (!e.isFile() || !e.name.endsWith(".md")) continue;
-    const full = path.join(projectDir, e.name);
-    try {
-      const text = await fs.readFile(full, "utf-8");
-      // frontmatter 의 raw_text_hash 추출
-      const m = text.match(/raw_text_hash:\s*'?([0-9a-f]{16,})'?/i);
-      if (m) {
-        out[m[1]] = path.relative(resolveWikiRoot(), full).replaceAll("\\", "/");
-      }
-    } catch {
-      // skip
-    }
-  }
-  return out;
-}
-
-function sha256(text: string): string {
-  return crypto.createHash("sha256").update(text).digest("hex");
-}
-
 /** Express handler — POST/OPTIONS/GET(health). */
 export async function handleExtensionIngest(req: Request, res: Response): Promise<void> {
-  // CORS 사전 처리 — Extension origin 은 chrome-extension://... 또는 null.
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
   res.setHeader("Access-Control-Allow-Headers", "Content-Type");
@@ -274,7 +233,6 @@ export async function handleExtensionIngest(req: Request, res: Response): Promis
     res.status(204).end();
     return;
   }
-  // GET = 라우트 등록 확인 헬스체크 (브라우저에서 직접 접속 가능).
   if (req.method === "GET") {
     res.status(200).json({
       ok: true,
@@ -298,100 +256,33 @@ export async function handleExtensionIngest(req: Request, res: Response): Promis
   const capturedAt = String(payload.capturedAt ?? new Date().toISOString());
 
   if (!sourceUrl || !noteText) {
-    res.status(400).json({
-      ok: false,
-      error: "sourceUrl 또는 noteText 누락",
-    });
+    res.status(400).json({ ok: false, error: "sourceUrl 또는 noteText 누락" });
     return;
   }
   if (noteText.length < 20) {
-    res.status(400).json({
-      ok: false,
-      error: "본문 너무 짧음 (최소 20자)",
-    });
+    res.status(400).json({ ok: false, error: "본문 너무 짧음 (최소 20자)" });
     return;
   }
-
-  // 1) URL → project 매칭. 실패 시 fallback `_unmapped` 사용 — 회수는 항상 성공시키되
-  //    회장님이 페이지에서 어떤 노트북에 매핑할지 별도 결정 가능하게 한다.
-  const normalized = normalizeNotebookUrl(sourceUrl);
-  const project = urlToProject.get(normalized) ?? "_unmapped";
-  const isUnmapped = project === "_unmapped";
-
-  // 2) 중복 체크 — 같은 본문 hash 가 이미 회수됐으면 skip
-  const projectDir = exportsProjectDir(project);
-  if (!fsSync.existsSync(projectDir)) {
-    try {
-      await fs.mkdir(projectDir, { recursive: true });
-    } catch (err) {
-      res.status(500).json({
-        ok: false,
-        error: `프로젝트 폴더 생성 실패: ${err instanceof Error ? err.message : String(err)}`,
-      });
-      return;
-    }
-  }
-
-  const noteHash = sha256(noteText);
-  const existing = await buildExistingHashIndex(
-    path.join(resolveWikiRoot(), "projects", project, "notebooklm"),
-  );
-  if (existing[noteHash]) {
-    res.status(200).json({
-      ok: true,
-      status: "skipped",
-      project,
-      reason: "동일 본문 hash 가 이미 회수됨 (멱등성)",
-      existingPath: existing[noteHash],
-    });
-    return;
-  }
-
-  // 3) Pipeline 통과 — NotebookLmAdapter 와 동일 흐름
-  const adapter = new NotebookLmAdapter();
-  const sourceRef = `extension:${noteHash.slice(0, 16)}`;
-  const bodyWithMeta = [
-    noteText,
-    "",
-    `출처: NotebookLM Chrome Extension`,
-    `노트북: ${notebookTitle}`,
-    `URL: ${sourceUrl}`,
-  ].join("\n");
-  const pipelineInput = adapter.toPipelineInput({
-    project,
-    body: bodyWithMeta,
-    source_ref: sourceRef,
-    received_at: capturedAt,
-  });
 
   try {
-    const result = await pipelineRunner.run(pipelineInput);
-    if (result.ok) {
-      res.status(result.was_skipped ? 200 : 201).json({
-        ok: true,
-        status: result.was_skipped ? "skipped" : "created",
-        project,
-        isUnmapped,
-        savedPath: result.entry.saved_path,
-        notebookTitle,
-        quality: result.doc.quality,
-        ...(isUnmapped && {
-          mappingHint:
-            `yaml 의 해당 노트북 entry 에 'notebook_url: "${sourceUrl}"' 1줄 추가 후 서버 재시작하면 다음부터 정확한 project 에 자동 적재됩니다.`,
-        }),
-      });
-      console.log(
-        `[rag/extension] ${result.was_skipped ? "skip" : "✅ 적재"}: ${project}${isUnmapped ? " (미매핑 fallback)" : ""} ← ${notebookTitle}`,
-      );
-    } else {
-      res.status(500).json({
-        ok: false,
-        error: `pipeline I/O 실패. pending 큐: ${result.pending_path}`,
-        project,
-      });
-    }
+    const result = await saveArtifact({ sourceUrl, notebookTitle, noteText, capturedAt });
+    const httpStatus = result.status === "created" ? 201 : 200;
+    res.status(httpStatus).json({
+      ok: true,
+      status: result.status,
+      project: result.project,
+      artifactKind: result.artifactKind,
+      version: result.version,
+      savedPath: result.savedPath,
+      isUnmapped: result.isUnmapped,
+      mappingHint: result.mappingHint,
+      notebookTitle,
+    });
+    console.log(
+      `[rag/extension] ${result.status} v${result.version}: ${result.project}${result.isUnmapped ? " (미매핑 fallback)" : ""} ← ${notebookTitle}`,
+    );
   } catch (err) {
-    console.error("[rag/extension] pipeline error:", err);
+    console.error("[rag/extension] saveArtifact error:", err);
     res.status(500).json({
       ok: false,
       error: err instanceof Error ? err.message : String(err),

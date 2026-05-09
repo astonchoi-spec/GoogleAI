@@ -121,11 +121,18 @@
           },
         });
         if (response?.ok) {
-          const label =
-            response.status === "skipped"
-              ? "✅ 이미 동일 본문 (skip)"
-              : `✅ 위키 적재 완료${response.project ? ` (${response.project})` : ""}`;
+          let label;
+          if (response.status === "skipped") {
+            label = "✅ 이미 동일 본문 (skip)";
+          } else if (response.isUnmapped) {
+            label = "⚠️ _unmapped 임시 저장 — yaml 매핑 필요";
+          } else {
+            label = `✅ 위키 적재 완료 (${response.project ?? ""})`;
+          }
           setButtonState(btn, "ok", label);
+          if (response.mappingHint) {
+            console.log("[Aston Bridge] mapping hint:", response.mappingHint);
+          }
         } else {
           setButtonState(btn, "err", `❌ ${response?.error ?? "전송 실패"}`);
         }

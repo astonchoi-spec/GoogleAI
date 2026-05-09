@@ -32,6 +32,16 @@
 #   ds-personal-health        : 가족·건강 1건
 
 notebooks:
+  # ── 미매핑 회수 fallback (Extension 등에서 yaml 미등록 URL 처리) ───────────
+  - notebook_name: "(미매핑 회수 fallback)"
+    project: "_unmapped"
+    display_name: "미매핑 회수"
+    category: "research"
+    status: "active"
+    data_store: "ds-research-macro"
+    data_store_filter: "project=_unmapped"
+    notes: "Extension 또는 Drive Watcher 가 yaml notebook_url 매칭 실패 시 임시 보관. 회장님이 페이지에서 정확한 project 로 이동시키거나 yaml 에 notebook_url 추가."
+
   # ── 부동산 PF (11건 → ds-real-estate-deals) ──────────────────
   - notebook_name: "한남동 644 시그니처 공동주택 개발사업 투자 설명서"
     project: "hannam-644"

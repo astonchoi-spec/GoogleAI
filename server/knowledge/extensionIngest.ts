@@ -108,18 +108,11 @@ export async function handleExtensionIngest(req: Request, res: Response): Promis
     return;
   }
 
-  // 1) URL → project 매칭
+  // 1) URL → project 매칭. 실패 시 fallback `_unmapped` 사용 — 회수는 항상 성공시키되
+  //    회장님이 페이지에서 어떤 노트북에 매핑할지 별도 결정 가능하게 한다.
   const normalized = normalizeNotebookUrl(sourceUrl);
-  const project = urlToProject.get(normalized);
-  if (!project) {
-    res.status(404).json({
-      ok: false,
-      error:
-        `매핑 yaml 에 등록되지 않은 NotebookLM URL: ${sourceUrl}. ` +
-        `data/rag-mapping.yaml 의 해당 노트북 entry 에 'notebook_url: "${sourceUrl}"' 추가 후 서버 재시작 필요.`,
-    });
-    return;
-  }
+  const project = urlToProject.get(normalized) ?? "_unmapped";
+  const isUnmapped = project === "_unmapped";
 
   // 2) 중복 체크 — 같은 본문 hash 가 이미 회수됐으면 skip
   const projectDir = exportsProjectDir(project);
@@ -174,12 +167,17 @@ export async function handleExtensionIngest(req: Request, res: Response): Promis
         ok: true,
         status: result.was_skipped ? "skipped" : "created",
         project,
+        isUnmapped,
         savedPath: result.entry.saved_path,
         notebookTitle,
         quality: result.doc.quality,
+        ...(isUnmapped && {
+          mappingHint:
+            `yaml 의 해당 노트북 entry 에 'notebook_url: "${sourceUrl}"' 1줄 추가 후 서버 재시작하면 다음부터 정확한 project 에 자동 적재됩니다.`,
+        }),
       });
       console.log(
-        `[rag/extension] ${result.was_skipped ? "skip" : "✅ 적재"}: ${project} ← ${notebookTitle}`,
+        `[rag/extension] ${result.was_skipped ? "skip" : "✅ 적재"}: ${project}${isUnmapped ? " (미매핑 fallback)" : ""} ← ${notebookTitle}`,
       );
     } else {
       res.status(500).json({

@@ -6,9 +6,15 @@ import {
 } from "../rag/mappingLoader.ts";
 
 describe("rag/mappingLoader — Phase 1", () => {
-  it("data/rag-mapping.yaml에서 노트북 28건을 모두 로드한다", () => {
+  it("data/rag-mapping.yaml에서 28개 노트북 + 1개 _unmapped fallback 을 로드한다", () => {
     const mapping = loadRagMapping();
-    expect(mapping.notebooks.length).toBe(28);
+    expect(mapping.notebooks.length).toBe(29);
+    // 실제 노트북 28개 (project !== "_unmapped")
+    const real = mapping.notebooks.filter((n) => n.project !== "_unmapped");
+    expect(real.length).toBe(28);
+    // fallback 1개
+    const unmapped = mapping.notebooks.find((n) => n.project === "_unmapped");
+    expect(unmapped).toBeDefined();
   });
 
   it("로드된 매핑은 검증 이슈가 0건이다", () => {

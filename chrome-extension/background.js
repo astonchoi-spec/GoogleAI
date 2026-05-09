@@ -35,6 +35,8 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
           status: json.status ?? "created",
           project: json.project,
           savedPath: json.savedPath,
+          isUnmapped: json.isUnmapped,
+          mappingHint: json.mappingHint,
         });
       } else {
         sendResponse({

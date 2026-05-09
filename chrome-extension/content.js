@@ -6,13 +6,18 @@
 (function () {
   "use strict";
 
+  console.log("[Aston Bridge] content.js 활성화 — " + location.href);
+
   const BUTTON_ID = "aston-wiki-sync-btn";
   const STATUS_ATTR = "data-aston-status"; // idle | sending | ok | err
   const HOST_ID = "aston-wiki-host"; // floating container
   const RESET_AFTER_MS = 3000;
+  const RECHECK_INTERVAL_MS = 2000;
 
   function isNotebookPage() {
-    return /^\/notebook\/[0-9a-f-]+/.test(location.pathname);
+    // /notebook/{id} 또는 /u/0/notebook/{id} 등 계정 prefix 케이스도 매칭
+    // id에 대문자, 숫자, '-', '_' 포함 가능 (Google이 포맷 변경해도 살아남도록 광범위 허용)
+    return /\/notebook\/[\w-]+/i.test(location.pathname);
   }
 
   function findExistingButton() {
@@ -30,30 +35,107 @@
     return document.title.replace(/\s*[—\-]\s*NotebookLM.*$/i, "").trim() || "(제목 없음)";
   }
 
-  // 노트 본문 텍스트 추출 — 보이는 노트 영역에서 가장 긴 텍스트 블록을 우선.
+  // 가시성 검사 — 화면에 실제 보이는 요소만 채택
+  function isVisible(el) {
+    if (!el || !(el instanceof HTMLElement)) return false;
+    if (el.getAttribute("aria-hidden") === "true") return false;
+    if (el.offsetParent === null && el.tagName !== "BODY") return false;
+    const cs = window.getComputedStyle(el);
+    if (cs.display === "none" || cs.visibility === "hidden" || cs.opacity === "0") return false;
+    return true;
+  }
+
+  // UI noise 블랙리스트 — 이모티콘 피커·로딩 placeholder·검색창 라벨 등
+  const NOISE_TOKENS = [
+    "이모티콘을 찾을 수 없음",
+    "최근에 사용함",
+    "로드 중",
+    "검색 결과",
+    "노트북 만들기",
+    "Search emojis",
+    "Loading",
+  ];
+
+  function isNoiseText(text) {
+    const compact = text.replace(/\s+/g, " ").trim();
+    if (compact.length < 30) return true;
+    // 텍스트의 50% 이상이 noise 토큰들로만 구성되면 UI 노이즈로 판정
+    let noiseLen = 0;
+    for (const tok of NOISE_TOKENS) {
+      let idx = 0;
+      while ((idx = compact.indexOf(tok, idx)) !== -1) {
+        noiseLen += tok.length;
+        idx += tok.length;
+      }
+    }
+    if (noiseLen / compact.length > 0.4) return true;
+    // 의미 있는 알파벳/한글 문자 비율이 너무 낮으면 (공백/특수문자만 가득) noise
+    const meaningful = compact.replace(/[\s\W_]+/g, "");
+    if (meaningful.length / compact.length < 0.3) return true;
+    return false;
+  }
+
+  // 노트 본문 텍스트 추출 — 가시성·노이즈 필터링 적용.
+  // 우선순위:
+  //   1) 사용자가 드래그한 selection (가장 신뢰 가능)
+  //   2) NotebookLM 챗/응답 영역 selector (visible + 본문 길이 기준)
+  //   3) main 영역 fallback
   function extractNoteText() {
-    // 후보 selector — Google이 NotebookLM 클래스명을 자주 바꾸므로 다중 fallback.
+    // 1) 사용자 selection 우선
+    const sel = window.getSelection?.()?.toString().trim();
+    if (sel && sel.length >= 30 && !isNoiseText(sel)) {
+      console.log("[Aston Bridge] selection 으로 본문 채택 (length=" + sel.length + ")");
+      return sel;
+    }
+
+    // 2) NotebookLM 챗/응답 selector 우선순위
     const candidates = [
+      // NotebookLM 챗 응답 (최우선 — Google 이 자주 쓰는 패턴)
+      'chat-message',
+      '[data-testid*="chat-message"]',
+      '[data-testid*="chat-response"]',
+      '[data-test-id*="chat-message"]',
+      '[data-test-id*="response"]',
+      '[role="log"]',
+      // 노트 콘텐츠
+      '[data-testid*="note-content"]',
+      '[data-test-id*="note-content"]',
       'article',
       'main [role="article"]',
-      '[data-test-id*="note-content"]',
-      '[data-test-id*="response"]',
+      // 그 다음 일반 main
       '[role="main"] [contenteditable="true"]',
       '[role="main"]',
     ];
-    for (const sel of candidates) {
-      const els = Array.from(document.querySelectorAll(sel));
+
+    for (const selDef of candidates) {
+      const els = Array.from(document.querySelectorAll(selDef)).filter(isVisible);
       if (els.length === 0) continue;
-      // 가장 긴 텍스트를 가진 요소 우선
-      const best = els
+      const ranked = els
         .map((el) => ({ el, text: (el.innerText || el.textContent || "").trim() }))
-        .filter((x) => x.text.length > 50)
-        .sort((a, b) => b.text.length - a.text.length)[0];
-      if (best) return best.text;
+        .filter((x) => x.text.length >= 50 && !isNoiseText(x.text))
+        .sort((a, b) => b.text.length - a.text.length);
+      if (ranked.length > 0) {
+        console.log("[Aston Bridge] selector 매칭:", selDef, "(length=" + ranked[0].text.length + ")");
+        return ranked[0].text;
+      }
     }
-    // 마지막 fallback — 페이지 전체 main 영역의 텍스트
+
+    // 3) Fallback — main 영역의 visible 텍스트 (자식들에 대해 직접 가시성 검사)
     const main = document.querySelector('main') || document.body;
-    return (main?.innerText || "").trim();
+    if (main) {
+      const all = Array.from(main.querySelectorAll('p, div, span, li'))
+        .filter(isVisible)
+        .map((el) => (el.innerText || el.textContent || "").trim())
+        .filter((t) => t.length >= 50 && !isNoiseText(t));
+      if (all.length > 0) {
+        // 가장 긴 의미 있는 블록
+        const longest = all.sort((a, b) => b.length - a.length)[0];
+        console.log("[Aston Bridge] fallback main 영역 채택 (length=" + longest.length + ")");
+        return longest;
+      }
+    }
+
+    return "";
   }
 
   function setButtonState(btn, state, label) {
@@ -110,8 +192,12 @@
       });
 
       if (!noteText || noteText.length < 20) {
-        setButtonState(btn, "err", "❌ 본문 없음");
-        setTimeout(() => setButtonState(btn, "idle", "📥 Aston Wiki로 동기화"), RESET_AFTER_MS);
+        setButtonState(btn, "err", "❌ 본문 미감지 — 드래그 후 재시도");
+        console.warn("[Aston Bridge] 본문 추출 실패. 페이지에서 노트 영역을 드래그 선택 후 버튼을 다시 클릭하세요.");
+        setTimeout(
+          () => setButtonState(btn, "idle", "📥 Aston Wiki로 동기화"),
+          RESET_AFTER_MS + 2000,
+        );
         return;
       }
 
@@ -192,7 +278,7 @@
   };
   window.addEventListener("popstate", () => setTimeout(ensureButton, 100));
 
-  // 초기 한 번
+  // 초기 한 번 + 안전망: 일정 주기 재검사 (NotebookLM 의 lazy DOM/iframe 케이스 대응)
   ensureButton();
-  console.log("[Aston Bridge] content.js 활성화 — notebooklm.google.com");
+  setInterval(ensureButton, RECHECK_INTERVAL_MS);
 })();

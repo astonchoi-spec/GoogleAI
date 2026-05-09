@@ -1,5 +1,42 @@
 ﻿# TODO.md — 에스턴 워크스테이션
-> 업데이트: 2026-05-09 Aston RAG Phase W-2 완료 (Drive Watcher 자동 회수 + 소스 자료 표시) | 브랜치: codex-google-workspace-expansion
+> 업데이트: 2026-05-09 Chrome Extension (Aston NotebookLM Bridge) + W-3 .docx 추출 | 브랜치: codex-google-workspace-expansion
+
+---
+
+## 2026-05-09 Aston NotebookLM Bridge (Chrome Extension) + W-3 (.docx)
+
+### 완료 (회장님 지시서 — 진정한 100% 자동화)
+- ✅ **Chrome Extension 뼈대** `chrome-extension/`
+  - `manifest.json` (Manifest V3, host_permissions: notebooklm.google.com + localhost:4000)
+  - `content.js` (MutationObserver + SPA 라우팅 대응 + 우상단 [📥 Aston Wiki로 동기화] 버튼 주입 + 본문 스크래핑)
+  - `background.js` (service worker, content.js → POST /api/rag/extension-ingest)
+  - `options.html/js` (백엔드 endpoint URL 변경 UI)
+  - `README.md` (설치 가이드 + 동작 흐름)
+- ✅ **백엔드 수신 엔드포인트** `server/knowledge/extensionIngest.ts`
+  - Express POST `/api/rag/extension-ingest` + OPTIONS preflight (CORS *)
+  - **SHA-256 해시 기반 멱등성** — 기존 `*.md` 의 `raw_text_hash` frontmatter 비교 → 동일 본문 skip (200 OK), 신규 적재 (201 Created)
+  - **URL → project 자동 매칭** — yaml 의 `notebook_url` 으로 normalize 비교
+  - 매핑 실패 시 404 + yaml 보강 가이드 응답
+  - frontmatter 자동 보강: 출처/노트북 제목/URL 메타
+  - 부팅 시 `setExtensionUrlMappings()` 로 매핑 yaml 의 `notebook_url` 채워진 entry 만 등록
+- ✅ **Phase W-3: `.docx` 본문 자동 추출** — `mammoth` 의존성 추가, `driveSync.ts` 가 `.docx` 도 자동 회수 (Google Docs export 그대로 회수 가능)
+- ✅ 검증: `npm run check` ✅ / `npm run build` ✅ / **745 passed**
+
+### 회장님 직접 작업
+- [ ] Chrome 에서 `chrome-extension/` 폴더를 `chrome://extensions` → 압축해제된 확장 프로그램 로드
+- [ ] 화이트리에 노트북(URL 매핑됨) 페이지 방문 → 우상단 [📥 Aston Wiki로 동기화] 버튼 클릭 → 5초 내 페이지 회수 자료 등장 확인
+- [ ] 같은 노트 재클릭 → "✅ 이미 동일 본문 (skip)" 표시 확인 (멱등성)
+
+### 27개 노트북 URL 일괄 채우기 한계
+- ⚠️ NotebookLM URL 은 회장님 계정의 고유 UUID 라 외부에서 알 수 없음. 다음 옵션:
+  - **(a) 회장님 직접 입력**: NotebookLM 노트북 목록에서 27개 URL 복사 → 알려주시면 yaml 일괄 채움
+  - **(b) Extension 자동 캡처**: Extension 이 페이지 방문 시 URL+제목을 백엔드로 자동 전송 → yaml 자동 갱신 (별도 작업, +30분)
+  - **(c) 매칭 실패 시 매핑 UI**: Extension 이 미매핑 URL 발견 시 페이지에 "이 노트북을 X 프로젝트에 매핑" 버튼 (별도 작업)
+
+### 다음 작업 후보
+- [ ] **자동 URL 캡처** (옵션 b) — Extension 첫 페이지 방문 시 yaml 자동 갱신
+- [ ] **Phase W-4** Drive API 직접 호출 (`.gdoc` export, Drive 데스크톱 의존 제거)
+- [ ] **Phase 4** 채팅 RAG 컨텍스트 주입 (`intent/handlers/chat.ts` ↔ 회수된 `*.md`)
 
 ---
 

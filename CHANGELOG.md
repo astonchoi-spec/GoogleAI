@@ -3,6 +3,64 @@
 
 ---
 
+## 2026-05-09 Aston NotebookLM Bridge (Chrome Extension) + Phase W-3 (.docx 추출) (Claude Code)
+
+### 배경
+회장님 작업 지시서 — NotebookLM API 부재로 인한 수동 export 한계를 타파하기 위해 사내 전용 Chrome Extension 으로 1클릭 통제권 확보. 페이지 주입 + DOM 스크래핑 방식. Drive Watcher(W-2) 가 백업 파이프라인이 됨. W-3 `.docx` 본문 자동 추출도 함께 구현하여 Google Docs export 도 그대로 자동 회수.
+
+### 작업 내용
+- **Chrome Extension `chrome-extension/`** (Manifest V3) — 5개 파일
+  - `manifest.json`: host_permissions [notebooklm.google.com + localhost:4000], content_scripts on notebooklm.google.com, service_worker background, options page
+  - `content.js`: 우상단 fixed 버튼 [📥 Aston Wiki로 동기화] 주입. MutationObserver + history.pushState/replaceState/popstate 후크로 NotebookLM SPA 라우팅 100% 대응. 본문 selector 다단계 fallback (article → main[role=article] → contenteditable → main)
+  - `background.js`: chrome.runtime.onMessage 에서 ASTON_INGEST 수신 → fetch POST → 응답 sendResponse. host_permissions 로 CORS 우회
+  - `options.html/js`: chrome.storage.local 에 endpoint URL 저장
+  - `README.md`: 설치 가이드 + 동작 흐름
+- **백엔드 수신 `server/knowledge/extensionIngest.ts`**
+  - Express POST `/api/rag/extension-ingest` + OPTIONS preflight 핸들러, CORS Allow-Origin *
+  - **SHA-256 해시 멱등성**: 기존 `projects/{p}/notebooklm/*.md` 의 frontmatter `raw_text_hash` 추출 → 동일 hash 면 200 + status="skipped"
+  - **URL → project 자동 매칭**: 부팅 시 `setExtensionUrlMappings()` 로 yaml 의 `notebook_url` 채워진 entry 만 등록. URL normalize (origin+pathname, lowercase, trailing slash 제거) 후 비교
+  - 매칭 실패 시 404 + yaml 보강 가이드 응답
+  - 매칭 성공 시 NotebookLmAdapter + PipelineRunner 통과 (텔레그램 `/nb save` / Drive Watcher 와 동일 흐름) → 201 Created + savedPath
+  - frontmatter 자동 보강: 본문 끝에 `출처: NotebookLM Chrome Extension / 노트북: ... / URL: ...` 메타 추가
+- **server/_core/index.ts** — 부팅 시 매핑 yaml 의 `notebook_url` 채워진 entry 를 setExtensionUrlMappings 로 주입 + Express POST/OPTIONS 라우트 등록
+- **Phase W-3: `.docx` 자동 추출** — `mammoth ^1.x` 의존성 추가. `driveSync.ts` 의 `SUPPORTED_AUTO_INGEST` 에 `.docx` 추가, `META_ONLY_TYPES` 에서 제거. `handleNewFile` 에서 ext===".docx" 분기 → `mammoth.extractRawText({ path })` 로 raw text 추출 후 동일 파이프라인 통과
+
+### 통합 흐름 (회장님 동선)
+1. Chrome 에서 `chrome-extension/` 폴더 1회 로드 (개발자 모드)
+2. NotebookLM 노트북 페이지 (yaml 에 `notebook_url` 매핑된 것) 방문 → 우상단 버튼 자동 주입
+3. 회장님이 보고 싶은 노트로 이동 → **버튼 1클릭** → 5초 내 워크스테이션 페이지 회수 자료 카드 등장
+4. 같은 본문 재클릭 → 멱등성으로 skip (도배 없음)
+5. **백업**: Extension 못 쓰는 환경 → NotebookLM 에서 .docx export → Drive 동기화 → Watcher 가 5초 내 자동 회수 (W-3)
+
+### 수정 파일
+**신규**:
+- `chrome-extension/{manifest.json, content.js, background.js, options.html, options.js, README.md}` (6개)
+- `server/knowledge/extensionIngest.ts`
+
+**수정**:
+- `server/_core/index.ts` (Extension URL 매핑 주입 + Express 라우트)
+- `server/knowledge/driveSync.ts` (mammoth 분기)
+- `client/src/pages/KnowledgeRagPage.tsx` (Phase 안내 텍스트 W-3 ✅ + Extension 안내 추가)
+- `package.json` (mammoth 의존성)
+
+### 검증
+- `npm run check` ✅ 모듈 경계 위반 0건 + tsc 에러 0건
+- `npm test` ✅ **745 passed** (회귀 0건)
+- `npm run build` ✅
+
+### 27개 노트북 URL 일괄 채우기 한계
+회장님 지시 "네가 알고 있는 정보를 바탕으로 27개 일괄 채워라" — NotebookLM URL 은 회장님 계정의 고유 UUID 라 외부에서 알 수 없음. 회장님이 화이트리에(`9a7481fc-...`) 1개만 알려주신 상태. 옵션:
+- (a) 회장님이 27개 URL 알려주시면 yaml 일괄 입력
+- (b) Extension 이 첫 방문 시 URL+제목 자동 캡처 → yaml 갱신 (별도 작업)
+- (c) Extension 매칭 실패 시 페이지에 매핑 UI (별도 작업)
+
+### 다음 단계 후보
+- 자동 URL 캡처 (옵션 b) — Extension 부팅 첫 방문 시 yaml 자동 갱신
+- Phase W-4 Drive API 직접 호출 (.gdoc export)
+- Phase 4 채팅 RAG 컨텍스트 주입
+
+---
+
 ## 2026-05-09 Aston RAG Phase W-2 — Drive Watcher 자동 동기화 + 소스 자료 표시 (Claude Code)
 
 ### 배경

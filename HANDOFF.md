@@ -3,7 +3,31 @@
 
 ---
 
-## 마지막 완료 작업 (Phase W-2 — 진짜 자동 연동)
+## 마지막 완료 작업 (Chrome Extension + W-3 .docx)
+
+**2026-05-09 Aston NotebookLM Bridge + Phase W-3 | Claude Code**
+- **Chrome Extension** `chrome-extension/` (Manifest V3) — NotebookLM 페이지 우상단에 [📥 Aston Wiki로 동기화] 버튼 자동 주입 (MutationObserver + SPA 라우팅 후크)
+- **백엔드** `server/knowledge/extensionIngest.ts` — Express POST `/api/rag/extension-ingest` + SHA-256 멱등성 + URL→project 자동 매칭
+- **W-3 mammoth** — `.docx` 본문 자동 추출 (Drive Watcher 도 .docx 자동 회수)
+- 검증: check ✅ / build ✅ / **745 passed** (회귀 0건)
+
+### 회장님 직접 작업 (필수)
+- [ ] `chrome://extensions` → 개발자 모드 ON → "압축해제된 확장 프로그램 로드" → `chrome-extension/` 폴더 선택
+- [ ] PM2 재시작 (`pm2 restart aston`) — 새 Express 라우트 + Extension URL 매핑 적용
+- [ ] 화이트리에 노트북 페이지 방문 → 우상단 버튼 1클릭 → 워크스테이션 페이지에 회수 자료 등장 확인
+
+### 27개 URL 한계
+- NotebookLM URL 은 계정 고유 UUID — 외부에서 알 수 없음
+- 화이트리에 1개만 yaml 매핑됨, 나머지 27개는 회장님이 알려주시거나 Extension 자동 캡처 기능 추가 필요
+
+### 다음 단계 후보
+- Extension 자동 URL 캡처 (yaml 자동 갱신)
+- Phase W-4 Drive API 직접 호출 (.gdoc)
+- Phase 4 채팅 RAG 컨텍스트 주입
+
+---
+
+## 이전 완료 (Phase W-2 — Drive Watcher)
 
 **2026-05-09 Aston RAG Phase W-2 | Claude Code**
 - 회장님 작업 지시서 Phase 1의 "Drive Watcher 폴링 상태" 명시 누락 보완
@@ -110,8 +134,10 @@
 | **Aston RAG Phase 1** | ✅ 28개 카탈로그 + `/knowledge-rag` 페이지 + tRPC 라우터 |
 | **Aston RAG Phase 2** | ✅ Discovery Engine 클라이언트 + ADC 인증 + `trackBStatus` + `queryDataStore` |
 | **Aston RAG Phase W-1** | ✅ 보조 — 웹 붙여넣기 회수 (수동) |
-| **Aston RAG Phase W-2** | ✅ **진짜 자동 동기화** — chokidar Drive Watcher + 페이지 상태 카드 + 소스 자료 표시 |
-| **Aston RAG Phase W-3~4** | ⬜ 대기 (.docx 추출 / Drive API / 채팅 RAG 주입) |
+| **Aston RAG Phase W-2** | ✅ Drive Watcher 자동 동기화 (.md/.txt/.docx) |
+| **Aston RAG Phase W-3** | ✅ mammoth 기반 `.docx` 본문 자동 추출 |
+| **Aston NotebookLM Bridge** | ✅ Chrome Extension — 1클릭 NotebookLM 페이지 → Wiki 적재 (SHA-256 멱등성) |
+| **Aston RAG Phase W-4** | ⬜ 대기 (.gdoc Drive API export / 채팅 RAG 주입) |
 | 브랜치 | `codex-google-workspace-expansion` |
 | **Intent 파이프라인** | ✅ `parseIntent → planIntent → dispatchIntent → formatReply` 4단계 분리 완료 |
 | **HandlerResponse 5개 kind** | ✅ list/report/text/error/confirmation 모두 활성 |

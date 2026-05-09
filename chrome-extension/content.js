@@ -1,5 +1,5 @@
 // Aston NotebookLM Bridge — content script
-// notebooklm.google.com/notebook/* 페이지에 [📥 Aston Wiki로 동기화] 버튼을 주입한다.
+// notebooklm.google.com/notebook/* 페이지에 [📥 Aston Wiki로 가져오기] 버튼을 주입한다.
 // 클릭 시 현재 화면의 노트 본문 텍스트 + 노트북 제목 + URL을 스크래핑해서
 // background.js 를 거쳐 워크스테이션 백엔드(POST /api/rag/extension-ingest)로 전송.
 
@@ -164,7 +164,7 @@
     const btn = document.createElement("button");
     btn.id = BUTTON_ID;
     btn.type = "button";
-    btn.textContent = "📥 Aston Wiki로 동기화";
+    btn.textContent = "📥 Aston Wiki로 가져오기";
     btn.setAttribute(STATUS_ATTR, "idle");
     btn.style.cssText = [
       "position: fixed",
@@ -199,7 +199,7 @@
         setButtonState(btn, "err", "❌ 본문 미감지 — 드래그 후 재시도");
         console.warn("[Aston Bridge] 본문 추출 실패. 페이지에서 노트 영역을 드래그 선택 후 버튼을 다시 클릭하세요.");
         setTimeout(
-          () => setButtonState(btn, "idle", "📥 Aston Wiki로 동기화"),
+          () => setButtonState(btn, "idle", "📥 Aston Wiki로 가져오기"),
           RESET_AFTER_MS + 2000,
         );
         return;
@@ -245,7 +245,7 @@
         console.error("[Aston Bridge] sendMessage 오류:", err);
       } finally {
         setTimeout(
-          () => setButtonState(btn, "idle", "📥 Aston Wiki로 동기화"),
+          () => setButtonState(btn, "idle", "📥 Aston Wiki로 가져오기"),
           RESET_AFTER_MS,
         );
       }

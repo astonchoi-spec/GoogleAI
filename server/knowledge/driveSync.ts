@@ -21,8 +21,8 @@ export function setAllowedProjects(projects: string[]): void {
   allowedProjects = [...projects];
 }
 
-const SUPPORTED_AUTO_INGEST = new Set([".md", ".txt"]);
-const META_ONLY_TYPES = new Set([".docx", ".pdf", ".gdoc", ".gsheet"]);
+const SUPPORTED_AUTO_INGEST = new Set([".md", ".txt", ".docx"]); // W-3: .docx 추가
+const META_ONLY_TYPES = new Set([".pdf", ".gdoc", ".gsheet"]);
 
 const STATE_FILE = path.resolve(
   process.cwd(),
@@ -187,10 +187,16 @@ async function handleNewFile(filePath: string): Promise<void> {
     return; // 지원 안 하는 확장자 (.gdoc 등은 META_ONLY_TYPES 에서 처리, 그 외 무시)
   }
 
-  // 본문 직접 추출 + 파이프라인 실행
+  // 본문 추출 — 확장자별 분기. .md/.txt 는 직접 읽기, .docx 는 mammoth 로 raw text 추출.
   let body: string;
   try {
-    body = await fsp.readFile(filePath, "utf-8");
+    if (ext === ".docx") {
+      const mammoth = await import("mammoth");
+      const result = await mammoth.extractRawText({ path: filePath });
+      body = result.value ?? "";
+    } else {
+      body = await fsp.readFile(filePath, "utf-8");
+    }
   } catch (err) {
     recordEvent({
       filePath,

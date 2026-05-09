@@ -540,7 +540,8 @@ function TrackAPanel({
         <ul className="space-y-1 list-disc pl-5">
           <li>✅ <b>Phase W-1</b>: 노트북 카드 클릭 → 붙여넣기 → Wiki 자동 저장 (보조 경로)</li>
           <li>✅ <b>Phase W-2</b>: NotebookLM Docs export → Drive Watcher 자동 회수 (28개 폴더 5초 내 동기화)</li>
-          <li>⬜ <b>Phase W-3</b>: <code>.docx</code> 본문 자동 추출 (현재 .md/.txt 만 자동 회수)</li>
+          <li>✅ <b>Phase W-3</b>: <code>.docx</code> 본문 자동 추출 (mammoth — Google Docs export 그대로 회수)</li>
+          <li>✅ <b>Chrome Extension</b>: <code>chrome-extension/</code> 폴더 로드 시 NotebookLM 페이지에 [📥 Aston Wiki로 동기화] 버튼 주입</li>
           <li>⬜ <b>채팅 RAG 주입</b>: 회수된 자료를 채팅 답변 컨텍스트로 자동 사용</li>
           <li>⬜ <b>Track B</b> Discovery Engine 인덱싱 — 위키 자료 안정화 후 검토</li>
         </ul>

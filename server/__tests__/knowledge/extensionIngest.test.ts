@@ -7,6 +7,8 @@ import {
   generateArtifactSlug,
   buildVersionIndex,
   buildArtifactFrontmatter,
+  saveArtifact,
+  setExtensionUrlMappings,
 } from "../../knowledge/extensionIngest.ts";
 
 describe("detectArtifactKind", () => {
@@ -194,5 +196,86 @@ describe("buildArtifactFrontmatter", () => {
       version: 1,
     });
     expect(fm).toContain('title: "He said \\"hi\\""');
+  });
+});
+
+describe("saveArtifact (integration)", () => {
+  let tmpRoot: string;
+  let originalWiki: string | undefined;
+
+  beforeEach(async () => {
+    tmpRoot = await fs.mkdtemp(path.join(os.tmpdir(), "ext-save-"));
+    originalWiki = process.env.ASTON_WIKI_ROOT;
+    process.env.ASTON_WIKI_ROOT = tmpRoot;
+    setExtensionUrlMappings([
+      {
+        url: "https://notebooklm.google.com/notebook/9a7481fc-45a9-4db6-981b-3c6d99d4f11c",
+        project: "mongolia-whitelier",
+      },
+    ]);
+  });
+
+  afterEach(async () => {
+    if (originalWiki === undefined) delete process.env.ASTON_WIKI_ROOT;
+    else process.env.ASTON_WIKI_ROOT = originalWiki;
+    await fs.rm(tmpRoot, { recursive: true, force: true });
+    setExtensionUrlMappings([]);
+  });
+
+  it("신규 적재 — version 1로 저장", async () => {
+    const result = await saveArtifact({
+      sourceUrl: "https://notebooklm.google.com/notebook/9a7481fc-45a9-4db6-981b-3c6d99d4f11c",
+      notebookTitle: "화이트리어 역삼",
+      noteText: "이것은 테스트 본문입니다. 충분한 길이를 가지고 있습니다.",
+      capturedAt: "2026-05-09T14:29:10.698Z",
+    });
+    expect(result.status).toBe("created");
+    expect(result.project).toBe("mongolia-whitelier");
+    expect(result.version).toBe(1);
+    expect(result.artifactKind).toBe("report");
+    expect(result.savedPath).toMatch(/-v1\.md$/);
+    const saved = await fs.readFile(result.savedPath, "utf-8");
+    expect(saved).toContain("version: 1");
+    expect(saved).toContain("이것은 테스트 본문입니다");
+  });
+
+  it("동일 본문 재캡처 → skipped", async () => {
+    const payload = {
+      sourceUrl: "https://notebooklm.google.com/notebook/9a7481fc-45a9-4db6-981b-3c6d99d4f11c",
+      notebookTitle: "화이트리어 역삼",
+      noteText: "이것은 테스트 본문입니다. 충분한 길이를 가지고 있습니다.",
+      capturedAt: "2026-05-09T14:29:10.698Z",
+    };
+    await saveArtifact(payload);
+    const second = await saveArtifact(payload);
+    expect(second.status).toBe("skipped");
+    expect(second.version).toBe(1);
+  });
+
+  it("본문 수정 후 재캡처 → versioned (v2)", async () => {
+    const base = {
+      sourceUrl: "https://notebooklm.google.com/notebook/9a7481fc-45a9-4db6-981b-3c6d99d4f11c",
+      notebookTitle: "화이트리어 역삼",
+      capturedAt: "2026-05-09T14:29:10.698Z",
+    };
+    const r1 = await saveArtifact({ ...base, noteText: "원본 본문 충분히 긴 텍스트 내용입니다." });
+    expect(r1.status).toBe("created");
+    const r2 = await saveArtifact({ ...base, noteText: "수정된 본문 새로운 텍스트 내용입니다." });
+    expect(r2.status).toBe("versioned");
+    expect(r2.version).toBe(2);
+    expect(r2.savedPath).toMatch(/-v2\.md$/);
+  });
+
+  it("매핑 없는 URL → _unmapped 저장 + isUnmapped=true", async () => {
+    const result = await saveArtifact({
+      sourceUrl: "https://notebooklm.google.com/notebook/UNKNOWN-9999",
+      notebookTitle: "미매핑 노트",
+      noteText: "어딘가에서 가져온 본문 텍스트 충분한 길이.",
+      capturedAt: "2026-05-09T14:29:10.698Z",
+    });
+    expect(result.status).toBe("created");
+    expect(result.project).toBe("_unmapped");
+    expect(result.isUnmapped).toBe(true);
+    expect(result.mappingHint).toBeDefined();
   });
 });

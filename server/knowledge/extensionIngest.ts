@@ -151,6 +151,83 @@ interface IngestPayload {
   capturedAt: string;
 }
 
+export interface SaveArtifactResult {
+  status: "created" | "skipped" | "versioned";
+  project: string;
+  artifactKind: ArtifactKind;
+  version: number;
+  savedPath: string;
+  isUnmapped: boolean;
+  mappingHint?: string;
+}
+
+function sha256Hex(text: string): string {
+  return crypto.createHash("sha256").update(text).digest("hex");
+}
+
+function todayDate(capturedAt: string): string {
+  // 'YYYY-MM-DD' 추출 (timezone 무관, ISO 시작 10글자)
+  return capturedAt.slice(0, 10);
+}
+
+function buildMappingHint(sourceUrl: string): string {
+  return `yaml 의 해당 노트북 entry 에 'notebook_url: "${sourceUrl}"' 1줄 추가 후 서버 재시작하면 다음부터 정확한 project 에 자동 적재됩니다.`;
+}
+
+export async function saveArtifact(payload: IngestPayload): Promise<SaveArtifactResult> {
+  const normalized = normalizeNotebookUrl(payload.sourceUrl);
+  const project = urlToProject.get(normalized) ?? "_unmapped";
+  const isUnmapped = project === "_unmapped";
+
+  const projectDir = path.join(resolveWikiRoot(), "projects", project, "notebooklm");
+  await fs.mkdir(projectDir, { recursive: true });
+
+  const hash = sha256Hex(payload.noteText);
+  const kind = detectArtifactKind(payload.notebookTitle);
+  const versionIndex = await buildVersionIndex(projectDir, payload.sourceUrl);
+
+  // 동일 hash면 skip
+  if (versionIndex.hashSet.has(hash)) {
+    return {
+      status: "skipped",
+      project,
+      artifactKind: kind,
+      version: versionIndex.maxVersion,
+      savedPath: "",
+      isUnmapped,
+      mappingHint: isUnmapped ? buildMappingHint(payload.sourceUrl) : undefined,
+    };
+  }
+
+  const newVersion = versionIndex.maxVersion + 1;
+  const slug = generateArtifactSlug(payload.notebookTitle, kind, hash);
+  const filename = `${todayDate(payload.capturedAt)}-${slug}-v${newVersion}.md`;
+  const savedPath = path.join(projectDir, filename);
+
+  const fm = buildArtifactFrontmatter({
+    kind,
+    title: payload.notebookTitle,
+    project,
+    notebookTitle: payload.notebookTitle,
+    sourceUrl: payload.sourceUrl,
+    capturedAt: payload.capturedAt,
+    hash,
+    version: newVersion,
+  });
+
+  await fs.writeFile(savedPath, fm + payload.noteText + "\n", "utf-8");
+
+  return {
+    status: newVersion === 1 ? "created" : "versioned",
+    project,
+    artifactKind: kind,
+    version: newVersion,
+    savedPath,
+    isUnmapped,
+    mappingHint: isUnmapped ? buildMappingHint(payload.sourceUrl) : undefined,
+  };
+}
+
 interface ExistingHashIndex {
   [hash: string]: string; // hash → relative path
 }

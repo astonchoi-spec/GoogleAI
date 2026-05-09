@@ -114,6 +114,21 @@ async function startServer() {
   startGmailWatcher();
   startDownloadWatcher();
   // RAG 매핑 yaml 의 28개 project 목록을 driveSync 화이트리스트로 주입 후 watcher 시작.
+  // 한글 경로 인코딩 진단: ASTON_WIKI_ROOT 값이 mojibake 인지 부팅 시 즉시 감지.
+  const wikiRootRaw = process.env.ASTON_WIKI_ROOT ?? process.env.WIKI_ROOT ?? "";
+  if (wikiRootRaw.includes("???") || /[�]/.test(wikiRootRaw)) {
+    console.error(
+      "\n[rag] ⚠️ ASTON_WIKI_ROOT 값에 mojibake 감지: " + JSON.stringify(wikiRootRaw),
+    );
+    console.error(
+      "[rag] ⚠️ .env 파일이 UTF-8 (BOM 없음) 인코딩으로 저장되어 있는지 확인하세요.",
+    );
+    console.error(
+      "[rag] ⚠️ 권장: VS Code 우하단 인코딩 클릭 → 'Save with Encoding' → UTF-8 선택 → .env 다시 저장.\n",
+    );
+  } else if (wikiRootRaw) {
+    console.log("[rag] ASTON_WIKI_ROOT = " + wikiRootRaw);
+  }
   try {
     const ragMapping = loadRagMapping();
     setRagAllowedProjects(ragMapping.notebooks.map((n) => n.project));

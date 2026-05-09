@@ -296,6 +296,7 @@ interface DriveStatus {
   exportsRoot: string;
   sourcesRoot: string;
   wikiRoot: string;
+  encodingIssue?: boolean;
 }
 
 type SaveResult =
@@ -519,8 +520,9 @@ function TrackAPanel({
           현재 동작 단계
         </div>
         <ul className="space-y-1 list-disc pl-5">
-          <li>✅ <b>Phase W-1</b>: 노트북 카드 클릭 → 분석 결과 붙여넣기 → Wiki 자동 저장 (회수 자료 즉시 갱신)</li>
-          <li>⬜ <b>Phase W-2</b>: NotebookLM Docs export → Drive Watcher 자동 회수 (회장님 1클릭)</li>
+          <li>✅ <b>Phase W-1</b>: 노트북 카드 클릭 → 붙여넣기 → Wiki 자동 저장 (보조 경로)</li>
+          <li>✅ <b>Phase W-2</b>: NotebookLM Docs export → Drive Watcher 자동 회수 (28개 폴더 5초 내 동기화)</li>
+          <li>⬜ <b>Phase W-3</b>: <code>.docx</code> 본문 자동 추출 (현재 .md/.txt 만 자동 회수)</li>
           <li>⬜ <b>채팅 RAG 주입</b>: 회수된 자료를 채팅 답변 컨텍스트로 자동 사용</li>
           <li>⬜ <b>Track B</b> Discovery Engine 인덱싱 — 위키 자료 안정화 후 검토</li>
         </ul>
@@ -874,6 +876,25 @@ function DriveWatcherCard({
   const enabled = status?.enabled ?? false;
   const recent = status?.recentEvents ?? [];
   return (
+    <>
+    {status?.encodingIssue && (
+      <div className="mt-6 rounded-xl border border-rose-500/40 bg-rose-500/10 p-4 text-sm text-rose-100 leading-relaxed">
+        <div className="font-bold mb-1">⚠️ .env 한글 경로 인코딩 오류</div>
+        <div className="text-xs space-y-1">
+          <div>
+            현재 <code className="bg-rose-500/20 px-1 rounded">ASTON_WIKI_ROOT</code> 값이 깨져있어
+            Drive 폴더(`G:\내 드라이브\...`)를 못 찾고 있습니다.
+            소스/회수 자료가 0건으로 보이는 원인입니다.
+          </div>
+          <div>
+            <b>해결</b>: <code className="bg-rose-500/20 px-1 rounded">.env</code> 파일을 VS Code 등에서 열고{" "}
+            <b>UTF-8 (BOM 없음)</b> 인코딩으로 저장 후 서버 재시작.
+            (VS Code 우하단 인코딩 클릭 → "Save with Encoding" → "UTF-8")
+          </div>
+          <div className="opacity-80 font-mono mt-1">현재 값: {status.wikiRoot}</div>
+        </div>
+      </div>
+    )}
     <div
       className={`mt-6 rounded-xl border p-4 ${
         enabled
@@ -949,6 +970,7 @@ function DriveWatcherCard({
         <span className="text-amber-200">.md/.txt 본문 자동 추출, .docx/.pdf/.gdoc 은 메타만 기록 (운영자가 .md 변환 후 재업로드 권장).</span>
       </div>
     </div>
+    </>
   );
 }
 

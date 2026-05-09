@@ -247,11 +247,16 @@ export const ragRouter = router({
   // Phase W-2 — Drive Watcher 상태 (페이지 상단 카드 표시용).
   driveWatcherStatus: publicProcedure.query(() => {
     const sync = getDriveSyncStatus();
+    const wikiRoot = resolveWikiRoot();
+    // mojibake 감지: ??? 또는 U+FFFD 가 포함되면 .env 인코딩 문제.
+    const encodingIssue =
+      wikiRoot.includes("???") || /[�]/.test(wikiRoot);
     return {
       ...sync,
       exportsRoot: exportsRootDir(),
       sourcesRoot: sourcesRootDir(),
-      wikiRoot: resolveWikiRoot(),
+      wikiRoot,
+      encodingIssue,
     };
   }),
 

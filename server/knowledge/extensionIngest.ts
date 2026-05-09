@@ -12,6 +12,30 @@ import { PipelineRunner } from "./pipeline/runner.ts";
 import { resolveWikiRoot } from "./storage/wikiWriter.ts";
 import { exportsProjectDir } from "./driveSync.ts";
 
+export type ArtifactKind =
+  | "market-analysis"
+  | "investment-report"
+  | "roadmap"
+  | "proposal"
+  | "summary"
+  | "report";
+
+const ARTIFACT_KIND_PATTERNS: Array<{ pattern: RegExp; kind: ArtifactKind }> = [
+  { pattern: /\[시장\s*분석\s*가이드\]|시장\s*분석|시장\s*트렌드/i, kind: "market-analysis" },
+  { pattern: /\[투자\s*분석\s*보고서\]|투자\s*분석/i, kind: "investment-report" },
+  { pattern: /로드맵|roadmap|blueprint/i, kind: "roadmap" },
+  { pattern: /제안서|proposal/i, kind: "proposal" },
+  { pattern: /요약|summary/i, kind: "summary" },
+];
+
+export function detectArtifactKind(title: string): ArtifactKind {
+  if (!title) return "report";
+  for (const { pattern, kind } of ARTIFACT_KIND_PATTERNS) {
+    if (pattern.test(title)) return kind;
+  }
+  return "report";
+}
+
 // 외부에서 주입받는 URL→project 매핑 (rag 도메인 의존 회피).
 let urlToProject: Map<string, string> = new Map();
 

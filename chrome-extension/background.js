@@ -37,6 +37,8 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
           savedPath: json.savedPath,
           isUnmapped: json.isUnmapped,
           mappingHint: json.mappingHint,
+          artifactKind: json.artifactKind,
+          version: json.version,
         });
       } else {
         sendResponse({

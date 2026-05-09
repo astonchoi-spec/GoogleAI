@@ -304,6 +304,42 @@ export async function startDriveSync(): Promise<void> {
       status.enabled = false;
       return;
     }
+
+    // sources / exports 양쪽 root + 28개 project 하위 폴더 자동 생성.
+    // 회장님이 직접 폴더 만들 필요 없이 부팅 시점에 자동 보장.
+    const sourcesRoot = sourcesRootDir();
+    if (!fs.existsSync(sourcesRoot)) {
+      try {
+        fs.mkdirSync(sourcesRoot, { recursive: true });
+      } catch (err) {
+        console.warn(
+          "[rag/driveSync] sources root mkdir 실패 (계속 진행):",
+          err instanceof Error ? err.message : err,
+        );
+      }
+    }
+    let createdCount = 0;
+    for (const p of projects) {
+      for (const dir of [exportsProjectDir(p), sourcesProjectDir(p)]) {
+        if (!fs.existsSync(dir)) {
+          try {
+            fs.mkdirSync(dir, { recursive: true });
+            createdCount += 1;
+          } catch (err) {
+            console.warn(
+              `[rag/driveSync] mkdir ${dir} 실패 (계속):`,
+              err instanceof Error ? err.message : err,
+            );
+          }
+        }
+      }
+    }
+    if (createdCount > 0) {
+      console.log(
+        `[rag/driveSync] 📁 ${createdCount}개 폴더 자동 생성 완료 (sources + exports × 28 project)`,
+      );
+    }
+
     const watchPaths = projects.map((p) => exportsProjectDir(p));
 
     watcher = chokidar.watch(watchPaths, {
@@ -359,6 +395,64 @@ export function getDriveSyncStatus(): SyncStatus {
   return {
     ...status,
     recentEvents: status.recentEvents.slice(0, 10),
+  };
+}
+
+/**
+ * 28개 project 의 sources + exports 폴더를 idempotent 하게 보장.
+ * 페이지 "폴더 자동 생성" 버튼이 호출. 부팅 시 자동 생성과 동일 로직 + 결과 카운트 반환.
+ */
+export async function ensureProjectFolders(): Promise<{
+  created: number;
+  skipped: number;
+  failed: Array<{ path: string; error: string }>;
+  rootExists: boolean;
+}> {
+  const sourcesRoot = sourcesRootDir();
+  const exportsRoot = exportsRootDir();
+  const failed: Array<{ path: string; error: string }> = [];
+  let created = 0;
+  let skipped = 0;
+
+  for (const root of [sourcesRoot, exportsRoot]) {
+    if (!fs.existsSync(root)) {
+      try {
+        fs.mkdirSync(root, { recursive: true });
+        created += 1;
+      } catch (err) {
+        failed.push({
+          path: root,
+          error: err instanceof Error ? err.message : String(err),
+        });
+      }
+    } else {
+      skipped += 1;
+    }
+  }
+
+  for (const p of allowedProjects) {
+    for (const dir of [exportsProjectDir(p), sourcesProjectDir(p)]) {
+      if (fs.existsSync(dir)) {
+        skipped += 1;
+        continue;
+      }
+      try {
+        fs.mkdirSync(dir, { recursive: true });
+        created += 1;
+      } catch (err) {
+        failed.push({
+          path: dir,
+          error: err instanceof Error ? err.message : String(err),
+        });
+      }
+    }
+  }
+
+  return {
+    created,
+    skipped,
+    failed,
+    rootExists: fs.existsSync(exportsRoot) && fs.existsSync(sourcesRoot),
   };
 }
 

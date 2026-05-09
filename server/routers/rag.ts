@@ -20,6 +20,7 @@ import { resolveWikiRoot } from "../knowledge/storage/wikiWriter.ts";
 import {
   getDriveSyncStatus,
   triggerManualScan,
+  ensureProjectFolders,
   listSourceFiles,
   exportsRootDir,
   exportsProjectDir,
@@ -263,6 +264,11 @@ export const ragRouter = router({
   // Phase W-2 — 즉시 1회 폴링 (회장님이 NotebookLM 에서 export 직후 페이지 버튼 클릭).
   triggerDriveScan: publicProcedure.mutation(async () => {
     return await triggerManualScan();
+  }),
+
+  // Phase W-2 — 28개 project 의 sources + exports 폴더 일괄 자동 생성.
+  ensureFolders: publicProcedure.mutation(async () => {
+    return await ensureProjectFolders();
   }),
 
   // Phase W-2 — 특정 노트북의 NotebookLM 소스 자료 목록.

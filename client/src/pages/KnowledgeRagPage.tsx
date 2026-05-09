@@ -92,6 +92,12 @@ export default function KnowledgeRagPage() {
       utils.rag.listSavedNotes.invalidate();
     },
   });
+  const ensureFolders = trpc.rag.ensureFolders.useMutation({
+    onSuccess: () => {
+      utils.rag.driveWatcherStatus.invalidate();
+      utils.rag.listSourceFiles.invalidate();
+    },
+  });
   const saveAnalysis = trpc.rag.saveAnalysis.useMutation({
     onSuccess: (res) => {
       if (res.ok) {
@@ -208,6 +214,9 @@ export default function KnowledgeRagPage() {
             onScan={() => triggerScan.mutate()}
             isScanning={triggerScan.isPending}
             scanResult={triggerScan.data}
+            onEnsureFolders={() => ensureFolders.mutate()}
+            isEnsuringFolders={ensureFolders.isPending}
+            ensureResult={ensureFolders.data}
             sourceFiles={sourceFiles.data?.ok ? sourceFiles.data.files : []}
             sourceFolderPath={sourceFiles.data?.ok ? sourceFiles.data.sourceFolder : null}
             exportFolderPath={sourceFiles.data?.ok ? sourceFiles.data.exportFolder : null}
@@ -347,6 +356,9 @@ interface TrackAPanelProps {
   onScan: () => void;
   isScanning: boolean;
   scanResult?: { scanned: number; newlyIngested: number };
+  onEnsureFolders: () => void;
+  isEnsuringFolders: boolean;
+  ensureResult?: { created: number; skipped: number; failed: Array<{ path: string; error: string }>; rootExists: boolean };
   sourceFiles: SourceFileItem[];
   sourceFolderPath: string | null;
   exportFolderPath: string | null;
@@ -383,6 +395,9 @@ function TrackAPanel({
   onScan,
   isScanning,
   scanResult,
+  onEnsureFolders,
+  isEnsuringFolders,
+  ensureResult,
   sourceFiles,
   sourceFolderPath,
   exportFolderPath,
@@ -397,6 +412,9 @@ function TrackAPanel({
         onScan={onScan}
         isScanning={isScanning}
         scanResult={scanResult}
+        onEnsureFolders={onEnsureFolders}
+        isEnsuringFolders={isEnsuringFolders}
+        ensureResult={ensureResult}
       />
 
       {/* Search */}
@@ -867,11 +885,17 @@ function DriveWatcherCard({
   onScan,
   isScanning,
   scanResult,
+  onEnsureFolders,
+  isEnsuringFolders,
+  ensureResult,
 }: {
   status?: DriveStatus;
   onScan: () => void;
   isScanning: boolean;
   scanResult?: { scanned: number; newlyIngested: number };
+  onEnsureFolders: () => void;
+  isEnsuringFolders: boolean;
+  ensureResult?: { created: number; skipped: number; failed: Array<{ path: string; error: string }>; rootExists: boolean };
 }) {
   const enabled = status?.enabled ?? false;
   const recent = status?.recentEvents ?? [];
@@ -909,15 +933,47 @@ function DriveWatcherCard({
             {enabled ? "🟢" : "❓"} NotebookLM Drive 자동 동기화
           </div>
         </div>
-        <button
-          onClick={onScan}
-          disabled={isScanning || !enabled}
-          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border border-cyan-500/40 bg-cyan-500/10 text-cyan-100 hover:bg-cyan-500/20 disabled:opacity-40 disabled:cursor-not-allowed"
-        >
-          <RefreshCw className={`h-3 w-3 ${isScanning ? "animate-spin" : ""}`} />
-          {isScanning ? "스캔 중…" : "지금 동기화"}
-        </button>
+        <div className="flex items-center gap-1.5">
+          <button
+            onClick={onEnsureFolders}
+            disabled={isEnsuringFolders}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border border-amber-500/40 bg-amber-500/10 text-amber-100 hover:bg-amber-500/20 disabled:opacity-40 disabled:cursor-not-allowed"
+            title="28개 노트북의 sources/exports 폴더 일괄 자동 생성"
+          >
+            <Folder className={`h-3 w-3 ${isEnsuringFolders ? "animate-pulse" : ""}`} />
+            {isEnsuringFolders ? "생성 중…" : "폴더 자동 생성"}
+          </button>
+          <button
+            onClick={onScan}
+            disabled={isScanning || !enabled}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border border-cyan-500/40 bg-cyan-500/10 text-cyan-100 hover:bg-cyan-500/20 disabled:opacity-40 disabled:cursor-not-allowed"
+          >
+            <RefreshCw className={`h-3 w-3 ${isScanning ? "animate-spin" : ""}`} />
+            {isScanning ? "스캔 중…" : "지금 동기화"}
+          </button>
+        </div>
       </div>
+      {ensureResult && (
+        <div className={`mb-2 rounded-lg border p-2 text-xs ${
+          ensureResult.failed.length === 0
+            ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-100"
+            : "border-rose-500/30 bg-rose-500/10 text-rose-100"
+        }`}>
+          {ensureResult.failed.length === 0 ? (
+            <>📁 폴더 보장 완료 — 신규 생성 {ensureResult.created}개 / 이미 존재 {ensureResult.skipped}개</>
+          ) : (
+            <>
+              ⚠️ 폴더 생성 일부 실패 — 신규 {ensureResult.created} / 실패 {ensureResult.failed.length}건.
+              <div className="opacity-80 font-mono mt-1 break-all">
+                첫 실패: {ensureResult.failed[0].path} → {ensureResult.failed[0].error}
+              </div>
+              <div className="mt-1 opacity-90">
+                💡 .env 한글 경로 인코딩이 깨져있을 가능성. 페이지 상단 빨간 배너 확인.
+              </div>
+            </>
+          )}
+        </div>
+      )}
       {enabled ? (
         <div className="text-xs text-emerald-200/80 leading-relaxed space-y-1">
           <div>

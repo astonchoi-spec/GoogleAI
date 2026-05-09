@@ -267,6 +267,7 @@ notebooks:
     status: "active"
     data_store: "ds-mongolia-business"
     data_store_filter: "project=mongolia-whitelier"
+    notebook_url: "https://notebooklm.google.com/notebook/9a7481fc-45a9-4db6-981b-3c6d99d4f11c"
     tags: ["공동창업", "총판"]
     created_at: "2026-04-22"
 

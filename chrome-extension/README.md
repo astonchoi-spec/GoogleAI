@@ -4,12 +4,31 @@
 
 ## 동작 흐름
 
-1. `notebooklm.google.com/notebook/*` 페이지 로드 시 우측 상단에 **[📥 Aston Wiki로 동기화]** 버튼 자동 주입
-2. 회장님이 버튼 클릭 → 현재 화면 노트 본문 + 노트북 제목 + URL 스크래핑
-3. `http://localhost:4000/api/rag/extension-ingest` POST 전송
-4. 백엔드가 매핑 yaml 의 `notebook_url` 을 보고 project ID 자동 매칭 → `notebooklm-exports/{project}/*.md` 적재
-5. SHA-256 해시로 중복 본문은 skip — 같은 노트 여러 번 클릭해도 도배 없음
-6. 성공 시 버튼이 **[✅ 위키 적재 완료]** 로 3초간 변경
+1. `notebooklm.google.com/notebook/*` 페이지 로드 시 우상단 **[📥 Aston Wiki로 가져오기]** 버튼 자동 주입
+2. 회장님이 NotebookLM **스튜디오 저작물(보고서·로드맵·시장분석·제안서)을 클릭해 펼친 상태**에서 버튼 클릭
+3. 우선순위로 본문 추출:
+   - (1) 화면에서 드래그 선택한 텍스트 (가장 신뢰 가능)
+   - (2) 저작물 모달 / 챗 응답 selector
+   - (3) main 영역 fallback (가시성 + 노이즈 필터 적용)
+4. `http://localhost:4000/api/rag/extension-ingest` POST
+5. 백엔드가 매핑 yaml 의 `notebook_url` 로 project 자동 매칭
+6. 제목 prefix 기반 **artifact_kind 자동 추론** (6종):
+   - `market-analysis` (시장 분석 가이드·시장 트렌드)
+   - `investment-report` (투자 분석 보고서·투자 분석)
+   - `roadmap` (로드맵·Roadmap·Blueprint)
+   - `proposal` (제안서·Proposal)
+   - `summary` (요약·Summary)
+   - `report` (그 외 — 폴백)
+7. 저장 위치: `{ASTON_WIKI_ROOT}/projects/{project}/notebooklm/{YYYY-MM-DD}-{slug}-v{N}.md`
+8. **버전 누적 정책**:
+   - 같은 source_url + 동일 본문 hash → **skip** (`⏸ 동일 본문 skip`)
+   - 같은 source_url + 다른 본문 hash → **신규 버전 저장** v{N+1} (`📚 신규 버전 저장 (v3)`)
+   - 회장님이 NotebookLM에서 저작물 수정 후 재캡처해도 **기존 파일 보존**
+9. 성공 시 버튼 상태:
+   - `✅ 적재 완료 (mongolia-whitelier market-analysis v1)` — 신규
+   - `📚 신규 버전 저장 (v3)` — 회장님 수정 후 재캡처
+   - `⏸ 동일 본문 skip` — 같은 본문 재클릭
+   - `⚠️ _unmapped … — yaml 매핑 필요` — 매핑 yaml에 notebook_url 누락
 
 ## 설치 방법 (회장님 PC, 1회)
 

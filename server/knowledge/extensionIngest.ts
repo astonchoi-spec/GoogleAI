@@ -72,14 +72,26 @@ function sha256(text: string): string {
   return crypto.createHash("sha256").update(text).digest("hex");
 }
 
-/** Express handler. */
+/** Express handler — POST/OPTIONS/GET(health). */
 export async function handleExtensionIngest(req: Request, res: Response): Promise<void> {
   // CORS 사전 처리 — Extension origin 은 chrome-extension://... 또는 null.
   res.setHeader("Access-Control-Allow-Origin", "*");
-  res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
+  res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
   res.setHeader("Access-Control-Allow-Headers", "Content-Type");
   if (req.method === "OPTIONS") {
     res.status(204).end();
+    return;
+  }
+  // GET = 라우트 등록 확인 헬스체크 (브라우저에서 직접 접속 가능).
+  if (req.method === "GET") {
+    res.status(200).json({
+      ok: true,
+      endpoint: "/api/rag/extension-ingest",
+      method: "POST",
+      urlMappings: urlToProject.size,
+      mappedSample: Array.from(urlToProject.entries()).slice(0, 3),
+      help: "Chrome Extension 의 background.js 가 POST 로 호출. 본 GET 응답이 보이면 라우트 정상 등록.",
+    });
     return;
   }
   if (req.method !== "POST") {

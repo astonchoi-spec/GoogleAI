@@ -102,6 +102,12 @@
       const noteText = extractNoteText();
       const notebookTitle = extractNotebookTitle();
       const sourceUrl = location.href;
+      console.log("[Aston Bridge] 🖱 클릭됨", {
+        sourceUrl,
+        notebookTitle,
+        noteTextLength: noteText.length,
+        firstChars: noteText.slice(0, 80),
+      });
 
       if (!noteText || noteText.length < 20) {
         setButtonState(btn, "err", "❌ 본문 없음");
@@ -110,6 +116,7 @@
       }
 
       setButtonState(btn, "sending", "⏳ 전송 중…");
+      console.log("[Aston Bridge] background.js 로 메시지 송신 중…");
       try {
         const response = await chrome.runtime.sendMessage({
           type: "ASTON_INGEST",
@@ -120,6 +127,7 @@
             capturedAt: new Date().toISOString(),
           },
         });
+        console.log("[Aston Bridge] 백엔드 응답:", response);
         if (response?.ok) {
           let label;
           if (response.status === "skipped") {
@@ -152,11 +160,15 @@
   function ensureButton() {
     if (!isNotebookPage()) {
       const existing = findExistingButton();
-      if (existing) existing.remove();
+      if (existing) {
+        existing.remove();
+        console.log("[Aston Bridge] 노트북 페이지 아님 — 버튼 제거", location.pathname);
+      }
       return;
     }
     if (findExistingButton()) return;
     document.body.appendChild(buildButton());
+    console.log("[Aston Bridge] ✅ 버튼 주입 완료:", location.href);
   }
 
   // SPA 라우팅 대응 — DOM 변화 감지하여 버튼 유지.

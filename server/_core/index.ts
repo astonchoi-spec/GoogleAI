@@ -78,6 +78,7 @@ async function startServer() {
   // Aston NotebookLM Bridge (Chrome Extension) 수신 엔드포인트 — Phase W-2 보완
   app.options("/api/rag/extension-ingest", handleExtensionIngest);
   app.post("/api/rag/extension-ingest", handleExtensionIngest);
+  app.get("/api/rag/extension-ingest", handleExtensionIngest); // 헬스체크 — 브라우저로 직접 접속 가능
 
   // TradingView webhook route
   registerTvWebhookRoutes(app); // MODIFIED: POST /api/tv-webhook handler.

@@ -8,6 +8,11 @@ import {
   Cpu,
   AlertTriangle,
   Sparkles,
+  Save,
+  FileText,
+  X,
+  CheckCircle2,
+  ChevronRight,
 } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 
@@ -45,10 +50,50 @@ export default function KnowledgeRagPage() {
   const [tab, setTab] = useState<TabKey>("track-a");
   const [search, setSearch] = useState("");
   const [activeCategory, setActiveCategory] = useState<CategoryKey | null>(null);
+  // 선택된 노트북 (회수 입력 + 회수 자료 필터링 컨텍스트)
+  const [selectedProject, setSelectedProject] = useState<string | null>(null);
+  // 회수 입력 폼 상태
+  const [pasteBody, setPasteBody] = useState("");
+  const [sourceLabel, setSourceLabel] = useState("");
+  const [saveResult, setSaveResult] = useState<
+    | { kind: "ok"; savedPath: string; wasSkipped: boolean }
+    | { kind: "err"; message: string }
+    | null
+  >(null);
+  // 본문 미리보기 모달
+  const [previewKey, setPreviewKey] = useState<{ project: string; filename: string } | null>(null);
 
   const mappings = trpc.rag.listMappings.useQuery();
   const dataStores = trpc.rag.listDataStores.useQuery();
   const trackBStatus = trpc.rag.trackBStatus.useQuery();
+  const savedNotes = trpc.rag.listSavedNotes.useQuery({
+    project: selectedProject ?? undefined,
+    limit: 30,
+  });
+  const noteContent = trpc.rag.readSavedNote.useQuery(
+    previewKey ?? { project: "_disabled_", filename: "_disabled_.md" },
+    { enabled: !!previewKey },
+  );
+
+  const utils = trpc.useUtils();
+  const saveAnalysis = trpc.rag.saveAnalysis.useMutation({
+    onSuccess: (res) => {
+      if (res.ok) {
+        setSaveResult({
+          kind: "ok",
+          savedPath: res.savedPath,
+          wasSkipped: res.wasSkipped,
+        });
+        setPasteBody("");
+        setSourceLabel("");
+        // 회수 자료 목록 즉시 갱신
+        utils.rag.listSavedNotes.invalidate();
+      } else {
+        setSaveResult({ kind: "err", message: res.error });
+      }
+    },
+    onError: (err) => setSaveResult({ kind: "err", message: err.message }),
+  });
 
   const filteredNotebooks = useMemo(() => {
     const all = mappings.data?.notebooks ?? [];
@@ -121,12 +166,48 @@ export default function KnowledgeRagPage() {
             activeCategory={activeCategory}
             setActiveCategory={setActiveCategory}
             validationIssues={mappings.data?.validationIssues ?? []}
+            selectedProject={selectedProject}
+            setSelectedProject={setSelectedProject}
+            pasteBody={pasteBody}
+            setPasteBody={setPasteBody}
+            sourceLabel={sourceLabel}
+            setSourceLabel={setSourceLabel}
+            saveResult={saveResult}
+            setSaveResult={setSaveResult}
+            onSave={() => {
+              if (!selectedProject) return;
+              setSaveResult(null);
+              saveAnalysis.mutate({
+                project: selectedProject,
+                body: pasteBody,
+                sourceLabel: sourceLabel || undefined,
+              });
+            }}
+            isSaving={saveAnalysis.isPending}
+            savedNotes={savedNotes.data?.items ?? []}
+            savedTotal={savedNotes.data?.totalScanned ?? 0}
+            isLoadingSaved={savedNotes.isLoading}
+            onPreview={(project, filename) => setPreviewKey({ project, filename })}
           />
         ) : (
           <TrackBPanel
             dataStores={dataStores.data ?? []}
             isLoading={dataStores.isLoading}
             status={trackBStatus.data}
+          />
+        )}
+
+        {/* 회수 자료 본문 미리보기 모달 */}
+        {previewKey && (
+          <PreviewModal
+            project={previewKey.project}
+            filename={previewKey.filename}
+            content={noteContent.data?.ok ? noteContent.data.content : null}
+            error={
+              noteContent.data?.ok === false ? noteContent.data.error : noteContent.error?.message
+            }
+            isLoading={noteContent.isLoading}
+            onClose={() => setPreviewKey(null)}
           />
         )}
       </div>
@@ -157,6 +238,20 @@ function TabButton({
   );
 }
 
+interface SavedNoteItem {
+  project: string;
+  filename: string;
+  relativePath: string;
+  sizeBytes: number;
+  mtime: string;
+  titleHint: string;
+}
+
+type SaveResult =
+  | { kind: "ok"; savedPath: string; wasSkipped: boolean }
+  | { kind: "err"; message: string }
+  | null;
+
 interface TrackAPanelProps {
   notebooks: Array<{
     notebook_name: string;
@@ -180,6 +275,21 @@ interface TrackAPanelProps {
   activeCategory: CategoryKey | null;
   setActiveCategory: (c: CategoryKey | null) => void;
   validationIssues: Array<{ index: number; notebook_name: string; errors: string[] }>;
+  // Phase W-1
+  selectedProject: string | null;
+  setSelectedProject: (p: string | null) => void;
+  pasteBody: string;
+  setPasteBody: (s: string) => void;
+  sourceLabel: string;
+  setSourceLabel: (s: string) => void;
+  saveResult: SaveResult;
+  setSaveResult: (r: SaveResult) => void;
+  onSave: () => void;
+  isSaving: boolean;
+  savedNotes: SavedNoteItem[];
+  savedTotal: number;
+  isLoadingSaved: boolean;
+  onPreview: (project: string, filename: string) => void;
 }
 
 function TrackAPanel({
@@ -194,7 +304,22 @@ function TrackAPanel({
   activeCategory,
   setActiveCategory,
   validationIssues,
+  selectedProject,
+  setSelectedProject,
+  pasteBody,
+  setPasteBody,
+  sourceLabel,
+  setSourceLabel,
+  saveResult,
+  setSaveResult,
+  onSave,
+  isSaving,
+  savedNotes,
+  savedTotal,
+  isLoadingSaved,
+  onPreview,
 }: TrackAPanelProps) {
+  const selectedNotebook = notebooks.find((n) => n.project === selectedProject) ?? null;
   return (
     <>
       {/* Search */}
@@ -266,22 +391,53 @@ function TrackAPanel({
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           {notebooks.map((nb) => (
-            <NotebookCard key={nb.project} nb={nb} categoryLabels={categoryLabels} />
+            <NotebookCard
+              key={nb.project}
+              nb={nb}
+              categoryLabels={categoryLabels}
+              isSelected={selectedProject === nb.project}
+              onSelect={() =>
+                setSelectedProject(selectedProject === nb.project ? null : nb.project)
+              }
+            />
           ))}
         </div>
       )}
 
-      {/* Phase 1 안내 */}
+      {/* 회수 입력 폼 */}
+      <PasteForm
+        selectedNotebook={selectedNotebook}
+        pasteBody={pasteBody}
+        setPasteBody={setPasteBody}
+        sourceLabel={sourceLabel}
+        setSourceLabel={setSourceLabel}
+        saveResult={saveResult}
+        setSaveResult={setSaveResult}
+        onSave={onSave}
+        isSaving={isSaving}
+        onClear={() => setSelectedProject(null)}
+      />
+
+      {/* 회수된 자료 섹션 */}
+      <SavedNotesSection
+        selectedNotebook={selectedNotebook}
+        items={savedNotes}
+        totalScanned={savedTotal}
+        isLoading={isLoadingSaved}
+        onPreview={onPreview}
+      />
+
+      {/* Phase 안내 */}
       <div className="mt-8 rounded-xl border border-white/10 bg-white/[0.02] p-4 text-xs text-[var(--aston-muted)] leading-relaxed">
         <div className="flex items-center gap-2 text-[var(--aston-text)] font-medium mb-1.5">
           <Sparkles className="h-3.5 w-3.5 text-cyan-300" />
-          Phase 1 (현재): 카탈로그 표시 전용
+          현재 동작 단계
         </div>
         <ul className="space-y-1 list-disc pl-5">
-          <li>NotebookLM 외부 링크 활성화 — `notebook_url` 필드 채워진 노트북만 (현재 0건, 회장님 입력 대기)</li>
-          <li>분석 결과 회수 입력 폼 — Phase 3 예정</li>
-          <li>Drive Watcher 상태 — Phase 3 예정 (NotebookLM Docs export 폴더 polling)</li>
-          <li>Track B Discovery Engine 연동 — Phase 2 예정 (`VERTEX_SEARCH_*` 환경변수 활성화 시)</li>
+          <li>✅ <b>Phase W-1</b>: 노트북 카드 클릭 → 분석 결과 붙여넣기 → Wiki 자동 저장 (회수 자료 즉시 갱신)</li>
+          <li>⬜ <b>Phase W-2</b>: NotebookLM Docs export → Drive Watcher 자동 회수 (회장님 1클릭)</li>
+          <li>⬜ <b>채팅 RAG 주입</b>: 회수된 자료를 채팅 답변 컨텍스트로 자동 사용</li>
+          <li>⬜ <b>Track B</b> Discovery Engine 인덱싱 — 위키 자료 안정화 후 검토</li>
         </ul>
       </div>
     </>
@@ -322,17 +478,28 @@ function CategoryChip({
 function NotebookCard({
   nb,
   categoryLabels,
+  isSelected,
+  onSelect,
 }: {
   nb: TrackAPanelProps["notebooks"][number];
   categoryLabels: Record<string, string>;
+  isSelected: boolean;
+  onSelect: () => void;
 }) {
   const colorClass = CATEGORY_COLOR[nb.category as CategoryKey] ?? "border-white/15 bg-white/[0.03] text-white";
   const hasUrl = !!nb.notebook_url?.trim();
+  const cardBorder = isSelected
+    ? "border-cyan-400 bg-cyan-500/10"
+    : "border-white/10 bg-white/[0.03] hover:border-cyan-500/40";
   return (
-    <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4 hover:border-cyan-500/40 transition-colors">
+    <div
+      onClick={onSelect}
+      className={`rounded-xl border p-4 transition-colors cursor-pointer ${cardBorder}`}
+    >
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0 flex-1">
-          <div className="text-sm font-medium text-[var(--aston-text)] truncate">
+          <div className="text-sm font-medium text-[var(--aston-text)] truncate flex items-center gap-1.5">
+            {isSelected && <CheckCircle2 className="h-3.5 w-3.5 text-cyan-300 shrink-0" />}
             {nb.display_name}
           </div>
           <div className="text-xs text-[var(--aston-muted)] mt-0.5 line-clamp-2">
@@ -344,6 +511,7 @@ function NotebookCard({
             href={nb.notebook_url}
             target="_blank"
             rel="noopener noreferrer"
+            onClick={(e) => e.stopPropagation()}
             className="flex h-7 w-7 items-center justify-center rounded-lg border border-cyan-500/30 bg-cyan-500/10 text-cyan-200 hover:bg-cyan-500/20 shrink-0"
             title="NotebookLM에서 열기"
           >
@@ -380,6 +548,244 @@ function NotebookCard({
       )}
     </div>
   );
+}
+
+function PasteForm({
+  selectedNotebook,
+  pasteBody,
+  setPasteBody,
+  sourceLabel,
+  setSourceLabel,
+  saveResult,
+  setSaveResult,
+  onSave,
+  isSaving,
+  onClear,
+}: {
+  selectedNotebook: TrackAPanelProps["notebooks"][number] | null;
+  pasteBody: string;
+  setPasteBody: (s: string) => void;
+  sourceLabel: string;
+  setSourceLabel: (s: string) => void;
+  saveResult: SaveResult;
+  setSaveResult: (r: SaveResult) => void;
+  onSave: () => void;
+  isSaving: boolean;
+  onClear: () => void;
+}) {
+  const canSave = !!selectedNotebook && pasteBody.trim().length >= 10 && !isSaving;
+  return (
+    <div className="mt-6 rounded-xl border border-white/10 bg-white/[0.04] p-4">
+      <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center gap-2">
+          <Save className="h-4 w-4 text-cyan-300" />
+          <div className="text-sm font-medium">분석 결과 회수 (NotebookLM → Wiki 저장)</div>
+        </div>
+        {selectedNotebook && (
+          <button
+            onClick={onClear}
+            className="text-xs text-[var(--aston-muted)] hover:text-white"
+          >
+            선택 해제
+          </button>
+        )}
+      </div>
+
+      {!selectedNotebook ? (
+        <div className="text-xs text-[var(--aston-muted)] py-3">
+          위 카드에서 회수할 노트북을 클릭해주세요.
+        </div>
+      ) : (
+        <>
+          <div className="text-xs text-[var(--aston-muted)] mb-2">
+            저장 대상:{" "}
+            <span className="text-cyan-200 font-medium">{selectedNotebook.display_name}</span>{" "}
+            <span className="font-mono opacity-70">({selectedNotebook.project})</span>{" "}
+            → <code className="bg-white/[0.05] px-1 rounded">projects/{selectedNotebook.project}/notebooklm/</code>
+          </div>
+          <textarea
+            value={pasteBody}
+            onChange={(e) => {
+              setPasteBody(e.target.value);
+              if (saveResult) setSaveResult(null);
+            }}
+            placeholder="NotebookLM에서 답변·요약·노트를 복사해서 붙여넣으세요. (최소 10자)"
+            rows={8}
+            className="w-full px-3 py-2 rounded-lg border border-white/10 bg-black/30 text-sm placeholder-[var(--aston-muted)] focus:outline-none focus:ring-1 focus:ring-cyan-400/40 font-mono leading-relaxed resize-y"
+          />
+          <div className="mt-2 flex items-center gap-2">
+            <input
+              type="text"
+              value={sourceLabel}
+              onChange={(e) => setSourceLabel(e.target.value)}
+              placeholder="출처 라벨 (선택, 예: 한남동 PFV / 2026-05-09 미팅요약)"
+              className="flex-1 px-3 py-2 rounded-lg border border-white/10 bg-black/30 text-xs placeholder-[var(--aston-muted)] focus:outline-none focus:ring-1 focus:ring-cyan-400/40"
+            />
+            <button
+              onClick={onSave}
+              disabled={!canSave}
+              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium border border-cyan-500/40 bg-cyan-500/15 text-cyan-100 hover:bg-cyan-500/25 disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              <Save className="h-3.5 w-3.5" />
+              {isSaving ? "저장 중…" : "Wiki 저장"}
+            </button>
+          </div>
+          {saveResult?.kind === "ok" && (
+            <div className="mt-3 rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-3 text-xs text-emerald-200">
+              ✅ 저장 완료
+              {saveResult.wasSkipped && " (이미 동일 내용 — skip)"}
+              <div className="mt-1 font-mono opacity-80 break-all">{saveResult.savedPath}</div>
+            </div>
+          )}
+          {saveResult?.kind === "err" && (
+            <div className="mt-3 rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-xs text-rose-200">
+              ❌ 저장 실패: {saveResult.message}
+            </div>
+          )}
+        </>
+      )}
+    </div>
+  );
+}
+
+function SavedNotesSection({
+  selectedNotebook,
+  items,
+  totalScanned,
+  isLoading,
+  onPreview,
+}: {
+  selectedNotebook: TrackAPanelProps["notebooks"][number] | null;
+  items: SavedNoteItem[];
+  totalScanned: number;
+  isLoading: boolean;
+  onPreview: (project: string, filename: string) => void;
+}) {
+  return (
+    <div className="mt-6 rounded-xl border border-white/10 bg-white/[0.02] p-4">
+      <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center gap-2">
+          <FileText className="h-4 w-4 text-cyan-300" />
+          <div className="text-sm font-medium">
+            회수된 분석 자료
+            {selectedNotebook ? (
+              <span className="ml-2 text-xs text-[var(--aston-muted)]">
+                — {selectedNotebook.display_name}
+              </span>
+            ) : (
+              <span className="ml-2 text-xs text-[var(--aston-muted)]">— 전체 28개 노트북</span>
+            )}
+          </div>
+        </div>
+        <span className="text-xs text-[var(--aston-muted)]">
+          {totalScanned}건 (최근 30건 표시)
+        </span>
+      </div>
+
+      {isLoading ? (
+        <div className="text-center py-6 text-[var(--aston-muted)] text-xs">로딩 중…</div>
+      ) : items.length === 0 ? (
+        <div className="text-center py-6 text-[var(--aston-muted)] text-xs">
+          {selectedNotebook
+            ? `${selectedNotebook.display_name} 노트북에서 회수된 자료가 아직 없습니다. 위 폼으로 첫 자료를 회수해보세요.`
+            : "회수된 자료가 없습니다. 노트북 카드를 선택해 첫 자료를 회수하세요."}
+        </div>
+      ) : (
+        <ul className="space-y-1.5">
+          {items.map((it) => (
+            <li
+              key={`${it.project}::${it.filename}`}
+              onClick={() => onPreview(it.project, it.filename)}
+              className="flex items-center justify-between gap-2 rounded-lg border border-white/10 bg-white/[0.03] px-3 py-2 hover:border-cyan-500/40 cursor-pointer"
+            >
+              <div className="min-w-0 flex-1">
+                <div className="text-xs font-medium text-[var(--aston-text)] truncate">
+                  {it.titleHint}
+                </div>
+                <div className="text-[10px] text-[var(--aston-muted)] font-mono truncate">
+                  {it.relativePath}
+                </div>
+              </div>
+              <div className="flex items-center gap-2 shrink-0 text-[10px] text-[var(--aston-muted)]">
+                <span>{formatRelativeMtime(it.mtime)}</span>
+                <span>{(it.sizeBytes / 1024).toFixed(1)}KB</span>
+                <ChevronRight className="h-3.5 w-3.5" />
+              </div>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
+
+function PreviewModal({
+  project,
+  filename,
+  content,
+  error,
+  isLoading,
+  onClose,
+}: {
+  project: string;
+  filename: string;
+  content: string | null;
+  error?: string;
+  isLoading: boolean;
+  onClose: () => void;
+}) {
+  return (
+    <div
+      onClick={onClose}
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4"
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        className="w-full max-w-3xl max-h-[85vh] flex flex-col rounded-2xl border border-white/15 bg-[var(--aston-bg)] shadow-2xl"
+      >
+        <div className="flex items-center justify-between gap-2 px-5 py-3 border-b border-white/10">
+          <div className="min-w-0 flex-1">
+            <div className="text-sm font-medium truncate">{filename}</div>
+            <div className="text-xs text-[var(--aston-muted)] font-mono truncate">
+              projects/{project}/notebooklm/
+            </div>
+          </div>
+          <button
+            onClick={onClose}
+            className="flex h-8 w-8 items-center justify-center rounded-lg border border-white/10 hover:bg-white/[0.05]"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+        <div className="flex-1 overflow-auto p-5">
+          {isLoading ? (
+            <div className="text-center py-8 text-[var(--aston-muted)] text-sm">로딩 중…</div>
+          ) : error ? (
+            <div className="rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm text-rose-200">
+              {error}
+            </div>
+          ) : (
+            <pre className="text-xs leading-relaxed whitespace-pre-wrap break-words font-mono text-[var(--aston-text)]">
+              {content}
+            </pre>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function formatRelativeMtime(iso: string): string {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return iso;
+  const diffMs = Date.now() - d.getTime();
+  const minute = 60 * 1000;
+  const hour = 60 * minute;
+  const day = 24 * hour;
+  if (diffMs < hour) return `${Math.max(1, Math.floor(diffMs / minute))}분 전`;
+  if (diffMs < day) return `${Math.floor(diffMs / hour)}시간 전`;
+  if (diffMs < 7 * day) return `${Math.floor(diffMs / day)}일 전`;
+  return d.toLocaleDateString("ko-KR", { timeZone: "Asia/Seoul" });
 }
 
 function TrackBPanel({

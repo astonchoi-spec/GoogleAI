@@ -54,8 +54,8 @@
 
 ## 백엔드 측 매칭 규칙
 
-- 매핑 yaml(`data/rag-mapping.yaml`) 의 `notebook_url` 필드와 정확히 일치하는 노트북 URL → 해당 `project` 사용
-- 일치하지 않는 URL → `inbox/notebooklm-extension/` 로 fallback (운영자가 추후 yaml 보강 권장)
+- 매핑 yaml(`index/notebooklm-mapping.yaml`) 의 `notebook_url` 필드와 정확히 일치하는 노트북 URL → 해당 `project` 사용
+- 일치하지 않는 URL → `projects/_unmapped/notebooklm/` 로 fallback (운영자가 추후 yaml 보강 권장 — 응답에 `mappingHint` 동봉)
 
 ## 보안
 

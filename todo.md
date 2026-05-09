@@ -1,9 +1,39 @@
 ﻿# TODO.md — 에스턴 워크스테이션
-> 업데이트: 2026-05-09 Aston RAG Phase W-1 완료 (외부 NotebookLM ↔ Wiki 자동 회수, 웹 붙여넣기) | 브랜치: codex-google-workspace-expansion
+> 업데이트: 2026-05-09 Aston RAG Phase W-2 완료 (Drive Watcher 자동 회수 + 소스 자료 표시) | 브랜치: codex-google-workspace-expansion
 
 ---
 
-## 2026-05-09 Aston RAG 통합 — Phase W-1 (1순위: 외부 NotebookLM ↔ Wiki 회수)
+## 2026-05-09 Aston RAG 통합 — Phase W-2 (Drive Watcher 기반 자동 동기화)
+
+### 완료 (회장님 작업 지시서 Phase 1 "Drive Watcher 폴링 상태 표시" 충족)
+- ✅ `server/knowledge/driveSync.ts` — chokidar 기반 `notebooklm-exports/{project}/` 폴더 자동 감시 (28개 매핑 yaml project 모두), 신규 .md/.txt 파일 즉시 NotebookLmAdapter + PipelineRunner 통과 → Wiki 자동 저장
+- ✅ 멱등성 — `data/notebooklm-drive-ingested.json` (path + size + mtime hash dedupe)
+- ✅ .docx/.pdf/.gdoc — 메타만 기록 + 안내 메시지 (.md 변환 후 재업로드 권장)
+- ✅ 모듈 경계 준수 — driveSync 는 knowledge 도메인 소속, project 화이트리스트는 setAllowedProjects() 로 외부 주입
+- ✅ tRPC 신규: `rag.driveWatcherStatus` query (페이지 카드) / `rag.triggerDriveScan` mutation (즉시 동기화 버튼) / `rag.listSourceFiles` query (NotebookLM 입력 자료 목록)
+- ✅ 부팅 시 자동 시작 — `server/_core/index.ts` 에서 매핑 yaml 로드 → setAllowedProjects → startDriveSync
+- ✅ 페이지 — Drive Watcher 상태 카드(폴더 경로·누적 회수·최근 이벤트·"지금 동기화" 버튼) + 노트북 카드 클릭 시 NotebookLM 입력 자료 목록 + 회수 자료 목록 + 본문 미리보기 모달
+- ✅ 검증: `npm run check` ✅ / `npm run build` ✅ / **745 passed** (회귀 0건)
+
+### 운영 약속 (회장님 동선)
+1. **소스 자료**: `G:\내 드라이브\Aston-Wiki\notebooklm-sources\{project}\` 폴더에 PDF/Docs 업로드 → NotebookLM 에서 그 폴더 또는 파일을 소스로 추가 → 페이지에서 노트북 카드 클릭 시 자료 목록 표시
+2. **분석 회수**: NotebookLM 에서 분석 답변/노트를 .md 또는 .txt 로 저장 (Docs로 보내기 후 .md 변환) → `G:\내 드라이브\Aston-Wiki\notebooklm-exports\{project}\` 폴더에 저장 → Drive 데스크톱 동기화 → chokidar 자동 감지 → Wiki 자동 적재
+3. 회장님이 페이지에서 "지금 동기화" 버튼 클릭으로 즉시 폴링 가능
+
+### 회장님 직접 운영 검증
+- [ ] PM2 또는 `npm run dev` 재시작 (driveSync 활성화 위해 필수)
+- [ ] http://localhost:4000/notebook-lm 접속 → Drive Watcher 카드에 🟢 표시 + 28개 폴더 감시 중 확인
+- [ ] `G:\내 드라이브\Aston-Wiki\notebooklm-exports\hannam-644\test.md` 생성 (본문 임의 텍스트) → 5초 내 페이지 회수 자료 목록에 자동 등장 확인
+- [ ] 노트북 카드 클릭 → 입력 자료 목록 + 회수 자료 목록 두 영역 모두 동작 확인
+
+### 다음 작업 후보
+- [ ] **W-3** .docx 본문 자동 추출 지원 (mammoth 라이브러리 추가) — NotebookLM Docs 보내기 결과를 .md 변환 없이 직접 회수
+- [ ] **W-4** Google Drive API 직접 호출 (`.gdoc` 메타파일 export) — Drive 데스크톱 동기화 의존 제거
+- [ ] **Phase 4** 채팅 RAG 컨텍스트 주입 — 회수된 `*.md` 본문을 chat 핸들러가 자동 인용
+
+---
+
+## 2026-05-09 Aston RAG 통합 — Phase W-1 (수동 붙여넣기, 보조 경로)
 
 ### 완료
 - ✅ tRPC `rag.saveAnalysis` mutation — 웹에서 분석 결과 붙여넣기 → Wiki 자동 저장 (텔레그램 `/nb save` 의 웹 버전)

@@ -1,9 +1,37 @@
 ﻿# HANDOFF.md — 에스턴 워크스테이션
-> 업데이트: 2026-05-09 Aston RAG Phase W-1 완료 (외부 NotebookLM ↔ Wiki 회수, 웹 붙여넣기) | 브랜치: codex-google-workspace-expansion
+> 업데이트: 2026-05-09 Aston RAG Phase W-2 완료 (Drive Watcher 자동 동기화) | 브랜치: codex-google-workspace-expansion
 
 ---
 
-## 마지막 완료 작업 (Phase W-1 — 1순위 목표 달성)
+## 마지막 완료 작업 (Phase W-2 — 진짜 자동 연동)
+
+**2026-05-09 Aston RAG Phase W-2 | Claude Code**
+- 회장님 작업 지시서 Phase 1의 "Drive Watcher 폴링 상태" 명시 누락 보완
+- chokidar 기반 `{ASTON_WIKI_ROOT}/notebooklm-exports/{project}/` 자동 감시 — 28개 project 폴더 일괄 watch
+- 신규 .md/.txt 파일 → 5초 내 NotebookLmAdapter + PipelineRunner → Wiki 자동 적재 (멱등성 보장)
+- `server/knowledge/driveSync.ts` (~340줄) — 모듈 경계 준수 (project 화이트리스트 외부 주입)
+- 신규 tRPC: `driveWatcherStatus` / `triggerDriveScan` / `listSourceFiles`
+- 페이지 — Drive Watcher 상태 카드 + 노트북 선택 시 입력 자료 목록 + 회수 자료 목록 + 미리보기 모달
+- 검증: check ✅ / build ✅ / **745 passed** (회귀 0건)
+
+### 회장님 직접 운영 검증 (필수)
+- [ ] **PM2 또는 npm run dev 재시작** — driveSync 활성화에 필수
+- [ ] http://localhost:4000/notebook-lm 접속 → Drive Watcher 카드 🟢 + 28개 감시 폴더 표시
+- [ ] `G:\내 드라이브\Aston-Wiki\notebooklm-exports\hannam-644\test.md` 생성 → 5초 내 페이지에 자동 등장
+- [ ] 노트북 카드 클릭 → 입력 자료 + 회수 자료 양쪽 표시 확인
+
+### 운영 약속
+- **입력**: `G:\내 드라이브\Aston-Wiki\notebooklm-sources\{project}\` 에 PDF/Docs → NotebookLM 소스 연결
+- **회수**: NotebookLM 답변 .md/.txt → `G:\내 드라이브\Aston-Wiki\notebooklm-exports\{project}\` → 자동 Wiki 저장
+
+### 다음 단계
+- W-3: .docx 본문 자동 추출 (mammoth)
+- W-4: Drive API 직접 호출 (.gdoc export)
+- Phase 4: 채팅 RAG 컨텍스트 주입
+
+---
+
+## 이전 단계 (Phase W-1 — 수동 붙여넣기, 보조 경로)
 
 **2026-05-09 Aston RAG Phase W-1 | Claude Code**
 - 회장님 1순위 ("외부 NotebookLM 분석 → Wiki 자동 저장") 웹에서 동작 가능
@@ -81,8 +109,9 @@
 | 테스트 | **745 passed** (2026-05-09, Phase 2 RAG +11 / Phase 1 RAG +7 / Phase 8-A +8 / Phase 0~7-B +133, 회귀 0건) |
 | **Aston RAG Phase 1** | ✅ 28개 카탈로그 + `/knowledge-rag` 페이지 + tRPC 라우터 |
 | **Aston RAG Phase 2** | ✅ Discovery Engine 클라이언트 + ADC 인증 + `trackBStatus` + `queryDataStore` |
-| **Aston RAG Phase W-1** | ✅ 1순위 — 외부 NotebookLM ↔ Wiki 자동 회수 (웹 붙여넣기) |
-| **Aston RAG Phase W-2~4** | ⬜ 대기 (Drive Watcher / 검색·필터 통합 / 채팅 RAG 주입) |
+| **Aston RAG Phase W-1** | ✅ 보조 — 웹 붙여넣기 회수 (수동) |
+| **Aston RAG Phase W-2** | ✅ **진짜 자동 동기화** — chokidar Drive Watcher + 페이지 상태 카드 + 소스 자료 표시 |
+| **Aston RAG Phase W-3~4** | ⬜ 대기 (.docx 추출 / Drive API / 채팅 RAG 주입) |
 | 브랜치 | `codex-google-workspace-expansion` |
 | **Intent 파이프라인** | ✅ `parseIntent → planIntent → dispatchIntent → formatReply` 4단계 분리 완료 |
 | **HandlerResponse 5개 kind** | ✅ list/report/text/error/confirmation 모두 활성 |

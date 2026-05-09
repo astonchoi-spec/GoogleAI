@@ -3,6 +3,63 @@
 
 ---
 
+## 2026-05-09 Aston RAG Phase W-2 — Drive Watcher 자동 동기화 + 소스 자료 표시 (Claude Code)
+
+### 배경
+회장님 작업 지시서 Phase 1 명시 사항("Drive Watcher 폴링 상태 표시")을 W-1 단계에서 빠뜨렸음을 회장님 지적 후 즉시 보완. **회장님이 NotebookLM에서 export → Drive 동기화된 G: 폴더에 떨어지면 워크스테이션이 5초 내 자동 회수**하는 진짜 자동 연동을 구현.
+
+### 작업 내용
+- **`server/knowledge/driveSync.ts` 신규** — chokidar 기반 `{ASTON_WIKI_ROOT}/notebooklm-exports/{project}/` 자동 감시
+  - 28개 project 폴더 일괄 watch (depth 0, awaitWriteFinish 1s)
+  - .md / .txt → 본문 직접 추출 + NotebookLmAdapter + PipelineRunner → `projects/{p}/notebooklm/*.md` 자동 적재
+  - .docx / .pdf / .gdoc → 메타만 기록 (mammoth/pdf-parse 등 추가 의존성 없이 운영 시작 가능, .md 변환 안내)
+  - 멱등성 `data/notebooklm-drive-ingested.json` (path+size+mtime hash dedupe, change 이벤트 시 새 hash로 재처리)
+- **모듈 경계 준수** — driveSync 는 knowledge 도메인. project 화이트리스트는 `setAllowedProjects()` 외부 주입 패턴으로 rag → knowledge 의존 회피
+- **부팅 자동 시작** — `server/_core/index.ts` 가 `loadRagMapping()` → `setRagAllowedProjects()` → `startDriveSync()` 순서로 호출
+- **신규 tRPC 3개**:
+  - `rag.driveWatcherStatus` query (30초 자동 refetch) — enabled / 감시 폴더 / 누적 회수 / 최근 이벤트 10건
+  - `rag.triggerDriveScan` mutation — 회장님 "지금 동기화" 버튼 즉시 폴링
+  - `rag.listSourceFiles` query — NotebookLM 입력 자료(`notebooklm-sources/{project}/`) 메타 목록
+- **페이지 보강** — Drive Watcher 상태 카드(🟢/❓ 배지·폴더 경로·이벤트 타임라인·즉시 동기화 버튼) + 노트북 카드 선택 시 입력 자료 목록 카드(이모지 아이콘·시각·크기) + 회수 자료 카드(이전 W-1 기능 보존) + 본문 미리보기 모달
+
+### 운영 약속
+- **입력**: `G:\내 드라이브\Aston-Wiki\notebooklm-sources\{project}\` 에 회장님이 PDF/Docs 업로드 → NotebookLM 소스로 그 폴더/파일 연결 → 페이지에 자동 표시
+- **회수**: NotebookLM에서 분석 답변/노트 → .md 또는 .txt 저장 → `G:\내 드라이브\Aston-Wiki\notebooklm-exports\{project}\` 에 두면 5초 내 Wiki 자동 적재
+- **수동 보조**: W-1 (페이지 붙여넣기 폼) 그대로 유지 — Drive 동기화가 늦거나 안 되는 경우 백업
+
+### 수정 파일
+**신규**:
+- `server/knowledge/driveSync.ts` (~340줄)
+
+**수정**:
+- `server/routers/rag.ts` (driveWatcherStatus / triggerDriveScan / listSourceFiles 3개 추가)
+- `server/_core/index.ts` (부팅 시 매핑 주입 + watcher 시작)
+- `client/src/pages/KnowledgeRagPage.tsx` (DriveWatcherCard + SourceFilesSection 컴포넌트 + 30초 refetch + 즉시 동기화 mutation)
+
+### 검증
+- `npm run check` ✅ 모듈 경계 위반 0건 + tsc 에러 0건
+- `npm test` ✅ **745 passed** (회귀 0건)
+- `npm run build` ✅
+- 라이브: dev 서버 환경변수 quoting 문제로 자동 라이브 검증 보류 — 회장님 PC에서 PM2/npm run dev 재시작 후 직접 검증 필요
+
+### 응답·기존 API 영향
+- public 인텐트 API 변경 0건
+- 텔레그램 `/nb save` / 웹 W-1 붙여넣기 기존 흐름 그대로 동작
+- 신규 tRPC 3개 모두 rag 라우터에 깨끗이 추가 (다른 라우터 무영향)
+
+### 회장님 직접 운영 검증
+- [ ] PM2 (`pm2 restart aston`) 또는 `npm run dev` 재시작 — driveSync 활성화 필수
+- [ ] http://localhost:4000/notebook-lm — Drive Watcher 카드 🟢 + 28개 폴더 감시 표시 확인
+- [ ] `G:\...\notebooklm-exports\hannam-644\test.md` 생성 → 5초 내 페이지 회수 자료 목록 자동 등장 확인
+- [ ] 노트북 카드 클릭 → 입력 자료 목록 카드 동작 + 회수 자료 미리보기 모달 동작
+
+### 다음 단계
+- W-3: .docx 본문 자동 추출 (mammoth 추가)
+- W-4: Google Drive API 직접 호출 (`.gdoc` export, Drive 데스크톱 의존 제거)
+- Phase 4: 채팅 RAG 컨텍스트 주입
+
+---
+
 ## 2026-05-09 Aston RAG Phase W-1 — 외부 NotebookLM ↔ Wiki 자동 회수 (웹 붙여넣기) (Claude Code)
 
 ### 배경

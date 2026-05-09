@@ -1,9 +1,32 @@
 ﻿# HANDOFF.md — 에스턴 워크스테이션
-> 업데이트: 2026-05-09 Aston RAG Phase W-2 완료 (Drive Watcher 자동 동기화) | 브랜치: codex-google-workspace-expansion
+> 업데이트: 2026-05-10 Phase 4-A 설계 완료 (로컬 RAG 주입, 구현 대기) | 브랜치: codex-google-workspace-expansion
 
 ---
 
-## 마지막 완료 작업 (Chrome Extension + W-3 .docx)
+## 마지막 완료 작업 (Phase 4-A 설계만)
+
+**2026-05-10 Phase 4-A 설계 — 로컬 NotebookLM 회수 자료 → Web Chat RAG 주입 | Claude Code**
+- 회장님 결정 확정 — 검색 소스=로컬 `*.md` 직접 스캔 / 적용 범위=웹 채팅만
+- 설계 스펙 문서 — `docs/superpowers/specs/2026-05-10-phase4a-local-rag-design.md`
+- 핵심: chat 도메인 fallback 진입점(`server/routers/llm.ts:208~250`)에 RAG 단계 삽입. 인텐트 매칭 성공(`handled=true`) 시 RAG 건너뜀 — 기존 라우팅과 100% 직교
+- 신규 모듈 — `server/rag/localMdSearch.ts` (Public API: `searchLocalNotes`, NoteHit 타입, in-memory 캐시 5분 TTL)
+- 자율 결정 — K=3, snippet 500자, TF+frontmatter 1.5×+제목 +5, "📚 참고 자료" 한국어 인용 절
+- **구현 미착수**: 코드 변경 0건. 다음 세션에서 writing-plans → 구현 분해
+
+### 다음 단계 (구현)
+- [ ] `server/rag/localMdSearch.ts` 구현 (~200줄)
+- [ ] `server/__tests__/localMdSearch.test.ts` 8~10개 케이스
+- [ ] `server/routers/llm.ts` chat fallback 진입점 수정 + systemPrompt 주입 + `sources` field + 본문 끝 인용 절
+- [ ] `npm run check && npm run build && npm test` 회귀 0건 (745 → ~755)
+- [ ] 라이브: "한남 PF 진행 상황" 자연 질의 → 회수 자료 인용 응답 (회장님 직접 검증)
+
+### Phase 4-B/4-C 분리 사유
+- 4-B Vertex AI Search 는 Phase 3-A (`scripts/rag-bootstrap.ts`) + 3-B (`importDocument`) 셋업 완료 후 진행
+- 4-C 텔레그램 적용은 4-A 라이브 검증 통과 후 동일 패턴으로 `messageRouter.ts` 적용
+
+---
+
+## 이전 완료 작업 (Chrome Extension + W-3 .docx)
 
 **2026-05-09 Aston NotebookLM Bridge + Phase W-3 | Claude Code**
 - **Chrome Extension** `chrome-extension/` (Manifest V3) — NotebookLM 페이지 우상단에 [📥 Aston Wiki로 동기화] 버튼 자동 주입 (MutationObserver + SPA 라우팅 후크)

@@ -3,6 +3,45 @@
 
 ---
 
+## 2026-05-10 Phase 4-A 설계 — 로컬 NotebookLM 회수 자료 → Web Chat RAG 주입 (Claude Code, 설계만)
+
+### 배경
+TODO/HANDOFF "다음 단계 후보" 중 Phase 4 (채팅 RAG 컨텍스트 주입) 진입. 회장님이 "노트북 ..." prefix 없이 자연 질의("한남 진행 상황 어때?")만 해도 회수 자료가 자동 인용되도록 chat 도메인 fallback 단계에 RAG 단계 삽입.
+
+### 결정 (회장님 직접)
+- **검색 소스**: 로컬 `${ASTON_WIKI_ROOT}/projects/*/notebooklm/*.md` 직접 스캔 (Vertex AI Search 는 Phase 4-B 분리)
+- **적용 인터페이스**: 웹 채팅(`server/routers/llm.ts`) 만 (텔레그램은 Phase 4-C 분리)
+
+### 자율 결정 (베스트 프랙티스)
+- K=3, snippet 500자, 캐시 5분 TTL, 토큰화 한·영 휴리스틱
+- 점수식: TF + frontmatter `tags`/`categories` 1.5× + 제목 매칭 +5
+- 응답 본문 끝에 "📚 참고 자료" 한국어 인용 절 자동 부가, `sources` field 에 `file://` URI
+
+### 작업 내용
+- **설계 스펙 문서 작성**: `docs/superpowers/specs/2026-05-10-phase4a-local-rag-design.md`
+  - 아키텍처/신규 모듈 API/`routers/llm.ts` 수정 골자/테스트 8~10개 케이스/검증 기준 명시
+  - 비목표 명시: Vertex AI Search·텔레그램 적용·chunk-level·임베딩 (모두 Phase 4-B 이후)
+- **구현 미착수**: 코드 변경 0건. 다음 세션에서 writing-plans → 구현으로 진행 예정.
+
+### 수정 파일
+**신규**:
+- `docs/superpowers/specs/2026-05-10-phase4a-local-rag-design.md`
+
+**수정**:
+- `CHANGELOG.md` (이 항목)
+- `TODO.md` (Phase 4-A 다음 작업으로 명시)
+- `HANDOFF.md` (마지막 완료 작업 = 설계, 다음 = 구현)
+
+### 검증 결과
+- 코드 변경 없음 → check/build/test skip
+- 다음 단계: writing-plans 스킬 호출 → 구현 PR 단위로 분해
+
+### 남은 이슈
+- 구현 자체 (이번 세션 범위 밖)
+- Phase 4-B (Vertex AI Search) 진입 시점은 Phase 3-A/3-B (데이터 스토어 9개 생성 + importDocument) 완료 후로 보류
+
+---
+
 ## 2026-05-09 Aston NotebookLM Bridge (Chrome Extension) + Phase W-3 (.docx 추출) (Claude Code)
 
 ### 배경

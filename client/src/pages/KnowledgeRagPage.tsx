@@ -48,6 +48,7 @@ export default function KnowledgeRagPage() {
 
   const mappings = trpc.rag.listMappings.useQuery();
   const dataStores = trpc.rag.listDataStores.useQuery();
+  const trackBStatus = trpc.rag.trackBStatus.useQuery();
 
   const filteredNotebooks = useMemo(() => {
     const all = mappings.data?.notebooks ?? [];
@@ -74,9 +75,9 @@ export default function KnowledgeRagPage() {
             <BookOpen className="h-5 w-5" />
           </div>
           <div>
-            <h1 className="text-xl font-semibold">통합 지식 RAG</h1>
+            <h1 className="text-xl font-semibold">노트북LM</h1>
             <p className="text-sm text-[var(--aston-muted)]">
-              Track A 외부 NotebookLM 카탈로그 + Track B 내부 Discovery Engine RAG
+              AI 리서치 · 분석 — 외부 NotebookLM 28개 카탈로그 + 내부 RAG (Discovery Engine)
             </p>
           </div>
         </div>
@@ -95,9 +96,15 @@ export default function KnowledgeRagPage() {
           <TabButton active={tab === "track-b"} onClick={() => setTab("track-b")}>
             <Database className="h-4 w-4 mr-1.5" />
             Track B — 내부 RAG (Discovery Engine)
-            <span className="ml-2 rounded-full bg-amber-500/20 px-2 py-0.5 text-xs text-amber-200">
-              Phase 2 예정
-            </span>
+            {trackBStatus.data?.configured ? (
+              <span className="ml-2 rounded-full bg-emerald-500/20 px-2 py-0.5 text-xs text-emerald-200">
+                🟢 ADC
+              </span>
+            ) : (
+              <span className="ml-2 rounded-full bg-amber-500/20 px-2 py-0.5 text-xs text-amber-200">
+                ❓ 미설정
+              </span>
+            )}
           </TabButton>
         </div>
 
@@ -119,6 +126,7 @@ export default function KnowledgeRagPage() {
           <TrackBPanel
             dataStores={dataStores.data ?? []}
             isLoading={dataStores.isLoading}
+            status={trackBStatus.data}
           />
         )}
       </div>
@@ -377,24 +385,47 @@ function NotebookCard({
 function TrackBPanel({
   dataStores,
   isLoading,
+  status,
 }: {
   dataStores: Array<{ id: string; label: string; projects: string[]; count: number }>;
   isLoading: boolean;
+  status?: { configured: boolean; projectId: string | null; location: string; authMode: string };
 }) {
+  const configured = status?.configured ?? false;
   return (
     <div className="mt-6">
-      <div className="rounded-xl border border-amber-500/30 bg-amber-500/5 p-4 mb-6">
-        <div className="flex items-center gap-2 text-amber-200 text-sm font-medium mb-2">
+      <div
+        className={`rounded-xl border p-4 mb-6 ${
+          configured
+            ? "border-emerald-500/30 bg-emerald-500/5"
+            : "border-amber-500/30 bg-amber-500/5"
+        }`}
+      >
+        <div
+          className={`flex items-center gap-2 text-sm font-medium mb-2 ${
+            configured ? "text-emerald-200" : "text-amber-200"
+          }`}
+        >
           <Cpu className="h-4 w-4" />
-          Track B — 내부 GCP Discovery Engine RAG (Phase 2 예정)
+          Track B — 내부 GCP Discovery Engine RAG{" "}
+          {configured ? "(Phase 2 활성)" : "(Phase 2 — 환경변수 미설정)"}
         </div>
-        <p className="text-xs text-amber-200/80 leading-relaxed">
-          GCP Discovery Engine API를 사용한 자체 RAG 파이프라인. 28개 노트북을 9개 데이터 스토어로
-          그룹핑한 매핑은 이미 준비되어 있으며, Phase 2에서 인증·문서 업로드·쿼리 메서드를 구현 후 활성화합니다.
-          환경변수 <code className="bg-amber-500/15 px-1 rounded">VERTEX_SEARCH_PROJECT_ID</code>,{" "}
-          <code className="bg-amber-500/15 px-1 rounded">VERTEX_SEARCH_SERVICE_ACCOUNT_JSON</code>{" "}
-          가 필요합니다.
-        </p>
+        {configured ? (
+          <p className="text-xs text-emerald-200/80 leading-relaxed">
+            🟢 GCP 프로젝트 <code className="bg-emerald-500/15 px-1 rounded">{status?.projectId}</code>{" "}
+            연결 완료 (location: {status?.location}, 인증: {status?.authMode}).{" "}
+            데이터 스토어 9개 매핑이 준비되어 있고,{" "}
+            <code className="bg-emerald-500/15 px-1 rounded">rag.queryDataStore</code> 호출이 가능합니다.{" "}
+            실제 createDataStore / importDocument 트리거는 Phase 3 (저장 파이프라인) 진행 시 자동화됩니다.
+          </p>
+        ) : (
+          <p className="text-xs text-amber-200/80 leading-relaxed">
+            <code className="bg-amber-500/15 px-1 rounded">VERTEX_SEARCH_PROJECT_ID</code>{" "}
+            환경변수가 비어 있습니다. .env 에 채우고 서버를 재시작한 뒤,{" "}
+            <code className="bg-amber-500/15 px-1 rounded">gcloud auth application-default login</code>{" "}
+            (ADC) 인증을 1회 수행하면 즉시 활성화됩니다.
+          </p>
+        )}
       </div>
 
       {isLoading ? (

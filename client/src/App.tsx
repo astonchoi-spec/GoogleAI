@@ -16,8 +16,7 @@ const Settings = lazy(() => import("./pages/Settings")); // MODIFIED: code-split
 const TradingPage = lazy(() => import("./pages/TradingPage")); // MODIFIED: code-split the trading page bundle.
 const RealEstatePage = lazy(() => import("./pages/RealEstatePage")); // MODIFIED: code-split the real estate PF bundle.
 const Monitoring = lazy(() => import("./pages/Monitoring")); // MODIFIED: code-split the monitoring dashboard bundle.
-const NotebookLMPage = lazy(() => import("./pages/NotebookLMPage"));
-const KnowledgeRagPage = lazy(() => import("./pages/KnowledgeRagPage")); // MODIFIED: Aston RAG (Track A NotebookLM catalog + Track B Discovery Engine).
+const KnowledgeRagPage = lazy(() => import("./pages/KnowledgeRagPage")); // MODIFIED: NotebookLM page (Aston RAG: Track A 28 catalog + Track B Discovery Engine). 기존 빈 NotebookLMPage 제거.
 const WikiPage = lazy(() => import("./pages/WikiPage"));
 const AgentControl = lazy(() => import("./pages/AgentControl"));
 
@@ -38,8 +37,8 @@ function Router() {
           <Route path={"/real-estate-pf"} component={RealEstatePage} /> {/* MODIFIED: route for the new real estate PF tab. */}
           <Route path={"/google"} component={Google} />
           <Route path={"/settings"} component={Settings} />
-          <Route path={"/notebook-lm"} component={NotebookLMPage} />
-          <Route path={"/knowledge-rag"} component={KnowledgeRagPage} /> {/* MODIFIED: Aston RAG (Track A NotebookLM 28 catalog + Track B Discovery Engine groups). */}
+          <Route path={"/notebook-lm"} component={KnowledgeRagPage} /> {/* MODIFIED: 빈 placeholder 페이지를 RAG 통합 페이지로 교체. 사이드바 진입점 일치. */}
+          <Route path={"/knowledge-rag"} component={KnowledgeRagPage} /> {/* MODIFIED: alias 유지 (북마크/직링크 보호). */}
           <Route path={"/wiki"} component={WikiPage} />
           <Route path={"/agents"} component={AgentControl} />
           <Route path={"/monitoring"} component={Monitoring} /> {/* MODIFIED: expose analytics dashboard route. */}

@@ -105,7 +105,7 @@ export async function buildVersionIndex(
     const versionMatch = fm.match(/^version:\s*(\d+)/m);
     const v = versionMatch ? parseInt(versionMatch[1], 10) : 0;
     if (v > result.maxVersion) result.maxVersion = v;
-    const hashMatch = fm.match(/^raw_text_hash:\s*['"]?([^\s'"]+)['"]?\s*$/m);
+    const hashMatch = fm.match(/^raw_text_hash:\s*['"]?([0-9a-f]+)['"]?$/m);
     if (hashMatch) result.hashSet.add(hashMatch[1]);
   }
   return result;
@@ -171,6 +171,12 @@ function buildMappingHint(sourceUrl: string): string {
 }
 
 export async function saveArtifact(payload: IngestPayload): Promise<SaveArtifactResult> {
+  if (!payload.sourceUrl?.trim() || !payload.noteText?.trim()) {
+    throw new Error("sourceUrl 또는 noteText 누락");
+  }
+  if (payload.noteText.trim().length < 20) {
+    throw new Error("본문 너무 짧음 (최소 20자)");
+  }
   const normalized = normalizeNotebookUrl(payload.sourceUrl);
   const project = urlToProject.get(normalized) ?? "_unmapped";
   const isUnmapped = project === "_unmapped";

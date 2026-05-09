@@ -110,7 +110,7 @@ describe("buildVersionIndex", () => {
     const fileA = path.join(tmpDir, "2026-05-08-other-v1.md");
     await fs.writeFile(
       fileA,
-      `---\nsource_url: https://notebooklm.google.com/notebook/OTHER\nversion: 1\nraw_text_hash: aaa\n---\n본문\n`,
+      `---\nsource_url: https://notebooklm.google.com/notebook/OTHER\nversion: 1\nraw_text_hash: aaaa1111bbbb2222\n---\n본문\n`,
       "utf-8",
     );
     const result = await buildVersionIndex(tmpDir, "https://notebooklm.google.com/notebook/ABC");
@@ -122,19 +122,19 @@ describe("buildVersionIndex", () => {
     const fileA = path.join(tmpDir, "2026-05-08-foo-v1.md");
     await fs.writeFile(
       fileA,
-      `---\nsource_url: https://notebooklm.google.com/notebook/ABC\nversion: 1\nraw_text_hash: abc123\n---\n본문\n`,
+      `---\nsource_url: https://notebooklm.google.com/notebook/ABC\nversion: 1\nraw_text_hash: abc123def4567890\n---\n본문\n`,
       "utf-8",
     );
     const result = await buildVersionIndex(tmpDir, "https://notebooklm.google.com/notebook/ABC");
     expect(result.maxVersion).toBe(1);
-    expect(result.hashSet.has("abc123")).toBe(true);
+    expect(result.hashSet.has("abc123def4567890")).toBe(true);
   });
 
   it("v1, v2, v3 → maxVersion=3, hash 3개", async () => {
     const versions = [
-      { v: 1, h: "hash1" },
-      { v: 2, h: "hash2" },
-      { v: 3, h: "hash3" },
+      { v: 1, h: "a1b2c3d4e5f67890" },
+      { v: 2, h: "b2c3d4e5f6789012" },
+      { v: 3, h: "c3d4e5f678901234" },
     ];
     for (const { v, h } of versions) {
       await fs.writeFile(
@@ -146,17 +146,34 @@ describe("buildVersionIndex", () => {
     const result = await buildVersionIndex(tmpDir, "https://notebooklm.google.com/notebook/ABC");
     expect(result.maxVersion).toBe(3);
     expect(result.hashSet.size).toBe(3);
-    expect(result.hashSet.has("hash2")).toBe(true);
+    expect(result.hashSet.has("b2c3d4e5f6789012")).toBe(true);
   });
 
   it("URL 정규화 — 끝 슬래시·쿼리스트링 무시", async () => {
     await fs.writeFile(
       path.join(tmpDir, "2026-05-09-foo-v1.md"),
-      `---\nsource_url: https://notebooklm.google.com/notebook/ABC\nversion: 1\nraw_text_hash: hh\n---\n본문\n`,
+      `---\nsource_url: https://notebooklm.google.com/notebook/ABC\nversion: 1\nraw_text_hash: 1234567890abcdef\n---\n본문\n`,
       "utf-8",
     );
     const result = await buildVersionIndex(tmpDir, "https://notebooklm.google.com/notebook/ABC/?utm=x");
     expect(result.maxVersion).toBe(1);
+  });
+
+  it("writer→reader 라운드트립: buildArtifactFrontmatter 출력을 buildVersionIndex 가 정확히 재읽음", async () => {
+    const fm = buildArtifactFrontmatter({
+      kind: "report",
+      title: "라운드트립 테스트",
+      project: "test-project",
+      notebookTitle: "테스트 노트북",
+      sourceUrl: "https://notebooklm.google.com/notebook/ROUNDTRIP",
+      capturedAt: "2026-05-09T12:00:00Z",
+      hash: "deadbeef0123456789abcdef0123456789abcdef0123456789abcdef01234567",
+      version: 5,
+    });
+    await fs.writeFile(path.join(tmpDir, "2026-05-09-roundtrip-v5.md"), fm + "본문\n", "utf-8");
+    const result = await buildVersionIndex(tmpDir, "https://notebooklm.google.com/notebook/ROUNDTRIP");
+    expect(result.maxVersion).toBe(5);
+    expect(result.hashSet.has("deadbeef0123456789abcdef0123456789abcdef0123456789abcdef01234567")).toBe(true);
   });
 });
 
@@ -278,6 +295,24 @@ describe("saveArtifact (integration)", () => {
     expect(result.project).toBe("_unmapped");
     expect(result.isUnmapped).toBe(true);
     expect(result.mappingHint).toBeDefined();
+  });
+
+  it("sourceUrl 누락 → throw", async () => {
+    await expect(saveArtifact({
+      sourceUrl: "",
+      notebookTitle: "t",
+      noteText: "정상 길이 본문 충분히 깁니다 20자 넘음",
+      capturedAt: "2026-05-09T00:00:00Z",
+    })).rejects.toThrow(/sourceUrl 또는 noteText 누락/);
+  });
+
+  it("본문 20자 미만 → throw", async () => {
+    await expect(saveArtifact({
+      sourceUrl: "https://notebooklm.google.com/notebook/X",
+      notebookTitle: "t",
+      noteText: "짧음",
+      capturedAt: "2026-05-09T00:00:00Z",
+    })).rejects.toThrow(/본문 너무 짧음/);
   });
 });
 

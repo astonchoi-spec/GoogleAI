@@ -3,9 +3,6 @@
   "name": "Aston NotebookLM Bridge",
   "version": "0.1.0",
   "description": "회장님 NotebookLM 노트를 1클릭으로 Aston Workstation Wiki에 자동 적재합니다.",
-  "icons": {
-    "128": "icon.png"
-  },
   "content_scripts": [
     {
       "matches": ["https://notebooklm.google.com/*"],

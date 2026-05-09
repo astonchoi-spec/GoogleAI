@@ -278,54 +278,73 @@ export async function startDriveSync(): Promise<void> {
     return;
   }
 
-  const root = exportsRootDir();
-  // root 가 없어도 chokidar 가 awaitWriteFinish 옵션으로 안전하게 대기
-  if (!fs.existsSync(root)) {
-    try {
-      fs.mkdirSync(root, { recursive: true });
-    } catch (err) {
-      console.error("[rag/driveSync] exports root 생성 실패:", err);
+  // 어떤 단계 실패도 서버 부팅을 막지 않도록 전체 try-catch 로 감쌈.
+  try {
+    const root = exportsRootDir();
+    // root 폴더가 없으면 만들기 시도. 실패해도 chokidar 는 미존재 경로를 받아둘 수 있음.
+    if (!fs.existsSync(root)) {
+      try {
+        fs.mkdirSync(root, { recursive: true });
+      } catch (err) {
+        console.warn(
+          "[rag/driveSync] exports root mkdir 실패 (드라이브 미마운트·권한 등) — watcher 비활성화 후 부팅 계속:",
+          err instanceof Error ? err.message : err,
+        );
+        status.enabled = false;
+        status.watchedRoot = root;
+        return; // chokidar 시작 안 함, 부팅은 영향 0
+      }
+    }
+
+    const projects = allowedProjects;
+    if (projects.length === 0) {
+      console.warn(
+        "[rag/driveSync] setAllowedProjects() 가 호출되지 않았거나 빈 목록 — 부팅 보류",
+      );
       status.enabled = false;
       return;
     }
-  }
+    const watchPaths = projects.map((p) => exportsProjectDir(p));
 
-  const projects = allowedProjects;
-  if (projects.length === 0) {
-    console.warn(
-      "[rag/driveSync] setAllowedProjects() 가 호출되지 않았거나 빈 목록 — 부팅 보류",
+    watcher = chokidar.watch(watchPaths, {
+      ignoreInitial: false, // 부팅 시 기존 파일도 1회 점검 (멱등성 으로 중복 방지)
+      persistent: true,
+      awaitWriteFinish: { stabilityThreshold: 1000, pollInterval: 200 },
+      depth: 0,
+    });
+
+    watcher.on("add", (filePath) => {
+      void handleNewFile(filePath);
+    });
+    watcher.on("change", (filePath) => {
+      void handleNewFile(filePath);
+    });
+    watcher.on("error", (err) => {
+      console.error("[rag/driveSync] watcher error (부팅 영향 없음):", err);
+    });
+
+    status.enabled = true;
+    status.watchedRoot = root;
+    status.watchedProjects = projects;
+    status.startedAt = new Date().toISOString();
+    console.log(
+      `[rag/driveSync] 🚀 시작: ${projects.length} 폴더 감시 (${root})`,
+    );
+    return;
+  } catch (err) {
+    console.error(
+      "[rag/driveSync] 시작 중 예상치 못한 오류 — 부팅 계속, watcher 비활성화:",
+      err,
     );
     status.enabled = false;
+    if (watcher) {
+      try {
+        await watcher.close();
+      } catch {}
+      watcher = null;
+    }
     return;
   }
-  const watchPaths = projects.map((p) => exportsProjectDir(p));
-
-  watcher = chokidar.watch(watchPaths, {
-    ignoreInitial: false, // 부팅 시 기존 파일도 1회 점검 (멱등성 으로 중복 방지)
-    persistent: true,
-    awaitWriteFinish: { stabilityThreshold: 1000, pollInterval: 200 },
-    depth: 0,
-  });
-
-  watcher.on("add", (filePath) => {
-    void handleNewFile(filePath);
-  });
-  watcher.on("change", (filePath) => {
-    // 본문 변경 시 새로운 fileHash 가 되어 다시 인덱싱
-    void handleNewFile(filePath);
-  });
-  watcher.on("error", (err) => {
-    console.error("[rag/driveSync] watcher error:", err);
-  });
-
-  status.enabled = true;
-  status.watchedRoot = root;
-  status.watchedProjects = projects;
-  status.startedAt = new Date().toISOString();
-
-  console.log(
-    `[rag/driveSync] 🚀 시작: ${projects.length} 폴더 감시 (${root})`,
-  );
 }
 
 export async function stopDriveSync(): Promise<void> {

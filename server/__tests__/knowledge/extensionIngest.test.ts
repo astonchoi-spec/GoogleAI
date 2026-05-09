@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { detectArtifactKind } from "../../knowledge/extensionIngest.ts";
+import { detectArtifactKind, generateArtifactSlug } from "../../knowledge/extensionIngest.ts";
 
 describe("detectArtifactKind", () => {
   it("[시장 분석 가이드] prefix → market-analysis", () => {
@@ -39,5 +39,38 @@ describe("detectArtifactKind", () => {
 
   it("빈 문자열 → report", () => {
     expect(detectArtifactKind("")).toBe("report");
+  });
+});
+
+describe("generateArtifactSlug", () => {
+  it("영문·숫자 제목은 케밥으로", () => {
+    expect(generateArtifactSlug("Whitelier Mongolia Blueprint", "roadmap", "abcdef0123456789"))
+      .toBe("whitelier-mongolia-blueprint");
+  });
+
+  it("한글이 섞이면 영문 부분만 추출 (3자 이상)", () => {
+    expect(generateArtifactSlug("화이트리에 Mongolia 2026", "roadmap", "abcdef0123456789"))
+      .toBe("mongolia-2026");
+  });
+
+  it("한글 100% 제목 → artifact-{kind}-{hash8} 폴백", () => {
+    expect(generateArtifactSlug("화이트리에 역삼 몽골 공동창업", "report", "abcdef0123456789ffff"))
+      .toBe("artifact-report-abcdef01");
+  });
+
+  it("영문 3자 미만은 폴백", () => {
+    expect(generateArtifactSlug("화 AI 분석", "market-analysis", "11223344aabbccdd"))
+      .toBe("artifact-market-analysis-11223344");
+  });
+
+  it("최대 길이 40자 절단", () => {
+    const longTitle = "Whitelier Global Expansion Master Plan 2026 Quarterly Review";
+    const slug = generateArtifactSlug(longTitle, "roadmap", "abcdef0123456789");
+    expect(slug.length).toBeLessThanOrEqual(40);
+  });
+
+  it("특수문자 제거 후 케밥", () => {
+    expect(generateArtifactSlug("AI/ML & Data: Pipeline (2026)!", "report", "deadbeef12345678"))
+      .toBe("ai-ml-data-pipeline-2026");
   });
 });

@@ -36,6 +36,25 @@ export function detectArtifactKind(title: string): ArtifactKind {
   return "report";
 }
 
+export function generateArtifactSlug(
+  title: string,
+  kind: ArtifactKind,
+  hash: string,
+): string {
+  // 영문·숫자만 추출, 공백을 하이픈으로
+  const ascii = title
+    .replace(/[^a-zA-Z0-9\s]/g, " ")
+    .trim()
+    .replace(/\s+/g, "-")
+    .replace(/-+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .toLowerCase()
+    .slice(0, 40)
+    .replace(/-+$/g, "");
+  if (ascii.length >= 3) return ascii;
+  return `artifact-${kind}-${hash.slice(0, 8)}`;
+}
+
 // 외부에서 주입받는 URL→project 매핑 (rag 도메인 의존 회피).
 let urlToProject: Map<string, string> = new Map();
 

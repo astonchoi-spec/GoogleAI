@@ -159,6 +159,9 @@ function collectFrontmatterTags(note: CachedNote): Set<string> {
 
 function scoreNote(note: CachedNote, tokens: string[]): number {
   const tagSet = collectFrontmatterTags(note);
+  const titleStr = String(note.frontmatter.title ?? "").toLowerCase();
+  const fileNameLower = note.fileName.toLowerCase();
+
   let score = 0;
   for (const t of tokens) {
     let count = 0;
@@ -167,9 +170,14 @@ function scoreNote(note: CachedNote, tokens: string[]): number {
       count += 1;
       idx += t.length;
     }
-    if (count === 0) continue;
-    const multiplier = tagSet.has(t) ? 1.5 : 1;
-    score += count * multiplier;
+    if (count > 0) {
+      const multiplier = tagSet.has(t) ? 1.5 : 1;
+      score += count * multiplier;
+    }
+
+    if (titleStr.includes(t) || fileNameLower.includes(t)) {
+      score += 5;
+    }
   }
   return score;
 }

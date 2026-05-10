@@ -132,6 +132,24 @@ describe("scoring — frontmatter weight", () => {
   });
 });
 
+describe("scoring — title/filename bonus", () => {
+  it("파일명에 토큰이 들어있으면 +5 보너스 (본문 매칭 없어도 검색 결과에 포함)", async () => {
+    await writeNote("a", "한남-사업성.md", {}, "그냥 본문 한 줄");
+    await writeNote("b", "general.md", {}, "한남 본문 한 줄");
+    const hits = await searchLocalNotes("한남");
+    // a 는 본문 매칭 0건이지만 파일명 보너스 +5 로 결과에 들어가고 1위
+    expect(hits[0].project).toBe("a");
+    expect(hits[0].score).toBeGreaterThanOrEqual(5);
+  });
+
+  it("frontmatter title 매칭도 +5", async () => {
+    await writeNote("a", "doc.md", { title: "한남 사업성" }, "본문 그냥");
+    await writeNote("b", "doc2.md", {}, "한남 본문 한 줄");
+    const hits = await searchLocalNotes("한남");
+    expect(hits[0].project).toBe("a");
+  });
+});
+
 describe("tokenize", () => {
   it("한국어 어절 길이≥2, 영어 길이≥3, 그 외 제거", () => {
     const tokens = tokenize("한남 PF 진행 상황 어때 go BTC");

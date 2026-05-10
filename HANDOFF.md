@@ -1,28 +1,36 @@
 ﻿# HANDOFF.md — 에스턴 워크스테이션
-> 업데이트: 2026-05-10 Phase 4-A 설계 완료 (로컬 RAG 주입, 구현 대기) | 브랜치: codex-google-workspace-expansion
+> 업데이트: 2026-05-10 Phase 4-A 구현 완료 (운영 검증 대기) | 브랜치: codex-google-workspace-expansion
 
 ---
 
-## 마지막 완료 작업 (Phase 4-A 설계만)
+## 마지막 완료 작업 (Phase 4-A 구현)
+
+**2026-05-10 Phase 4-A 구현 — 로컬 NotebookLM 회수 자료 → Web Chat RAG 주입 | Claude Code**
+- 신규 `server/rag/localMdSearch.ts` (~250줄) — `${ASTON_WIKI_ROOT}/projects/*/notebooklm/*.md` 스캔, TF + frontmatter 1.5× + 제목/파일명 +5 점수식, 5분 mtime 캐시, top-K=3, 500자 매칭 윈도 snippet
+- `formatCitationFooter()` — "📚 참고 자료" 한국어 인용 절
+- `routers/llm.ts:chat` 한 곳 수정 — 인텐트 fallthrough 직후 RAG 단계 삽입 (인텐트 매칭 성공 시 건너뜀, 기존 라우팅과 100% 직교)
+- 신규 테스트 20개 (스펙 8~10개에서 확장) — 토큰화·파일스캔·캐시·가중치·보너스·snippet·top-K·인용절·empty root
+- 검증: check ✅ / build ✅ (784.5kb) / **799 passed** (회귀 0건)
+
+### 회장님 직접 운영 검증 (필수)
+- [ ] PM2 재시작 (`pm2 restart aston`)
+- [ ] 웹 채팅 http://localhost:4000 → "한남 PF 진행 상황 어때?" 자연 질의
+- [ ] 응답 본문 끝에 "📚 참고 자료" 절 + 회수 자료 인용 확인
+- [ ] 회수 자료 없는 일반 질의 → 기존 Gemini 답변과 동일 (회귀 없음 확인)
+
+### 다음 단계 (Phase 4-B/4-C/4-D)
+- Phase 4-B: Vertex AI Search 통합 (Phase 3-A `rag-bootstrap.ts` + 3-B `importDocument` 완료 후)
+- Phase 4-C: 텔레그램 적용 (`messageRouter.ts` 동일 패턴)
+- Phase 4-D: chunk-level 검색 + 임베딩 (먼 후순위)
+
+---
+
+## 이전 완료 작업 (Phase 4-A 설계)
 
 **2026-05-10 Phase 4-A 설계 — 로컬 NotebookLM 회수 자료 → Web Chat RAG 주입 | Claude Code**
 - 회장님 결정 확정 — 검색 소스=로컬 `*.md` 직접 스캔 / 적용 범위=웹 채팅만
 - 설계 스펙 문서 — `docs/superpowers/specs/2026-05-10-phase4a-local-rag-design.md`
-- 핵심: chat 도메인 fallback 진입점(`server/routers/llm.ts:208~250`)에 RAG 단계 삽입. 인텐트 매칭 성공(`handled=true`) 시 RAG 건너뜀 — 기존 라우팅과 100% 직교
-- 신규 모듈 — `server/rag/localMdSearch.ts` (Public API: `searchLocalNotes`, NoteHit 타입, in-memory 캐시 5분 TTL)
 - 자율 결정 — K=3, snippet 500자, TF+frontmatter 1.5×+제목 +5, "📚 참고 자료" 한국어 인용 절
-- **구현 미착수**: 코드 변경 0건. 다음 세션에서 writing-plans → 구현 분해
-
-### 다음 단계 (구현)
-- [ ] `server/rag/localMdSearch.ts` 구현 (~200줄)
-- [ ] `server/__tests__/localMdSearch.test.ts` 8~10개 케이스
-- [ ] `server/routers/llm.ts` chat fallback 진입점 수정 + systemPrompt 주입 + `sources` field + 본문 끝 인용 절
-- [ ] `npm run check && npm run build && npm test` 회귀 0건 (745 → ~755)
-- [ ] 라이브: "한남 PF 진행 상황" 자연 질의 → 회수 자료 인용 응답 (회장님 직접 검증)
-
-### Phase 4-B/4-C 분리 사유
-- 4-B Vertex AI Search 는 Phase 3-A (`scripts/rag-bootstrap.ts`) + 3-B (`importDocument`) 셋업 완료 후 진행
-- 4-C 텔레그램 적용은 4-A 라이브 검증 통과 후 동일 패턴으로 `messageRouter.ts` 적용
 
 ---
 

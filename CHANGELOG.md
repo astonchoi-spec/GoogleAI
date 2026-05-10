@@ -3,6 +3,53 @@
 
 ---
 
+## 2026-05-10 Phase 4-A 구현 — 로컬 NotebookLM 회수 자료 → Web Chat RAG 주입 (Claude Code)
+
+### 배경
+설계(같은 날 별도 항목) 후속 — chat 도메인 fallback 단계에서 회수 자료를 자동 검색·주입하여 회장님이 별도 prefix 없이 자연 질의만으로도 NotebookLM 분석 자료를 참조하게 만든다.
+
+### 작업 내용
+- **신규 모듈** `server/rag/localMdSearch.ts` (~250줄)
+  - Public API: `searchLocalNotes(query, opts?)` / `formatCitationFooter(hits)` / `tokenize(text)` (테스트 노출용 export)
+  - 검색 루트: `${ASTON_WIKI_ROOT}/projects/*/notebooklm/*.md`
+  - 토큰화: 한국어 어절 길이≥2 / 영어 길이≥3 / 문장부호 split / lowercase 정규화
+  - 점수식: TF + frontmatter `tags`/`categories` 일치 시 ×1.5 + 제목/파일명 매칭 시 +5 보너스
+  - 결과: 기본 K=3, score 0 hit 제외, snippet 500자 (첫 매칭 토큰 주변 윈도우, ellipsis 마커)
+  - 캐시: in-memory mtime 기반, 5분 TTL
+  - 에러: 빈 결과 → `[]` (throw 금지)
+- **`routers/llm.ts:chat`** chat fallback 진입점(인텐트 fallthrough 직후) 한 곳 수정
+  - `searchLocalNotes(input.message, { k: 3 })` 호출 (실패해도 일반 대화 진행)
+  - systemPrompt 에 `참고할 회수 자료(N건)` 단락 prepend
+  - 응답 본문 끝에 "📚 참고 자료" 인용 절 부가
+  - `sources` 필드에 `file://` URI 포함 (web UI `GroundingSource` 칩 재사용)
+- **인텐트 매칭 성공시(`handled=true`)에는 RAG 단계 건너뜀** — 기존 라우팅과 100% 직교
+
+### 수정 파일
+**신규**:
+- `server/rag/localMdSearch.ts`
+- `server/__tests__/localMdSearch.test.ts` (20개 테스트)
+- `docs/superpowers/plans/2026-05-10-phase4a-local-rag.md`
+
+**수정**:
+- `server/routers/llm.ts` (한 곳, line 208 직후 RAG 단계 + systemPrompt + return 블록)
+- `TODO.md` / `CHANGELOG.md` / `HANDOFF.md`
+
+### 검증
+- `npm run check` ✅ 모듈 경계 위반 0건 + tsc 에러 0건
+- `npm run build` ✅ (dist/index.js 784.5kb)
+- `npm test` ✅ **799 passed** / 7 skipped / 2 todo (회귀 0건 — 기존 745 baseline 대비)
+
+### 자율 결정 (회장님 안 묻고 베스트 프랙티스 적용)
+- TS `u` regex flag 미사용 (tsconfig target 호환) — 한·영 토큰화는 `[가-힣]` 검사로 충분
+- snippet 길이 검증은 `≤ SNIPPET_LEN + 2` (양쪽 ellipsis 마커 고려)
+
+### 남은 이슈
+- 운영 검증 (회장님 직접): "한남 PF 진행 상황" 자연 질의 → 회수 자료 인용 응답 확인
+- Phase 4-B Vertex AI Search 는 Phase 3-A/3-B 데이터 스토어 셋업 완료 후 진입
+- Phase 4-C 텔레그램 적용은 4-A 라이브 검증 통과 후
+
+---
+
 ## 2026-05-10 Phase 4-A 설계 — 로컬 NotebookLM 회수 자료 → Web Chat RAG 주입 (Claude Code, 설계만)
 
 ### 배경

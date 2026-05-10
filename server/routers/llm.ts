@@ -12,6 +12,11 @@ import type { LLMEngine } from "../llm/models.ts";
 import { routeIntentMessage, formatIntentRouteMessage } from "../intent/intentService.ts";
 import { searchLocalNotes, formatCitationFooter } from "../rag/localMdSearch.ts";
 
+// Phase 4-A 보강: 약하게 매칭된 인텐트(confidence < 임계치)는 chat fallback 으로 넘겨 RAG 단계 도달.
+// 0.55 같은 광범위 키워드 매칭이 자연 질의를 가로채는 것을 방지.
+// execute 타입(requiresConfirmation)은 임계치와 무관하게 항상 확인 단계 진행.
+const INTENT_CONFIDENCE_THRESHOLD = 0.7;
+
 const llmCaller = new LLMCaller();
 
 export const llmRouter = router({
@@ -168,12 +173,23 @@ export const llmRouter = router({
           "/ requiresConfirmation:", routed.requiresConfirmation
         );
 
-        if (routed.handled) {
-          // 실제 API 호출 성공 — 결과를 사용자에게 반환
+        if (routed.handled && routed.intent.confidence >= INTENT_CONFIDENCE_THRESHOLD) {
+          // 명확한 인텐트 매칭(confidence ≥ 임계치) — 실제 API 호출 결과를 사용자에게 반환
           const responseText = routed.response || formatIntentRouteMessage(routed) || "처리 완료";
           console.log("[INTENT] handled — returning result, length:", responseText.length);
           await sessionManager.addMessage(userId, "assistant", responseText);
           return { response: responseText, model: "intent-router", engine: "intent-service", data: routed.data, sources: undefined };
+        }
+
+        if (routed.handled) {
+          // 약하게 매칭(confidence < 임계치) — 결과 폐기하고 chat fallback + RAG 로 넘김
+          console.log(
+            "[INTENT] weak match (confidence",
+            routed.intent.confidence.toFixed(2),
+            "<",
+            INTENT_CONFIDENCE_THRESHOLD,
+            ") — falling through to RAG + Gemini"
+          );
         }
 
         if (routed.requiresConfirmation) {

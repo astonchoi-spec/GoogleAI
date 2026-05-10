@@ -18,6 +18,21 @@ export interface SearchOptions {
   projects?: string[];
 }
 
+const KOREAN_RE = /[가-힣]/;
+
+export function tokenize(text: string): string[] {
+  if (!text) return [];
+  return text
+    .toLowerCase()
+    .split(/[\s,.!?;:()[\]{}"'`~/\\<>+*=|&^%$#@]+/u)
+    .map((t) => t.trim())
+    .filter((t) => {
+      if (!t) return false;
+      if (KOREAN_RE.test(t)) return t.length >= 2;
+      return t.length >= 3;
+    });
+}
+
 export async function searchLocalNotes(
   _query: string,
   _opts: SearchOptions = {},

@@ -109,6 +109,29 @@ describe("cache", () => {
   });
 });
 
+describe("scoring — frontmatter weight", () => {
+  it("tag 일치 시 가중치 1.5× (동일 TF 인 경우 tag 있는 쪽이 더 높다)", async () => {
+    await writeNote("a", "with-tag.md", { tags: ["한남"] }, "한남 한 줄");
+    await writeNote("b", "no-tag.md", {}, "한남 한 줄");
+    const hits = await searchLocalNotes("한남");
+    expect(hits.length).toBe(2);
+    expect(hits[0].project).toBe("a");
+    expect(hits[0].score).toBeGreaterThan(hits[1].score);
+  });
+
+  it("categories 일치도 동일하게 1.5× 가중치", async () => {
+    await writeNote(
+      "a",
+      "with-cat.md",
+      { categories: ["realestate"] },
+      "realestate 한 줄",
+    );
+    await writeNote("b", "no-cat.md", {}, "realestate 한 줄");
+    const hits = await searchLocalNotes("realestate");
+    expect(hits[0].project).toBe("a");
+  });
+});
+
 describe("tokenize", () => {
   it("한국어 어절 길이≥2, 영어 길이≥3, 그 외 제거", () => {
     const tokens = tokenize("한남 PF 진행 상황 어때 go BTC");

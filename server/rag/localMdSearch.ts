@@ -142,14 +142,34 @@ function pruneCacheIfStale(): void {
   }
 }
 
+function collectFrontmatterTags(note: CachedNote): Set<string> {
+  const tagSet = new Set<string>();
+  for (const key of ["tags", "categories"] as const) {
+    const v = note.frontmatter[key];
+    if (Array.isArray(v)) {
+      for (const item of v) {
+        if (typeof item === "string") tagSet.add(item.toLowerCase());
+      }
+    } else if (typeof v === "string") {
+      tagSet.add(v.toLowerCase());
+    }
+  }
+  return tagSet;
+}
+
 function scoreNote(note: CachedNote, tokens: string[]): number {
+  const tagSet = collectFrontmatterTags(note);
   let score = 0;
   for (const t of tokens) {
+    let count = 0;
     let idx = 0;
     while ((idx = note.bodyLower.indexOf(t, idx)) !== -1) {
-      score += 1;
+      count += 1;
       idx += t.length;
     }
+    if (count === 0) continue;
+    const multiplier = tagSet.has(t) ? 1.5 : 1;
+    score += count * multiplier;
   }
   return score;
 }

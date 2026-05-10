@@ -27,7 +27,7 @@ export function tokenize(text: string): string[] {
   if (!text) return [];
   return text
     .toLowerCase()
-    .split(/[\s,.!?;:()[\]{}"'`~/\\<>+*=|&^%$#@]+/u)
+    .split(/[\s,.!?;:()[\]{}"'`~/\\<>+*=|&^%$#@]+/)
     .map((t) => t.trim())
     .filter((t) => {
       if (!t) return false;

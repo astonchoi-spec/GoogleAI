@@ -10,6 +10,7 @@ import { sessionManager } from "../llm/session.ts";
 import { getModel, getModelsByEngine, getAllEngines, getDefaultModel } from "../llm/models.ts";
 import type { LLMEngine } from "../llm/models.ts";
 import { routeIntentMessage, formatIntentRouteMessage } from "../intent/intentService.ts";
+import { searchLocalNotes, formatCitationFooter } from "../rag/localMdSearch.ts";
 
 const llmCaller = new LLMCaller();
 
@@ -207,6 +208,13 @@ export const llmRouter = router({
 
       // ── Step 2: Gemini 일반 대화 (인텐트 매칭 실패 시 fallback)
 
+      // ── Step 2-pre: 로컬 NotebookLM 회수 자료 RAG 검색 (실패해도 일반 대화 진행)
+      const ragHits = await searchLocalNotes(input.message, { k: 3 }).catch((err) => {
+        console.warn("[RAG] local search failed:", err);
+        return [];
+      });
+      console.log("[RAG] hits:", ragHits.length);
+
       // Get conversation history
       const history = await sessionManager.getHistory(userId, 10);
 
@@ -225,7 +233,7 @@ export const llmRouter = router({
       // Call LLM with enhanced system prompt
       const currentDate = new Date().toLocaleString('ko-KR', { timeZone: 'Asia/Seoul' });
       const currentModel = getModel(session.engine, session.modelKey);
-      const systemPrompt = `당신은 에스턴 워크스테이션의 업무형 AI 비서입니다. 한국어로 간결하고 실무적으로 답변하세요.
+      const baseSystemPrompt = `당신은 에스턴 워크스테이션의 업무형 AI 비서입니다. 한국어로 간결하고 실무적으로 답변하세요.
 
 현재 날짜와 시간: ${currentDate}
 현재 사용 중인 엔진: ${session.engine}, 모델: ${currentModel?.name || session.modelKey}
@@ -238,6 +246,14 @@ export const llmRouter = router({
 - 확인하지 못한 값은 예시나 자리표시자로 꾸미지 말고, 연결된 데이터 소스가 없다고 한 문장으로 말하세요.
 - 사용자가 이전 대화를 요약해 달라고 하면 실제 대화 내용만 요약하고, 시스템 설명이나 모델 설명을 넣지 마세요.
 - 실행/변경 작업은 사용자의 명시적인 승인 없이는 완료했다고 말하지 마세요.`;
+
+      const ragContextBlock = ragHits.length
+        ? `\n\n참고할 회수 자료(${ragHits.length}건):\n${ragHits
+            .map((h, i) => `[${i + 1}] ${h.project}/${h.fileName}\n${h.snippet}`)
+            .join("\n\n")}\n\n위 자료를 우선 참고하되, 자료에 없는 사실을 만들어내지 마세요.`
+        : "";
+
+      const systemPrompt = `${baseSystemPrompt}${ragContextBlock}`;
       
       const response = await userLlmCaller.call(
         session.engine,
@@ -249,14 +265,21 @@ export const llmRouter = router({
         systemPrompt
       );
 
-      // Add assistant response to history
-      await sessionManager.addMessage(userId, "assistant", response.content);
+      // Append RAG citation footer + sources
+      const finalResponse = response.content + formatCitationFooter(ragHits);
+      const ragSources = ragHits.map((h) => ({
+        title: `${h.project}/${h.fileName}`,
+        uri: `file://${h.filePath.replace(/\\/g, "/")}`,
+      }));
+
+      // Add assistant response to history (인용 절 포함)
+      await sessionManager.addMessage(userId, "assistant", finalResponse);
 
       return {
-        response: response.content,
+        response: finalResponse,
         model: response.model,
         engine: response.engine,
-        sources: response.sources,
+        sources: ragSources.length > 0 ? ragSources : response.sources,
         data: undefined,
       };
     }),

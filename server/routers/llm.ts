@@ -270,7 +270,11 @@ export const llmRouter = router({
         : "";
 
       const systemPrompt = `${baseSystemPrompt}${ragContextBlock}`;
-      
+
+      // 인라인 첨부([첨부: <경로>]) 본문 추출 → systemPrompt에 prepend
+      const { injectAttachments } = await import("../llm/attachmentInject");
+      const injected = await injectAttachments(systemPrompt, input.message);
+
       const response = await userLlmCaller.call(
         session.engine,
         session.modelKey,
@@ -278,7 +282,7 @@ export const llmRouter = router({
           role: msg.role,
           content: msg.content,
         })),
-        systemPrompt
+        injected.systemPrompt
       );
 
       // Append RAG citation footer + sources
@@ -297,6 +301,8 @@ export const llmRouter = router({
         engine: response.engine,
         sources: ragSources.length > 0 ? ragSources : response.sources,
         data: undefined,
+        attachments: injected.attachments,
+        warnings: injected.warnings,
       };
     }),
 

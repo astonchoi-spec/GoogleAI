@@ -128,6 +128,9 @@ async function replyWithLlm(
 현재 날짜와 시간: ${currentDate}
 현재 사용 중인 엔진: ${session.engine}, 모델: ${currentModel?.name || session.modelKey}`;
 
+  const { injectAttachments } = await import("../attachmentInject");
+  const injected = await injectAttachments(systemPrompt, userMessage);
+
   const response = await llmCaller.call(
     session.engine,
     session.modelKey,
@@ -135,12 +138,17 @@ async function replyWithLlm(
       role: msg.role,
       content: msg.content,
     })),
-    systemPrompt
+    injected.systemPrompt
   );
 
   await sessionManager.addMessage(userId, "assistant", response.content);
   const sentMessage = await ctx.reply(response.content, {
     reply_parameters: { message_id: (ctx.message as any).message_id },
   });
+
+  if (injected.warnings.length > 0) {
+    await ctx.reply("⚠️ " + injected.warnings.join("\n"));
+  }
+
   await saveAssistantMessage(conversationId, response.content, sentMessage.message_id);
 }

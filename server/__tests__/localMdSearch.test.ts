@@ -2,7 +2,12 @@ import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import fs from "node:fs/promises";
 import path from "node:path";
 import os from "node:os";
-import { searchLocalNotes, tokenize } from "../rag/localMdSearch.ts";
+import {
+  searchLocalNotes,
+  tokenize,
+  formatCitationFooter,
+  type NoteHit,
+} from "../rag/localMdSearch.ts";
 
 let tmpRoot: string;
 
@@ -190,6 +195,39 @@ describe("top-K cutoff & projects filter", () => {
     const hits = await searchLocalNotes("한남", { projects: ["hannam-644"] });
     expect(hits.length).toBe(1);
     expect(hits[0].project).toBe("hannam-644");
+  });
+});
+
+describe("formatCitationFooter", () => {
+  it("한국어 헤더 + 번호 리스트 형식", () => {
+    const hits: NoteHit[] = [
+      {
+        project: "hannam-644",
+        filePath: "/x",
+        fileName: "2026-05-08-사업성.md",
+        frontmatter: {},
+        snippet: "",
+        score: 10,
+      },
+      {
+        project: "yeokbuk-pf",
+        filePath: "/y",
+        fileName: "PF 메모.md",
+        frontmatter: {},
+        snippet: "",
+        score: 5,
+      },
+    ];
+    const footer = formatCitationFooter(hits);
+    expect(footer).toContain("📚 참고 자료");
+    expect(footer).toContain("hannam-644/2026-05-08-사업성.md");
+    expect(footer).toContain("yeokbuk-pf/PF 메모.md");
+    expect(footer).toMatch(/1\.\s/);
+    expect(footer).toMatch(/2\.\s/);
+  });
+
+  it("빈 hits 면 빈 문자열", () => {
+    expect(formatCitationFooter([])).toBe("");
   });
 });
 

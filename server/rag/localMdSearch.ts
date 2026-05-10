@@ -244,3 +244,9 @@ export async function searchLocalNotes(
   const k = opts.k ?? DEFAULT_K;
   return hits.slice(0, k);
 }
+
+export function formatCitationFooter(hits: NoteHit[]): string {
+  if (hits.length === 0) return "";
+  const lines = hits.map((h, i) => `${i + 1}. ${h.project}/${h.fileName}`);
+  return `\n\n📚 참고 자료\n${lines.join("\n")}`;
+}

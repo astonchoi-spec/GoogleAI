@@ -33,6 +33,82 @@ describe("rag/localMdSearch — Phase 4-A", () => {
   });
 });
 
+async function writeNote(
+  project: string,
+  fileName: string,
+  frontmatter: Record<string, string | string[]>,
+  body: string,
+): Promise<string> {
+  const dir = path.join(tmpRoot, "projects", project, "notebooklm");
+  await fs.mkdir(dir, { recursive: true });
+  const fmLines = Object.entries(frontmatter).map(([k, v]) =>
+    Array.isArray(v) ? `${k}: [${v.join(", ")}]` : `${k}: ${v}`,
+  );
+  const content = `---\n${fmLines.join("\n")}\n---\n${body}\n`;
+  const filePath = path.join(dir, fileName);
+  await fs.writeFile(filePath, content, "utf-8");
+  return filePath;
+}
+
+describe("file scanning", () => {
+  it("projects/{p}/notebooklm/*.md 만 수집한다", async () => {
+    await writeNote(
+      "hannam-644",
+      "2026-05-08-사업성.md",
+      { tags: ["pf"] },
+      "한남 사업성 분석",
+    );
+    // 검색 대상 외부 파일 (notebooklm 하위가 아님) — 무시되어야 함
+    const outsideDir = path.join(tmpRoot, "projects", "hannam-644", "notes");
+    await fs.mkdir(outsideDir, { recursive: true });
+    await fs.writeFile(path.join(outsideDir, "memo.md"), "한남 메모", "utf-8");
+
+    const hits = await searchLocalNotes("한남");
+    expect(hits.length).toBe(1);
+    expect(hits[0].project).toBe("hannam-644");
+    expect(hits[0].fileName).toBe("2026-05-08-사업성.md");
+  });
+
+  it("frontmatter tags/categories 와 본문이 NoteHit 에 채워진다", async () => {
+    await writeNote(
+      "hannam-644",
+      "test.md",
+      { tags: ["pf", "hannam"], categories: ["realestate"] },
+      "한남 사업성",
+    );
+    const hits = await searchLocalNotes("한남");
+    expect(hits[0].frontmatter.tags).toEqual(["pf", "hannam"]);
+    expect(hits[0].frontmatter.categories).toEqual(["realestate"]);
+  });
+});
+
+describe("cache", () => {
+  it("두 번째 호출도 동일 결과 (mtime 기반 캐시 hit)", async () => {
+    await writeNote("hannam-644", "test.md", {}, "한남 사업성 분석");
+    const first = await searchLocalNotes("한남");
+    expect(first.length).toBe(1);
+    const second = await searchLocalNotes("한남");
+    expect(second[0].snippet).toContain("한남");
+  });
+
+  it("파일 mtime 변경 시 캐시가 무효화된다", async () => {
+    const filePath = await writeNote(
+      "hannam-644",
+      "test.md",
+      {},
+      "한남 사업성 분석",
+    );
+    await searchLocalNotes("한남");
+    await new Promise((r) => setTimeout(r, 50));
+    await fs.writeFile(filePath, "---\n---\n역삼 빌딩 검토\n", "utf-8");
+    const future = new Date(Date.now() + 5000);
+    await fs.utimes(filePath, future, future);
+    const hits = await searchLocalNotes("역삼");
+    expect(hits.length).toBe(1);
+    expect(hits[0].snippet).toContain("역삼");
+  });
+});
+
 describe("tokenize", () => {
   it("한국어 어절 길이≥2, 영어 길이≥3, 그 외 제거", () => {
     const tokens = tokenize("한남 PF 진행 상황 어때 go BTC");

@@ -1,22 +1,25 @@
 ﻿# HANDOFF.md — 에스턴 워크스테이션
-> 업데이트: 2026-05-10 Phase 4-A 구현 완료 (운영 검증 대기) | 브랜치: codex-google-workspace-expansion
+> 업데이트: 2026-05-10 Phase 4-A 라이브 검증 완료 ✅ | 브랜치: codex-google-workspace-expansion
 
 ---
 
-## 마지막 완료 작업 (Phase 4-A 구현)
+## 마지막 완료 작업 (Phase 4-A 구현 + 라이브 검증)
 
-**2026-05-10 Phase 4-A 구현 — 로컬 NotebookLM 회수 자료 → Web Chat RAG 주입 | Claude Code**
+**2026-05-10 Phase 4-A — 로컬 NotebookLM 회수 자료 → Web Chat RAG 주입 (라이브 검증 통과) | Claude Code**
 - 신규 `server/rag/localMdSearch.ts` (~250줄) — `${ASTON_WIKI_ROOT}/projects/*/notebooklm/*.md` 스캔, TF + frontmatter 1.5× + 제목/파일명 +5 점수식, 5분 mtime 캐시, top-K=3, 500자 매칭 윈도 snippet
 - `formatCitationFooter()` — "📚 참고 자료" 한국어 인용 절
-- `routers/llm.ts:chat` 한 곳 수정 — 인텐트 fallthrough 직후 RAG 단계 삽입 (인텐트 매칭 성공 시 건너뜀, 기존 라우팅과 100% 직교)
-- 신규 테스트 20개 (스펙 8~10개에서 확장) — 토큰화·파일스캔·캐시·가중치·보너스·snippet·top-K·인용절·empty root
+- `routers/llm.ts:chat` — 인텐트 fallthrough 직후 RAG 단계 삽입 + systemPrompt 주입 + sources(file://)
+- **라이브 보강 (검증 중 발견·수정)**: `routers/intent.ts:route` 와 `routers/llm.ts:chat` 양쪽에 confidence<0.7 가드 추가. 약한 매칭이 자연 질의를 가로채던 문제(예: "한남 PF" → realestate_portfolio_summary confidence 0.55) 해결. 약한 매칭은 handled=false 로 다운그레이드 → 클라이언트가 llm.chat 으로 fallback → RAG 작동
 - 검증: check ✅ / build ✅ (784.5kb) / **799 passed** (회귀 0건)
 
-### 회장님 직접 운영 검증 (필수)
-- [ ] PM2 재시작 (`pm2 restart aston`)
-- [ ] 웹 채팅 http://localhost:4000 → "한남 PF 진행 상황 어때?" 자연 질의
-- [ ] 응답 본문 끝에 "📚 참고 자료" 절 + 회수 자료 인용 확인
-- [ ] 회수 자료 없는 일반 질의 → 기존 Gemini 답변과 동일 (회귀 없음 확인)
+### 라이브 검증 결과 ✅
+- 웹 채팅 "한남 PF 진행 상황 어때?" → 응답: "한남동 644 사업성 분석이 완료되었습니다. **NPV 수익률은 15.3%, 예상 사업 기간은 36개월**입니다.\n\n📚 참고 자료\n1. hannam-644/2026-05-07-notebooklm--644----npv--153---3.md"
+- 회수 자료의 실제 데이터(NPV 15.3%, 36개월)가 응답에 인용됨 — RAG 정상 동작 확인
+
+### 다음 단계 (Phase 4-B/4-C/4-D)
+- Phase 4-B: Vertex AI Search 통합 (Phase 3-A `rag-bootstrap.ts` + 3-B `importDocument` 완료 후)
+- Phase 4-C: 텔레그램 적용 (`messageRouter.ts` 동일 패턴 — confidence 가드 + RAG 호출)
+- Phase 4-D: chunk-level 검색 + 임베딩 (먼 후순위)
 
 ### 다음 단계 (Phase 4-B/4-C/4-D)
 - Phase 4-B: Vertex AI Search 통합 (Phase 3-A `rag-bootstrap.ts` + 3-B `importDocument` 완료 후)

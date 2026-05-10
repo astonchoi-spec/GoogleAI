@@ -3,6 +3,30 @@
 
 ---
 
+## 2026-05-10 Phase 4-A 라이브 보강 — 약한 인텐트 매칭 가드 추가 (Claude Code)
+
+### 배경
+구현 후 라이브 검증에서 발견 — "한남 PF 진행 상황 어때" 질의가 `realestate_portfolio_summary` (confidence 0.55) 로 매칭되어 짧은 한 줄 응답("PF 포트폴리오 요약을 조회했습니다.")만 반환되고 RAG 단계에 도달하지 못함. 회장님 의도(자연 질의 → 회수 자료 인용)와 어긋남.
+
+### 작업 내용
+- **`server/routers/intent.ts:route`** — 약한 매칭(`confidence < INTENT_CONFIDENCE_THRESHOLD=0.7`, `requiresConfirmation=false`) 시 `handled=false` 로 다운그레이드 + `response`/`formattedMessage` 비움. 클라이언트(`client/src/chat/quickCommand.ts:88`)가 자동으로 `llm.chat` mutation 으로 fallback → 거기 들어 있는 RAG 코드가 작동
+- **`server/routers/llm.ts:chat`** — 동일 가드를 직접 진입(텔레그램 등)에도 적용
+- 두 라우터 모두 동일 상수 0.7 사용 (자율 결정)
+
+### 수정 파일
+- `server/routers/intent.ts` (~25줄 추가)
+- `server/routers/llm.ts` (이전 commit 03e19ee 에서 가드 추가)
+
+### 검증
+- `npm run check` ✅
+- `npm test` ✅ 799 passed (회귀 0건)
+- **라이브**: 회장님 직접 검증 — "한남 PF 진행 상황 어때?" → "한남동 644 사업성 분석이 완료되었습니다. NPV 수익률은 15.3%, 예상 사업 기간은 36개월입니다.\n\n📚 참고 자료\n1. hannam-644/2026-05-07-notebooklm--644----npv--153---3.md" ✅
+
+### 다음 단계
+- Phase 4-C 텔레그램 적용 (`messageRouter.ts`) 도 동일 confidence 가드 적용해야 일관성 유지 (별도 작업)
+
+---
+
 ## 2026-05-10 Phase 4-A 구현 — 로컬 NotebookLM 회수 자료 → Web Chat RAG 주입 (Claude Code)
 
 ### 배경

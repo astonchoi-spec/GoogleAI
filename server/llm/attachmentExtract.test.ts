@@ -30,10 +30,12 @@ describe("extractAttachmentText — guards", () => {
     expect(result.error).toMatch(/파일을 찾을 수 없습니다/);
   });
 
-  it("디렉토리는 거부", async () => {
-    const result = await extractAttachmentText(tmpDir);
+  it("디렉토리는 거부 (확장자가 .pdf인 디렉토리)", async () => {
+    const dirPath = path.join(tmpDir, "inner.pdf");
+    await fs.mkdir(dirPath);
+    const result = await extractAttachmentText(dirPath);
     expect(result.ok).toBe(false);
-    expect(result.error).toBeDefined();
+    expect(result.error).toMatch(/파일이 아닙니다/);
   });
 
   it("50MB 초과 거부", async () => {

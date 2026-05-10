@@ -45,6 +45,8 @@ describe("injectAttachments", () => {
     expect(result.systemPrompt).toContain("AAA");
     expect(result.systemPrompt).toContain("BBB");
     expect(result.systemPrompt).toContain("\n\n---\n");
+    expect(result.systemPrompt).toContain("[첨부 — a.txt]");
+    expect(result.systemPrompt).toContain("[첨부 — b.txt]");
   });
 
   it("실패 첨부는 (추출 실패: ...)로 노출, warnings에 사유", async () => {

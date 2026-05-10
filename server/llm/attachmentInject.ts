@@ -68,7 +68,7 @@ export async function injectAttachments(
     }
   }
 
-  const section = `[첨부 문서]\n${blocks.join("\n\n---\n")}`;
+  const section = `[첨부 문서]\n\n${blocks.join("\n\n---\n")}`;
   const systemPrompt = `${baseSystemPrompt}\n\n${section}`;
 
   return { systemPrompt, attachments, warnings };

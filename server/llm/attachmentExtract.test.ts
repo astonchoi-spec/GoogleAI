@@ -4,6 +4,9 @@ import * as path from "node:path";
 import * as os from "node:os";
 import { extractAttachmentText } from "./attachmentExtract";
 
+// node:fs/promises 네임스페이스를 spy 모드로 래핑 (실제 구현은 유지하면서 호출 추적 가능)
+vi.mock("node:fs/promises", { spy: true });
+
 // pdf2json mock — PDFParser는 EventEmitter 기반.
 // loadPDF 호출 시 mock state에 따라 dataReady 또는 dataError 이벤트 발생.
 // vi.hoisted로 선언해야 vi.mock 호이스팅 이후에도 클로저가 올바르게 참조함.
@@ -179,18 +182,20 @@ describe("extractAttachmentText — PDF (mocked pdf2json)", () => {
 });
 
 describe("extractAttachmentText — LRU cache", () => {
-  it("같은 파일 두 번째 호출은 캐시 히트 (디스크 재독 안 함)", async () => {
+  it("같은 파일 두 번째 호출은 캐시 히트 (fs.readFile 1회만 호출)", async () => {
     const filePath = path.join(tmpDir, "cached.txt");
     await fs.writeFile(filePath, "first", "utf8");
-    const r1 = await extractAttachmentText(filePath);
-    expect(r1.text).toBe("first");
 
-    // 디스크 내용 강제로 변경하되 mtime은 그대로 두기 위해
-    // 같은 stat을 재사용하려면 별도 셋업이 까다로우므로,
-    // 여기서는 mtime이 같으면 캐시 키가 같다는 사실만 확인:
-    // 파일 그대로 두고 한 번 더 호출 → 동일 결과
-    const r2 = await extractAttachmentText(filePath);
-    expect(r2.text).toBe("first");
+    const readSpy = vi.spyOn(fs, "readFile");
+    try {
+      const r1 = await extractAttachmentText(filePath);
+      expect(r1.text).toBe("first");
+      const r2 = await extractAttachmentText(filePath);
+      expect(r2.text).toBe("first");
+      expect(readSpy).toHaveBeenCalledTimes(1);
+    } finally {
+      readSpy.mockRestore();
+    }
   });
 
   it("파일 수정 후 호출은 새로 추출 (mtime 키 무효화)", async () => {

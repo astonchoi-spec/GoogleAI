@@ -1,22 +1,24 @@
 ﻿# TODO.md — 에스턴 워크스테이션
-> 업데이트: 2026-05-10 Phase 4-A 설계 완료 (로컬 RAG 주입, 구현 대기) | 브랜치: codex-google-workspace-expansion
+> 업데이트: 2026-05-10 Phase 4-A 구현 + 라이브 검증 완료 ✅ | 브랜치: codex-google-workspace-expansion
 
 ---
 
-## 2026-05-10 Phase 4-A — 로컬 NotebookLM 회수 자료 → Web Chat RAG 주입 (설계만)
+## 2026-05-10 Phase 4-A — 로컬 NotebookLM 회수 자료 → Web Chat RAG 주입 (라이브 검증 완료 ✅)
 
 ### 완료 (Claude Code)
-- ✅ 설계 스펙 문서 — `docs/superpowers/specs/2026-05-10-phase4a-local-rag-design.md`
-- ✅ 회장님 결정 확정: 검색 소스=로컬 `*.md` 스캔 / 적용 범위=웹 채팅만
-- ✅ 자율 결정 정리: K=3, snippet 500자, TF+가중치 점수식, 5분 캐시, 인용 절 한국어
+- ✅ 설계 스펙 — `docs/superpowers/specs/2026-05-10-phase4a-local-rag-design.md`
+- ✅ 구현 계획 — `docs/superpowers/plans/2026-05-10-phase4a-local-rag.md`
+- ✅ `server/rag/localMdSearch.ts` 구현 (Public API + 토큰화 + 점수식 + mtime 캐시 + top-K + snippet 윈도)
+- ✅ `server/__tests__/localMdSearch.test.ts` — 20개 테스트 케이스
+- ✅ `server/routers/llm.ts` chat fallback 진입점에 RAG 단계 + systemPrompt 주입 + sources field
+- ✅ `formatCitationFooter()` "📚 참고 자료" 한국어 인용 절
+- ✅ **라이브 보강** — 약한 인텐트 매칭(confidence<0.7)이 RAG 우회하던 문제 수정
+  - `server/routers/intent.ts:route` — handled=false 다운그레이드 → 클라이언트 llm.chat fallback
+  - `server/routers/llm.ts:chat` — 동일 가드로 직접 진입 시도도 보호
+- ✅ `npm run check ✅` / `npm run build ✅` / `npm test ✅ 799 passed` (회귀 0건)
 
-### 다음 작업 (구현)
-- [ ] `server/rag/localMdSearch.ts` 구현 (Public API, 토큰화, 점수식, 캐시)
-- [ ] `server/__tests__/localMdSearch.test.ts` 8~10개 케이스
-- [ ] `server/routers/llm.ts` chat fallback 진입점에 RAG 단계 + systemPrompt 주입 + sources field
-- [ ] `formatCitationFooter()` 응답 본문 끝 인용 절 부가
-- [ ] `npm run check && npm run build && npm test` 회귀 0건 확인 (745 → ~755)
-- [ ] 라이브 검증: 웹 채팅에서 "한남 PF 진행 상황" 입력 → 응답에 회수 자료 인용 + 📚 절 (회장님 직접)
+### 라이브 검증 결과 (회장님 직접) ✅
+- ✅ 웹 채팅 http://localhost:4000 → "한남 PF 진행 상황 어때?" 자연 질의 → **NPV 15.3%, 36개월** 등 회수 자료 데이터 인용 + "📚 참고 자료" 절 + `hannam-644/2026-05-07-notebooklm--644----npv--153---3.md` 출처 파일 표시 확인 (오후 12:24)
 
 ### 후속 분리 작업
 - [ ] **Phase 4-B**: Vertex AI Search 통합 — Phase 3-A/3-B (데이터 스토어 9개 + importDocument) 완료 후

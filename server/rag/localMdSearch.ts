@@ -182,8 +182,23 @@ function scoreNote(note: CachedNote, tokens: string[]): number {
   return score;
 }
 
-function extractSnippet(body: string, _tokens: string[]): string {
-  return body.slice(0, SNIPPET_LEN).trim();
+function extractSnippet(body: string, tokens: string[]): string {
+  if (!body) return "";
+  const lower = body.toLowerCase();
+  let firstHit = -1;
+  for (const t of tokens) {
+    const idx = lower.indexOf(t);
+    if (idx !== -1 && (firstHit === -1 || idx < firstHit)) firstHit = idx;
+  }
+  if (firstHit === -1) return body.slice(0, SNIPPET_LEN).trim();
+
+  const half = Math.floor(SNIPPET_LEN / 2);
+  const start = Math.max(0, firstHit - half);
+  const end = Math.min(body.length, start + SNIPPET_LEN);
+  let snippet = body.slice(start, end).trim();
+  if (start > 0) snippet = "…" + snippet;
+  if (end < body.length) snippet = snippet + "…";
+  return snippet;
 }
 
 export async function searchLocalNotes(

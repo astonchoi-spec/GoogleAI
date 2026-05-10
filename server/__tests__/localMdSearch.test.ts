@@ -150,6 +150,24 @@ describe("scoring — title/filename bonus", () => {
   });
 });
 
+describe("snippet", () => {
+  it("snippet 길이는 500자(+ ellipsis 마커) 이하", async () => {
+    const longBody = "전치사 ".repeat(200) + "한남 매칭" + " 후치사".repeat(200);
+    await writeNote("a", "long.md", {}, longBody);
+    const hits = await searchLocalNotes("한남");
+    expect(hits.length).toBe(1);
+    // 500자 본문 + 시작/끝 ellipsis 2자
+    expect(hits[0].snippet.length).toBeLessThanOrEqual(502);
+  });
+
+  it("snippet 은 첫 매칭 토큰을 포함한다", async () => {
+    const longBody = "x".repeat(800) + " 한남 사업성 " + "y".repeat(800);
+    await writeNote("a", "long.md", {}, longBody);
+    const hits = await searchLocalNotes("한남");
+    expect(hits[0].snippet).toContain("한남");
+  });
+});
+
 describe("tokenize", () => {
   it("한국어 어절 길이≥2, 영어 길이≥3, 그 외 제거", () => {
     const tokens = tokenize("한남 PF 진행 상황 어때 go BTC");

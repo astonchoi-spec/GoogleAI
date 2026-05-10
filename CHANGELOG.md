@@ -3,6 +3,40 @@
 
 ---
 
+## 2026-05-10 Worktree 베이스 사고 정리 + 재발 방지 가드 (Claude Code)
+
+### 배경
+별도 Claude Code 세션이 `.claude/worktrees/funny-chebyshev-3115be` (master 48bba87 베이스, 동결) 에서 시작되어 베이스 점검 없이 6시간 분량 작업 진행(agent layer / Google OAuth 부트스트랩 / 검색·페이지네이션·Toast / Web UI 변경). 사용자가 dev 서버를 띄웠을 때 1달 전 master 화면이 떠서 "내 작업이 사라졌다"고 오해. codex 라인은 이미 [server/routers/agents.ts], [client/src/pages/AgentControl.tsx], `rag.ts`, `attachmentExtract.ts` 등 더 발전된 시스템 보유 — 그 worktree에서 한 모든 작업은 본체에 흡수 불가능한 별개 패치였음. 진단·복구에 추가 시간 소모.
+
+### 작업 내용
+- **worktree 정리**: master 48bba87 베이스 4개 worktree 일괄 폐기
+  - `funny-chebyshev-3115be` / `cranky-sammet-48e809` / `great-euclid-db7423` / `relaxed-jones-1e9acb` — git worktree 등록 해제 + 브랜치 삭제 완료
+  - 일부 빈 디렉토리는 활성 cwd 잠금으로 잔존 (사용자 세션 종료 후 일괄 삭제 예정)
+  - `blissful-rubin-98d15e` (PDF 백업 베이스 5b18619) 는 의도 보존
+- **CLAUDE.md 보강**: "🛑 브랜치 / Worktree 베이스 규칙" 섹션 신설. 코드 수정 전 4-step 점검(pwd / 메인 브랜치 / 라우터·페이지 풍부도 / PM2 상태) 강제. 잘못된 베이스 발견 시 즉시 중단 + 사용자 confirm 절차 명시. dev 서버는 worktree 안에서 절대 띄우지 않는 규칙도 "앱 실행 규칙"에 추가.
+- **사용자 메모리 가드 3중**(별도 저장소, git 추적 외):
+  - `feedback_worktree_baseline_check.md` — 4-step 점검 강제 규칙 (Why: 2026-05-10 사고)
+  - `project_google_telegram_ai.md` — 사고 기록 섹션 추가
+  - `MEMORY.md` 인덱스 최상단 🛑 우선순위 배치
+
+### 수정 파일
+- `CLAUDE.md` — 신규 섹션 1개 + 기존 "앱 실행 규칙" 항목 1개 추가 (~30줄)
+- `CHANGELOG.md` / `TODO.md` / `HANDOFF.md` — 본 항목 추가
+
+### 검증
+- `git worktree list` — codex-google-workspace-expansion + blissful-rubin-98d15e 만 잔존 ✅
+- `git branch -a | grep claude/` — claude/blissful-rubin-98d15e 만 잔존 ✅
+- 코드 변경 없음 (운영 문서·규칙만), 테스트·빌드 영향 없음
+
+### 남은 이슈
+- 빈 디렉토리 3개(`funny-chebyshev / great-euclid / relaxed-jones`) 잔존 — 외부 프로세스 lock. 다음 PowerShell 1줄로 정리: `Get-ChildItem ".claude\worktrees" -Directory -Exclude blissful-rubin-98d15e | Remove-Item -Recurse -Force`
+- worktree 자동 생성 도구(`/superpowers:using-git-worktrees` 등)가 사용 시 codex 베이스 강제 옵션을 추가 검토 (별도 작업)
+
+### 다음 단계
+- Phase 4-C 텔레그램 RAG 적용 (원래 진행 중이던 작업으로 복귀)
+
+---
+
 ## 2026-05-10 Phase 4-A 라이브 보강 — 약한 인텐트 매칭 가드 추가 (Claude Code)
 
 ### 배경

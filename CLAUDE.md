@@ -13,6 +13,42 @@
    - PM2 자체가 없거나 `aston` 항목이 없을 때만 → `npm run dev` 실행.
 2. **`npm run dev`는 PM2가 없을 때만 사용**. PM2가 살아있는데 `npm run dev`를 실행하면 포트 충돌이 발생한다.
 3. 서버 주소는 항상 **http://localhost:4000** (PM2 고정).
+4. **worktree 안에서는 절대 dev 서버를 띄우지 않는다.** worktree 베이스가 `master`(48bba87, 동결)인 경우가 많아 1달 전 화면이 떠서 사용자가 "내 작업이 사라졌다"고 오해한다 (2026-05-10 사고). dev 서버는 항상 메인 디렉토리(`C:\Users\user\Desktop\구글연동AI`)에서만 실행.
+
+---
+
+## 🛑 브랜치 / Worktree 베이스 규칙 (필수 — 코드 수정 전 매번 준수)
+
+**작업 시작 전 반드시 다음 4-step을 실행하고, codex 라인이 아니면 코드 작성 금지.** 아래 규칙은 2026-05-10 worktree 사고(master 베이스 worktree에서 6시간 작업 → 사용자 진짜 작업물과 무관한 별개 패치) 재발 방지를 위한 것.
+
+```bash
+# 1. 현재 위치 — 메인인지 worktree인지
+pwd
+
+# 2. 메인 디렉토리 활성 브랜치 (반드시 codex-google-workspace-expansion 이어야 함)
+cd "C:\Users\user\Desktop\구글연동AI" && git branch --show-current
+
+# 3. 코드베이스 풍부도 — 16개 라우터 / 13개 페이지가 있어야 정상
+ls server/routers/   # agents, alerts, analysis, finance, intent, rag, trading, wiki, ...
+ls client/src/pages/ # AgentControl, KnowledgeRagPage, Monitoring, FinancePage, ...
+
+# 4. PM2 상태 확인
+pm2 list             # aston 항목이 online 이면 4000번에서 본체 동작 중
+```
+
+**판정 결과별 행동:**
+- ✅ 메인 디렉토리 + `codex-google-workspace-expansion` + 풍부한 코드베이스 → 정상. 작업 시작.
+- ❌ worktree 내부(`.claude/worktrees/*`) → **즉시 중단**. 사용자에게 "메인 디렉토리에서 작업해야 하지 않나요?"로 확인. dev 서버 시작·코드 수정 모두 금지.
+- ❌ 다른 브랜치(master, main, 기타) 또는 라우터/페이지 빈약 → **즉시 보고 + 대기**. master/main은 동결, 그 위에서 한 작업은 본체에 흡수되지 않는다.
+
+**worktree 폐기 시 절차** (잘못된 베이스 worktree 발견 시):
+```powershell
+cd "C:\Users\user\Desktop\구글연동AI"
+git worktree remove --force ".claude/worktrees/<이름>"
+git branch -D claude/<이름>
+# 빈 디렉토리 잔여 시 추가:
+Remove-Item ".claude\worktrees\<이름>" -Recurse -Force
+```
 
 ---
 ## 자동 실행 규칙

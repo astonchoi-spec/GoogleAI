@@ -1,5 +1,27 @@
 ﻿# TODO.md — 에스턴 워크스테이션
-> 업데이트: 2026-05-10 Phase 4-A 구현 + 라이브 검증 완료 ✅ | 브랜치: codex-google-workspace-expansion
+> 업데이트: 2026-05-10 Worktree 사고 정리 + 가드 설치 ✅ | 브랜치: codex-google-workspace-expansion
+
+---
+
+## 2026-05-10 Worktree 사고 정리 + 재발 방지 가드 (Claude Code) ✅
+
+### 완료
+- ✅ 잘못된 master 베이스 worktree 4개 폐기 (git worktree remove + branch -D)
+  - funny-chebyshev-3115be / cranky-sammet-48e809 / great-euclid-db7423 / relaxed-jones-1e9acb
+- ✅ blissful-rubin-98d15e (PDF 백업 베이스 5b18619) 의도 보존
+- ✅ CLAUDE.md — "🛑 브랜치 / Worktree 베이스 규칙" 섹션 + "앱 실행 규칙"에 "worktree 안에서 dev 금지" 항목 추가
+- ✅ 사용자 메모리 가드 3중 (사용자 홈 영구 저장):
+  - `feedback_worktree_baseline_check.md` — 4-step 점검 강제 규칙
+  - `project_google_telegram_ai.md` — 사고 기록 섹션 추가
+  - `MEMORY.md` 인덱스 최상단 🛑 우선순위 배치
+
+### 잔여 이슈 (낮은 우선순위, 사용자 처리)
+- [ ] 빈 디렉토리 3개 정리 (외부 프로세스 lock — 사용자 세션 종료 후 1줄로 가능)
+  ```powershell
+  cd "C:\Users\user\Desktop\구글연동AI"
+  Get-ChildItem ".claude\worktrees" -Directory -Exclude blissful-rubin-98d15e | Remove-Item -Recurse -Force
+  ```
+- [ ] (선택) worktree 자동 생성 시 codex 베이스 강제 옵션 검토 — `/superpowers:using-git-worktrees` 호출부에 base 명시
 
 ---
 

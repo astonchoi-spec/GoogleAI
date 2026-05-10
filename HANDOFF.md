@@ -1,9 +1,38 @@
 ﻿# HANDOFF.md — 에스턴 워크스테이션
-> 업데이트: 2026-05-10 Phase 4-A 라이브 검증 완료 ✅ | 브랜치: codex-google-workspace-expansion
+> 업데이트: 2026-05-10 Worktree 사고 정리 + 가드 설치 ✅ | 브랜치: codex-google-workspace-expansion
 
 ---
 
-## 마지막 완료 작업 (Phase 4-A 구현 + 라이브 검증)
+## 마지막 완료 작업 (Worktree 사고 정리 + 재발 방지 가드)
+
+**2026-05-10 Worktree 베이스 사고 정리 + 가드 설치 | Claude Code**
+
+### 사고 요약
+별도 Claude Code 세션이 master 48bba87 베이스 worktree(`funny-chebyshev-3115be`)에서 시작되어 베이스 점검 없이 6시간 분량 작업(agent layer / Google OAuth 부트스트랩 / 메시지 검색·페이지네이션·Toast / Web UI 변경) 진행. 사용자가 dev 서버 띄웠을 때 1달 전 master 화면이 떠 "내 작업이 사라졌다"고 오해. codex 라인은 이미 [agents.ts], [AgentControl.tsx], [rag.ts], [attachmentExtract.ts] 등 더 발전된 시스템 보유 — 그 worktree에서 한 모든 작업은 본체에 흡수 불가.
+
+### 정리 결과
+- master 48bba87 베이스 worktree 4개 폐기: `funny-chebyshev-3115be / cranky-sammet-48e809 / great-euclid-db7423 / relaxed-jones-1e9acb` — git worktree 등록 해제 + 브랜치 삭제 ✅
+- `blissful-rubin-98d15e` (5b18619, PDF 백업 베이스)는 의도 보존 ✅
+- 빈 디렉토리 3개 잔존(file lock) — 사용자 세션 종료 후 1줄로 정리
+
+### 재발 방지 가드 (영구 설치)
+- **CLAUDE.md** — "🛑 브랜치 / Worktree 베이스 규칙" 섹션 신설(코드 수정 전 4-step 점검 강제) + "앱 실행 규칙"에 "worktree 안에서 dev 금지" 추가. 모든 새 Claude Code 세션이 자동 로드.
+- **사용자 메모리 가드 3중** (홈 디렉토리, git 추적 외):
+  - `feedback_worktree_baseline_check.md` (신규) — 4-step 점검 hard rule + 사고 사례
+  - `project_google_telegram_ai.md` — 사고 기록 섹션 추가
+  - `MEMORY.md` 인덱스 최상단 🛑 우선순위 배치
+
+### 검증
+- `git worktree list` → codex-google-workspace-expansion + blissful-rubin-98d15e 만 잔존 ✅
+- `git branch -a | grep claude/` → claude/blissful-rubin-98d15e 만 잔존 ✅
+- 코드 변경 없음(운영 문서·규칙만) → check/build/test 영향 없음
+
+### 다음 단계
+- Phase 4-C 텔레그램 RAG 적용 (`server/llm/telegramBot/messageRouter.ts` 동일 패턴 — confidence 가드 + RAG 호출)으로 복귀
+
+---
+
+## 이전 완료 작업 (Phase 4-A 구현 + 라이브 검증)
 
 **2026-05-10 Phase 4-A — 로컬 NotebookLM 회수 자료 → Web Chat RAG 주입 (라이브 검증 통과) | Claude Code**
 - 신규 `server/rag/localMdSearch.ts` (~250줄) — `${ASTON_WIKI_ROOT}/projects/*/notebooklm/*.md` 스캔, TF + frontmatter 1.5× + 제목/파일명 +5 점수식, 5분 mtime 캐시, top-K=3, 500자 매칭 윈도 snippet

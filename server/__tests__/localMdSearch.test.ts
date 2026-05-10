@@ -168,6 +168,31 @@ describe("snippet", () => {
   });
 });
 
+describe("top-K cutoff & projects filter", () => {
+  it("기본 K=3 — 4개 매칭 시 상위 3개만 반환", async () => {
+    for (const p of ["a", "b", "c", "d"]) {
+      await writeNote(p, "x.md", {}, "한남 사업성 분석");
+    }
+    const hits = await searchLocalNotes("한남");
+    expect(hits.length).toBe(3);
+  });
+
+  it("opts.k=1 일 때 1개만 반환", async () => {
+    await writeNote("a", "x.md", {}, "한남");
+    await writeNote("b", "x.md", {}, "한남");
+    const hits = await searchLocalNotes("한남", { k: 1 });
+    expect(hits.length).toBe(1);
+  });
+
+  it("opts.projects 로 프로젝트를 좁힐 수 있다", async () => {
+    await writeNote("hannam-644", "x.md", {}, "한남 사업성");
+    await writeNote("yeokbuk-pf", "x.md", {}, "한남 사업성");
+    const hits = await searchLocalNotes("한남", { projects: ["hannam-644"] });
+    expect(hits.length).toBe(1);
+    expect(hits[0].project).toBe("hannam-644");
+  });
+});
+
 describe("tokenize", () => {
   it("한국어 어절 길이≥2, 영어 길이≥3, 그 외 제거", () => {
     const tokens = tokenize("한남 PF 진행 상황 어때 go BTC");

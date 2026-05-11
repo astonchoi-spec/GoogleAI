@@ -1,9 +1,37 @@
 ﻿# HANDOFF.md — 에스턴 워크스테이션
-> 업데이트: 2026-05-11 Phase 4-C 텔레그램 RAG 적용 ✅ | 브랜치: codex-google-workspace-expansion
+> 업데이트: 2026-05-11 Agent↔RAG 합성 (notebook-query 재라우팅) ✅ | 브랜치: codex-google-workspace-expansion
 
 ---
 
-## 마지막 완료 작업 (Phase 4-C — 텔레그램 RAG 적용)
+## 마지막 완료 작업 (Agent↔RAG 합성 — notebook-query 재라우팅)
+
+**2026-05-11 notebook-query 템플릿 → Phase 4-A 로컬 RAG 재라우팅 | Claude Code**
+
+### 구현
+- `server/_core/ragProxy.ts` 신규 — `searchLocalNotes`/`formatCitationFooter` re-export (모듈 경계 우회)
+- `server/agents/agentExecutor.ts` — `runAgent`/`runSimulation` 양쪽에 `templateId === "notebook-query"` 분기 추가 → `searchLocalNotes(question, { k: 5 })` 호출 → markdown 생성 → `AGENT_WIKI_PATH` 저장
+- `server/agents/agentTemplates.ts` — label `NotebookLM 회수 자료 검색`, instructions를 외부 자동화 미사용으로 갱신
+- 회수 자료 0건 케이스: Chrome Extension + Drive Watcher 사용법 안내 자동 포함
+
+### 배경
+- NotebookLM 외부 자동화(notebooklm-mcp 등) 도입 보류 결정(2026-05-11)
+- 이미 Chrome Extension + Drive Watcher + Phase 4-A 로 회수 자동화 완성된 상태 — 가짜 시뮬·OpenClaw 자동화는 가치 낮음
+
+### 검증
+- `npm run check` ✅ / `npm run build` ✅ / `npm test` ✅ **820 passed** (회귀 0건, +2 신규)
+- `dealStore.test.ts` 1건 일시 fail 관측 — 내 변경과 무관 (단독 실행 통과, flaky)
+
+### 회장님 운영 검증 필요
+- [ ] 텔레그램에서 `에이전트 실행 notebook-query 한남동644 NPV 수익률은?` → 회수 자료 발췌(NPV 15.3% 등) 도착 확인
+- [ ] 빈 프로젝트 키로 실행 → "회수 자료 없음" + Chrome Extension 가이드 출력 확인
+
+### 다음 단계 후보
+- `notebookLmMcp.ts` 데드 코드 정리 (4곳 사용처 — intent/handlers/intelligence, _core/intentRouter, routers/notebooklm, 테스트)
+- Phase 3-A `rag-bootstrap.ts` (Vertex AI 데이터스토어 초기화)
+
+---
+
+## 이전 완료 작업 (Phase 4-C — 텔레그램 RAG 적용)
 
 **2026-05-11 Phase 4-C — 텔레그램에 로컬 NotebookLM RAG 주입 | Claude Code**
 

@@ -3,6 +3,37 @@
 
 ---
 
+## 2026-05-11 Agent↔RAG 합성 — notebook-query 템플릿 재라우팅 (Claude Code)
+
+### 작업 내용
+- `agents/agentTemplates.ts` `notebook-query` 템플릿 — OpenClaw NotebookLM 자동화 호출/시뮬레이션 가짜 데이터를 **Phase 4-A 로컬 RAG(`searchLocalNotes`)** 로 교체
+- 모듈 경계 준수 위해 신규 `server/_core/ragProxy.ts` 추가 — `agents/`가 `rag/`를 직접 import 하지 않고 `_core/` 경유
+- `agentExecutor.ts` `makeAgentRunner` / `makeSimulationRunner` 양쪽에 `templateId === "notebook-query"` 분기 — OpenClaw 우회, 로컬 회수 자료 K=5 검색 후 markdown 생성
+- 회수 자료 0건이면 Chrome Extension + Drive Watcher 사용법 안내 자동 출력
+- 결과 markdown은 `AGENT_WIKI_PATH` 에 그대로 저장 (기존 흐름 유지)
+
+### 배경
+- NotebookLM 외부 자동화(예: notebooklm-mcp) 도입 보류 결정(2026-05-11) — 이미 Chrome Extension + Drive Watcher + Phase 4-A 로 회수 자동화 완성
+- 가짜 시뮬 데이터 또는 OpenClaw 자동화 모두 가치 낮음 → 로컬 RAG 직접 사용이 가장 정합
+
+### 수정 파일
+- `server/_core/ragProxy.ts` (신규)
+- `server/agents/agentExecutor.ts` (notebook-query 분기 + buildNotebookQueryMarkdown + runNotebookQuery)
+- `server/agents/agentTemplates.ts` (label/description/instructions 갱신)
+- `server/__tests__/agentExecutor.test.ts` (테스트 2건 추가)
+- `server/__tests__/agentTemplates.test.ts` (기존 OpenClaw 검증 테스트를 로컬 RAG 검증으로 교체)
+
+### 검증
+- `npm run check` ✅ (모듈 경계 0건 / tsc 통과)
+- `npm run build` ✅
+- `npm test` ✅ **820 passed** (회귀 0건, +2 신규)
+  - 직전 1회 `dealStore` 1건 일시 fail 관측 — 내 변경과 무관(단독 실행 통과), flaky로 판단
+
+### 남은 이슈
+- `server/integrations/notebookLmMcp.ts` 데드 코드 정리 — 4곳 사용처(intent/handlers/intelligence, _core/intentRouter, routers/notebooklm, 테스트) 있어 별도 작업으로 분리
+
+---
+
 ## 2026-05-11 Phase 4-C — 텔레그램 RAG 적용 (Claude Code)
 
 ### 작업 내용

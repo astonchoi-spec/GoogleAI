@@ -86,6 +86,12 @@ function parseExecuteArgs(rest: string): { templateId: string; target: string; i
   const tokens = rest.trim().split(/\s+/).filter(Boolean);
   if (tokens.length < 2) return null;
   const [templateId, ...restTokens] = tokens;
+  // notebook-query 는 target + question 두 입력 필요.
+  // 형식: 에이전트 실행 notebook-query <target(단일 토큰)> <question...>
+  if (templateId === "notebook-query" && restTokens.length >= 2) {
+    const [target, ...questionTokens] = restTokens;
+    return { templateId, target, inputs: { question: questionTokens.join(" ") } };
+  }
   return { templateId, target: restTokens.join(" "), inputs: {} };
 }
 
@@ -226,7 +232,7 @@ const handleAgentCommand: IntentHandler = async (intent, options) => {
     intent,
     handled: true,
     requiresConfirmation: false,
-    response: "⚠️ 사용법\n- 에이전트 목록\n- 에이전트 실행 <templateId> <대상>\n- 에이전트 상태\n- 에이전트 결과 <task_id>\n- 에이전트 취소 <task_id>",
+    response: "⚠️ 사용법\n- 에이전트 목록\n- 에이전트 실행 <templateId> <대상>\n- 에이전트 실행 notebook-query <프로젝트> <질문>\n- 에이전트 상태\n- 에이전트 결과 <task_id>\n- 에이전트 취소 <task_id>",
     handlerResponse: {
       kind: "text",
       text: "",

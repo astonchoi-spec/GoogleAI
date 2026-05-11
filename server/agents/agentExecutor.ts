@@ -1,5 +1,6 @@
 import fs from "node:fs/promises";
 import path from "node:path";
+import { searchLocalNotes, type NoteHit } from "../_core/ragProxy.ts";
 import type { AgentTask } from "./agentTypes.ts";
 import { getOpenClawClient } from "./openclawClient.ts";
 
@@ -115,6 +116,61 @@ function withFallbackWarning(reason: string | undefined, markdown: string): stri
   return [`⚠️ OpenClaw 호출 실패로 시뮬레이션 결과를 반환합니다.`, `사유: ${reason ?? "알 수 없음"}`, "", markdown].join("\n");
 }
 
+// notebook-query 템플릿은 OpenClaw NotebookLM 자동화 대신 Phase 4-A 로컬 RAG
+// (server/rag/localMdSearch) 로 회수 자료에서 답을 찾는다 — 외부 자동화 미도입(2026-05-11).
+function buildNotebookQueryMarkdown(task: AgentTask, now: Date, hits: NoteHit[]): string {
+  const question = task.inputs?.question?.toString().trim() || "(질문 없음)";
+  const target = task.target;
+  const header = [
+    `# NotebookLM 질의 결과 — ${target}`,
+    `> 질문: ${question}`,
+    `> 검색: 로컬 회수 자료(Phase 4-A) · ${now.toISOString()} · task ${task.id}`,
+    "",
+  ];
+
+  if (hits.length === 0) {
+    return [
+      ...header,
+      "## 회수 자료 없음",
+      "",
+      `\`${target}\` 관련 NotebookLM 회수 자료가 로컬에 없습니다.`,
+      "",
+      "**회수 방법**:",
+      "1. NotebookLM 페이지에서 Chrome Extension [📥 Aston Wiki로 동기화] 버튼 클릭",
+      "2. 또는 NotebookLM에서 답변을 `.md` 로 export 후 `G:\\내 드라이브\\Aston-Wiki\\notebooklm-exports\\{project}\\` 폴더에 저장 (Drive Watcher 자동 적재)",
+    ].join("\n");
+  }
+
+  const body: string[] = [`## 회수 자료 ${hits.length}건 발췌`, ""];
+  hits.forEach((hit, i) => {
+    body.push(`### [${i + 1}] ${hit.project}/${hit.fileName}  _(score ${hit.score.toFixed(2)})_`);
+    body.push("");
+    body.push(hit.snippet);
+    body.push("");
+  });
+  body.push("---");
+  body.push("_본 결과는 로컬에 회수된 NotebookLM 자료(`projects/*/notebooklm/*.md`)에서 검색한 발췌입니다._");
+
+  return [...header, ...body].join("\n");
+}
+
+async function runNotebookQuery(
+  task: AgentTask,
+  signal: AbortSignal,
+  options: ExecutorOptions
+): Promise<ExecutorOutput> {
+  if (signal.aborted) throw new Error("작업이 시작 전에 취소되었습니다.");
+  const question = task.inputs?.question?.toString().trim() || task.target;
+  const hits = await searchLocalNotes(question, { k: 5 }).catch((err) => {
+    console.error("[agentExecutor] notebook-query searchLocalNotes failed:", err);
+    return [] as NoteHit[];
+  });
+  const now = options.now?.() ?? new Date();
+  const markdown = buildNotebookQueryMarkdown(task, now, hits);
+  const wikiPath = await persistResult(task, markdown, now, options.fs ?? fs, options.rootOverride);
+  return { markdown, wikiPath };
+}
+
 export function makeSimulationRunner(options: ExecutorOptions = {}) {
   const now = options.now ?? (() => new Date());
   const sleepMs = options.sleepMs ?? 3000 + Math.floor(Math.random() * 2000);
@@ -122,6 +178,10 @@ export function makeSimulationRunner(options: ExecutorOptions = {}) {
 
   return async function runSimulation(task: AgentTask, signal: AbortSignal): Promise<ExecutorOutput> {
     if (signal.aborted) throw new Error("작업이 시작 전에 취소되었습니다.");
+    // notebook-query 는 OpenClaw 자동화 가짜 시뮬 대신 로컬 RAG 결과를 즉시 반환.
+    if (task.templateId === "notebook-query") {
+      return runNotebookQuery(task, signal, options);
+    }
     await new Promise<void>((resolve, reject) => {
       const timer = setTimeout(resolve, sleepMs);
       const onAbort = () => {
@@ -140,6 +200,10 @@ export function makeSimulationRunner(options: ExecutorOptions = {}) {
 export function makeAgentRunner(options: ExecutorOptions = {}) {
   const simulationRunner = makeSimulationRunner(options);
   return async function runAgent(task: AgentTask, signal: AbortSignal): Promise<ExecutorOutput> {
+    // notebook-query 는 OpenClaw 우회 — 로컬 회수 자료에서 즉시 검색.
+    if (task.templateId === "notebook-query") {
+      return runNotebookQuery(task, signal, options);
+    }
     const client = getOpenClawClient();
     const status = client.getStatus();
     if (!status.available) {

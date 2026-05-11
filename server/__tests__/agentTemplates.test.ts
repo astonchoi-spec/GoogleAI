@@ -26,11 +26,13 @@ describe("agentTemplates", () => {
     expect(getTemplate("pf-comprehensive")).not.toBeNull();
   });
 
-  it("includes NotebookLM execution instructions for OpenClaw", () => {
+  it("notebook-query routes to local RAG (Phase 4-A) instead of OpenClaw automation", () => {
     const template = getTemplate("notebook-query");
-    expect(template?.instructions).toContain("https://notebooklm.google.com");
-    expect(template?.instructions).toContain("dealStore.getDeal(dealName)");
-    expect(template?.instructions).toContain("질문을 입력한다");
-    expect(template?.instructions).toContain("출처가 보이면 함께 기록");
+    expect(template?.label).toContain("회수 자료");
+    expect(template?.instructions).toContain("외부 NotebookLM 자동화는 사용하지 않는다");
+    expect(template?.instructions).toContain("localMdSearch");
+    expect(template?.instructions).toContain("projects/*/notebooklm/*.md");
+    // question 입력 파라미터는 그대로 유지
+    expect(template?.inputs.find((i) => i.key === "question")?.required).toBe(true);
   });
 });

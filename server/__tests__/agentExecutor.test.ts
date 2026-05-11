@@ -87,6 +87,62 @@ describe("agentExecutor", () => {
     expect(legal.markdown).toMatch(/리스크/);
   });
 
+  it("notebook-query template bypasses OpenClaw and reports no-hits guidance when ASTON_WIKI_ROOT is unset", async () => {
+    const prevWikiRoot = process.env.ASTON_WIKI_ROOT;
+    delete process.env.ASTON_WIKI_ROOT;
+    try {
+      const runner = makeSimulationRunner({ sleepMs: 10 });
+      const out = await runner(
+        makeTask({
+          templateId: "notebook-query",
+          templateLabel: "NotebookLM 회수 자료 검색",
+          target: "한남동644",
+          inputs: { question: "주요 매입 일정은?" },
+        }),
+        new AbortController().signal,
+      );
+      expect(out.markdown).toContain("NotebookLM 질의 결과");
+      expect(out.markdown).toContain("주요 매입 일정은?");
+      expect(out.markdown).toContain("회수 자료 없음");
+      expect(out.markdown).toContain("Chrome Extension");
+      expect(out.wikiPath?.endsWith(".md")).toBe(true);
+    } finally {
+      if (prevWikiRoot === undefined) delete process.env.ASTON_WIKI_ROOT;
+      else process.env.ASTON_WIKI_ROOT = prevWikiRoot;
+    }
+  });
+
+  it("notebook-query template returns RAG hits when matching local notes exist", async () => {
+    const wikiRoot = path.join(tmpDir, "wiki");
+    const noteDir = path.join(wikiRoot, "projects", "hannam-644", "notebooklm");
+    await fs.mkdir(noteDir, { recursive: true });
+    await fs.writeFile(
+      path.join(noteDir, "2026-05-07-test.md"),
+      `---\ntitle: 한남동 644 NPV 분석\ntags: [pf, npv]\n---\n\n한남동 644 사업성 분석 결과 NPV 수익률은 15.3%, 사업 기간은 36개월로 추정됩니다.\n`,
+      "utf-8",
+    );
+    const prevWikiRoot = process.env.ASTON_WIKI_ROOT;
+    process.env.ASTON_WIKI_ROOT = wikiRoot;
+    try {
+      const runner = makeSimulationRunner({ sleepMs: 10 });
+      const out = await runner(
+        makeTask({
+          templateId: "notebook-query",
+          templateLabel: "NotebookLM 회수 자료 검색",
+          target: "한남동644",
+          inputs: { question: "NPV 수익률은?" },
+        }),
+        new AbortController().signal,
+      );
+      expect(out.markdown).toContain("회수 자료");
+      expect(out.markdown).toContain("hannam-644");
+      expect(out.markdown).toMatch(/15\.3/);
+    } finally {
+      if (prevWikiRoot === undefined) delete process.env.ASTON_WIKI_ROOT;
+      else process.env.ASTON_WIKI_ROOT = prevWikiRoot;
+    }
+  });
+
   it("agent runner falls back to simulation when OpenClaw task call fails", async () => {
     process.env.OPENCLAW_API_URL = "http://openclaw.local";
     process.env.OPENCLAW_API_KEY = "secret";

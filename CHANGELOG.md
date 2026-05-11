@@ -22,9 +22,15 @@
 - `npm test` ✅ **818 passed** (7 skipped, 회귀 0건)
 - pnpm install 로 누락 의존성(`mammoth`, `pdf2json`, `@google-cloud/discoveryengine`) 해결
 
-### 남은 이슈
-- 운영 검증: 회장님 텔레그램에서 "한남 PF 진행상황 어때?" 직접 송신 후 인용 절 도착 확인
+### 라이브 검증 통과 ✅
+- 2026-05-11 텔레그램 "한남 PF 진행상황 어때?" → "NPV 15.3%, 36개월" 회수 자료 인용 + 📚 참고 자료 절 정상 도착
+- 검증 중 PM2 `node --experimental-strip-types` 런타임 import 확장자 이슈 3곳 보강
+  - `messageRouter.ts` dynamic import (커밋 `fd53b07`)
+  - `attachmentInject.ts` static + `routers/llm.ts` dynamic (커밋 `3e696fb`)
+
+### 다음 단계
 - Phase 4-B(Vertex AI Search 통합) 는 Phase 3-A/B Bootstrap 완료 후 진행
+- Agent↔RAG 합성 (`notebook-query` 템플릿 → 4-A 재라우팅) 검토
 
 ---
 

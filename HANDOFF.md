@@ -18,10 +18,16 @@
 - `npm run check` ✅ / `npm run build` ✅ (794.1kb) / `npm test` ✅ **818 passed** (회귀 0건)
 - pnpm install 로 사전 누락 의존성(`mammoth`, `pdf2json`, `@google-cloud/discoveryengine`) 해결
 
-### 회장님 운영 검증 필요
-- [ ] 텔레그램에서 "한남 PF 진행상황 어때?" 송신 → NPV 15.3% 등 회수 자료 인용 + 📚 참고 자료 절 확인
-- [ ] 광범위 키워드 자연 질의 → 약한 매칭 다운그레이드 → RAG 응답 확인
-- [ ] 회수 자료 없는 일반 질의 → 인용 절 없이 정상 응답
+### 회장님 운영 검증 결과
+- ✅ **2026-05-11 라이브 검증 통과** — 텔레그램 "한남 PF 진행상황 어때?" → "NPV 15.3%, 36개월" 회수 자료 인용 + 📚 참고 자료 절 정상 출력
+- [ ] (선택) 광범위 키워드 자연 질의 → 약한 매칭 다운그레이드 → RAG 응답 확인
+- [ ] (선택) 회수 자료 없는 일반 질의 → 인용 절 없이 정상 응답
+
+### 라이브 검증 중 발견·수정
+- `server/llm/telegramBot/messageRouter.ts` `await import("../attachmentInject")` → `.ts` 확장자 명시 (커밋 `fd53b07`)
+- `server/llm/attachmentInject.ts` `./attachmentExtract` → `.ts` 확장자 명시 (커밋 `3e696fb`)
+- `server/routers/llm.ts` `../llm/attachmentInject` → `.ts` 확장자 명시 (동일 위험 선제 차단, 커밋 `3e696fb`)
+- 원인: PM2 `node --experimental-strip-types` 런타임에서 dynamic/static import 확장자 누락 시 모듈 해석 실패
 
 ### 다음 단계 후보
 - Phase 3-A `rag-bootstrap.ts` (Vertex AI 데이터스토어 초기화)

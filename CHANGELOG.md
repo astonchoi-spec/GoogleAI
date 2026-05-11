@@ -3,6 +3,40 @@
 
 ---
 
+## 2026-05-11 Step 1 — driveSync .pdf 본문 자동 추출 (Claude Code)
+
+### 작업 내용
+- `server/knowledge/driveSync.ts` — `.pdf` 를 `SUPPORTED_AUTO_INGEST` 에 추가, `META_ONLY_TYPES` 에서 제거
+- 본문 추출 분기에 `.pdf` 케이스 추가 — `server/llm/attachmentExtract.ts` (pdf2json 기반) 의 `extractAttachmentText()` 재사용 → 신규 의존성 0건
+- 스캔 이미지/암호 잠금 등 `extractAttachmentText` 가 `ok=false` 반환 시 `recordEvent({ reason: "failed", error: ... })` 로 회수 실패 기록 후 종료
+- dynamic import 경로는 `"../llm/attachmentExtract.ts"` — PM2 `node --experimental-strip-types` 런타임 호환을 위한 `.ts` 명시
+- 상수 2개(`SUPPORTED_AUTO_INGEST`/`META_ONLY_TYPES`) export 화 — 회귀 가드용
+- 모듈 경계: `knowledge → llm` 은 `llm` 이 도메인 모듈 미등록(인프라성) 이라 `scripts/check-module-boundaries.ts` 위반 0건
+
+### 효과
+- `G:\내 드라이브\Aston-Wiki\notebooklm-exports\{project}\*.pdf` 떨구면 Drive Watcher 가 본문을 자동 추출 → NotebookLmAdapter → PipelineRunner → Wiki 적재
+- 이후 텔레그램·웹 채팅에서 `searchLocalNotes` 가 PDF 본문을 인용 가능
+
+### 수정 파일
+- `server/knowledge/driveSync.ts`
+- `server/__tests__/driveSyncPdf.test.ts` (신규)
+
+### 검증
+- `npm run check` ✅ (모듈 경계 0건 / tsc 통과)
+- `npm run build` ✅ (797.9kb)
+- `npm test driveSyncPdf` ✅ **5 passed** (확장자 매핑 회귀 가드)
+- 전체 `npm test`: 823 passed / 2 failed — 실패 2건(`agentExecutor.test.ts:106`, `localMdSearch.test.ts:ASTON_WIKI_ROOT 미설정`)은 stash 상태에서도 동일 실패 → 환경 의존(실제 `ASTON_WIKI_ROOT` 회수 자료 존재), 내 변경 회귀 0건
+
+### 회장님 라이브 검증 필요
+- [ ] PM2 재시작 (`pm2 restart aston` 또는 `npx pm2 start`) — driveSync 가 새 `SUPPORTED_AUTO_INGEST` 로 부팅
+- [ ] `G:\내 드라이브\Aston-Wiki\notebooklm-exports\hannam-644\test.pdf` 1개 떨구기 → 5초 내 `/notebook-lm` 페이지 회수 자료 목록 등장 + 텔레그램 자연 질의에 본문 인용 확인
+
+### 다음 단계
+- Step 1.5 — Aston Wiki 페이지 업로드 UI (multipart 백엔드 + drag-drop 모달, ~5시간)
+- Step 2 — nlm-research 별도 폴더 + Aston 텔레그램 단추 (회장님 PC 설치 + claude CLI 비대화식 조사)
+
+---
+
 ## 2026-05-11 자료 회수 라인 재설계 + 운영 안정화 (Claude Code)
 
 ### 추가 안정화 (커밋 4건)

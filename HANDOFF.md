@@ -1,33 +1,53 @@
 ﻿# HANDOFF.md — 에스턴 워크스테이션
-> 업데이트: 2026-05-11 자료 회수 라인 재설계 — 집에서 Step 1·1.5·2 진행 예정 | 브랜치: codex-google-workspace-expansion
+> 업데이트: 2026-05-11 Step 1 완료 (driveSync .pdf 본문 자동 추출) — 다음 Step 1.5(업로드 UI) | 브랜치: codex-google-workspace-expansion
 
 ---
 
-## 🏠 집에서 이어갈 작업 (즉시)
+## 🏠 집에서 이어갈 작업 (Step 1.5)
 
-### 현황
-오늘 회장님과 자료 회수 라인 재설계 회의 결과:
-- **PDF가 G드라이브 위키 폴더에 회수 안 됨** — driveSync가 `.pdf`를 META_ONLY로 분류
-- **NotebookLM 자료 일괄 회수 부재** — Chrome Extension은 1회 1건 수동, UI 노이즈에 약함
-- **nlm-research 통째 도입은 비효율** (이중 진입점·5개 의존성) — 별도 폴더 + 단추 방식이 정합
+### Step 1 — ✅ 2026-05-11 완료
+- driveSync `.pdf` 본문 자동 추출 활성화 (`extractAttachmentText` 재사용, 신규 의존성 0)
+- `npm run check` / `npm run build` / `npm test driveSyncPdf` 전부 통과
+- 회장님 라이브 검증만 남음 (PM2 재시작 + PDF 1개 떨궈서 5초 내 회수 확인)
 
-### 결정된 3단계
-1. **Step 1** — driveSync에 PDF 본문 추출 분기 추가 (30분, 위험 0)
-2. **Step 1.5** — Aston Wiki 페이지에 업로드 UI 신설 (옵션 A: project 직접 선택)
-3. **Step 2** — nlm-research 별도 폴더 + Aston 텔레그램 단추 (회장님 PC 설치 + claude CLI 비대화식 조사)
+### Step 1.5 — Aston Wiki 페이지 업로드 UI (다음 작업, ~5시간)
+- 백엔드: `server/routers/wikiUpload.ts` (또는 기존 라우터 확장) — POST `/api/wiki/upload` multipart
+- project 화이트리스트(28+research-inbox+_unmapped) + 50MB + 확장자 화이트리스트
+- 클라이언트: `client/src/components/WikiUpload.tsx` drag-drop + 모달
+- 저장 경로: `${ASTON_WIKI_ROOT}/notebooklm-exports/{project}/{원본파일명}` → 자동으로 Drive Watcher 가 회수 (Step 1 효과)
 
-상세 작업 내역: `TODO.md` 상단 "🏠 집에서 이어갈 작업" 섹션 참고.
-
-### 시작 명령
-집에서 워크스테이션 접속 후:
-```
-작업준비
-```
-→ 그 다음 Step 1부터 진행 또는 회장님이 특정 Step 지정.
+### Step 2 — nlm-research 별도 폴더 + Aston 텔레그램 단추 (Step 1.5 후)
+- 회장님 PC 1회 설치(`uv tool install notebooklm-mcp-cli yt-dlp` + `nlm login`)
+- mklink: `~/research-output` → `${ASTON_WIKI_ROOT}/notebooklm-exports/research-inbox/`
+- 사전 조사: `claude` CLI 비대화식 skill 실행 옵션 존재 여부 → 결과에 따라 인텐트 `research_run` 핸들러 ~50줄
 
 ---
 
-## 마지막 완료 작업 (Agent↔RAG 합성 — notebook-query 재라우팅)
+## 마지막 완료 작업 (Step 1 — driveSync .pdf 본문 자동 추출)
+
+**2026-05-11 driveSync 에 PDF 본문 추출 분기 추가 | Claude Code**
+
+### 구현
+- `server/knowledge/driveSync.ts` — `.pdf` 를 `SUPPORTED_AUTO_INGEST` 에 추가, `META_ONLY_TYPES` 에서 제거
+- 본문 추출 분기: `.docx` 옆에 `.pdf` 분기 — `await import("../llm/attachmentExtract.ts")` 로 `extractAttachmentText(filePath)` 호출(pdf2json 재사용, 신규 의존성 0)
+- 스캔 이미지·암호 잠금 등 `ok=false` 케이스는 `recordEvent({ reason: "failed", error })` 후 회수 스킵
+- dynamic import `.ts` 확장자 명시 — PM2 `node --experimental-strip-types` 호환
+- 상수 2개 export 화 + 회귀 가드 테스트 (`server/__tests__/driveSyncPdf.test.ts`, 5 passed)
+
+### 검증
+- `npm run check` ✅ (모듈 경계 0건 — `llm` 은 도메인 모듈 미등록, `knowledge → llm` 허용)
+- `npm run build` ✅ (797.9kb)
+- `npm test driveSyncPdf` ✅ 5 passed
+- 전체 `npm test` 823 passed / 2 failed — 두 실패 모두 **stash 상태(내 변경 제거)에서도 동일 실패** → 환경 의존(실제 `ASTON_WIKI_ROOT` 회수 자료 존재), 내 변경 회귀 0건
+
+### 회장님 라이브 검증 필요
+- [ ] PM2 `aston` 재기동 (또는 `npm run dev`) — driveSync 가 새 `SUPPORTED_AUTO_INGEST` 로 부팅
+- [ ] `G:\내 드라이브\Aston-Wiki\notebooklm-exports\hannam-644\test.pdf` (또는 다른 매핑 project) 1개 떨궈서 5초 내 `/notebook-lm` 페이지 회수 자료 목록 등장 확인
+- [ ] 텔레그램 자연 질의(예: "한남 PF NPV?") → PDF 본문 인용 확인
+
+---
+
+## 이전 완료 작업 (Agent↔RAG 합성 — notebook-query 재라우팅)
 
 **2026-05-11 notebook-query 템플릿 → Phase 4-A 로컬 RAG 재라우팅 | Claude Code**
 

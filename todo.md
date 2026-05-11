@@ -5,15 +5,15 @@
 
 ## 🏠 집에서 이어갈 작업 (2026-05-11 저녁 ~)
 
-### Step 1 — driveSync에 PDF 본문 추출 분기 추가 (30분, 위험 0)
-- [ ] `server/knowledge/driveSync.ts`:
-  - `SUPPORTED_AUTO_INGEST` 에 `.pdf` 추가
-  - `META_ONLY_TYPES` 에서 `.pdf` 제거
-  - `.docx` 분기 옆에 `.pdf` 분기 — `await import("../llm/attachmentExtract.ts")` 의 `extractAttachmentText(filePath)` 호출 (pdf2json 재사용, 신규 의존성 0)
-- [ ] 모듈 경계 검사: `knowledge → llm` 직접 import는 `llm`이 도메인 모듈 아니라 OK
-- [ ] 회귀 테스트: 기존 .md/.txt/.docx 회수 영향 없는지 + .pdf 본문 추출 케이스 1건 추가
-- [ ] check / build / test 통과 → 커밋 + push + PM2 재시작
-- [ ] 검증: G드라이브 `notebooklm-exports/_unmapped/` 에 PDF 1개 떨궈서 5초 내 Wiki 적재 + RAG 인용 확인
+### Step 1 — driveSync에 PDF 본문 추출 분기 추가 ✅ (2026-05-11 완료)
+- [x] `server/knowledge/driveSync.ts`:
+  - [x] `SUPPORTED_AUTO_INGEST` 에 `.pdf` 추가
+  - [x] `META_ONLY_TYPES` 에서 `.pdf` 제거
+  - [x] `.docx` 분기 옆에 `.pdf` 분기 — `await import("../llm/attachmentExtract.ts")` 의 `extractAttachmentText(filePath)` 호출 (pdf2json 재사용, 신규 의존성 0)
+- [x] 모듈 경계 검사: `knowledge → llm` 직접 import는 `llm`이 도메인 모듈 아니라 OK (위반 0건)
+- [x] 회귀 테스트: `server/__tests__/driveSyncPdf.test.ts` (5 passed) — 확장자 매핑 상수 가드. PDF 본문 추출은 기존 `server/llm/attachmentExtract.test.ts` 가 검증.
+- [x] check / build / test 통과 (전체 823 passed, 환경 의존 2건 사전 존재) → 커밋 + push 예정
+- [ ] **회장님 라이브 검증**: PM2 재시작 + G드라이브 `notebooklm-exports/{project}/` 에 PDF 1개 떨궈서 5초 내 Wiki 적재 + RAG 인용 확인
 
 ### Step 1.5 — Aston Wiki 페이지 업로드 UI (옵션 A: project 직접 선택)
 - [ ] 백엔드 multipart 업로드 라우터 (`server/routers/wikiUpload.ts` 또는 기존 라우터 확장)

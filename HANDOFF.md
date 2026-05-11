@@ -1,9 +1,36 @@
 ﻿# HANDOFF.md — 에스턴 워크스테이션
-> 업데이트: 2026-05-10 Worktree 사고 정리 + 가드 설치 ✅ | 브랜치: codex-google-workspace-expansion
+> 업데이트: 2026-05-11 Phase 4-C 텔레그램 RAG 적용 ✅ | 브랜치: codex-google-workspace-expansion
 
 ---
 
-## 마지막 완료 작업 (Worktree 사고 정리 + 재발 방지 가드)
+## 마지막 완료 작업 (Phase 4-C — 텔레그램 RAG 적용)
+
+**2026-05-11 Phase 4-C — 텔레그램에 로컬 NotebookLM RAG 주입 | Claude Code**
+
+### 구현
+- Phase 4-A(웹 채팅) 패턴을 `server/llm/telegramBot/messageRouter.ts` 에 그대로 이식
+- `INTENT_CONFIDENCE_THRESHOLD = 0.7` — `routeIntentMessage` 결과의 약한 매칭(`handled && confidence < 0.7`)을 LLM + RAG 로 다운그레이드
+- `replyWithLlm` 내부에 `searchLocalNotes(message, { k: 3 })` 삽입 → systemPrompt 에 `참고할 회수 자료(N건)` 블록 prepend
+- 응답 본문 뒤 `formatCitationFooter(hits)` append → 텔레그램 1메시지로 전송
+- 회수 자료가 없으면(`hits=0`) 인용 절 없이 평소대로 응답 (4-A 동일)
+
+### 검증
+- `npm run check` ✅ / `npm run build` ✅ (794.1kb) / `npm test` ✅ **818 passed** (회귀 0건)
+- pnpm install 로 사전 누락 의존성(`mammoth`, `pdf2json`, `@google-cloud/discoveryengine`) 해결
+
+### 회장님 운영 검증 필요
+- [ ] 텔레그램에서 "한남 PF 진행상황 어때?" 송신 → NPV 15.3% 등 회수 자료 인용 + 📚 참고 자료 절 확인
+- [ ] 광범위 키워드 자연 질의 → 약한 매칭 다운그레이드 → RAG 응답 확인
+- [ ] 회수 자료 없는 일반 질의 → 인용 절 없이 정상 응답
+
+### 다음 단계 후보
+- Phase 3-A `rag-bootstrap.ts` (Vertex AI 데이터스토어 초기화)
+- Phase 4-B 로컬 → Vertex AI Search 전환 (3-A/B 완료 후)
+- Agent↔RAG 합성 (`notebook-query` 템플릿을 4-A 로 재라우팅)
+
+---
+
+## 이전 완료 작업 (Worktree 사고 정리 + 재발 방지 가드)
 
 **2026-05-10 Worktree 베이스 사고 정리 + 가드 설치 | Claude Code**
 

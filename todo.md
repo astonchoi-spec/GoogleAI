@@ -1,5 +1,24 @@
 ﻿# TODO.md — 에스턴 워크스테이션
-> 업데이트: 2026-05-10 Worktree 사고 정리 + 가드 설치 ✅ | 브랜치: codex-google-workspace-expansion
+> 업데이트: 2026-05-11 Phase 4-C 텔레그램 RAG 적용 | 브랜치: codex-google-workspace-expansion
+
+---
+
+## 2026-05-11 Phase 4-C — 텔레그램 RAG 적용 (Claude Code)
+
+### 구현 완료
+- ✅ `server/llm/telegramBot/messageRouter.ts` — confidence<0.7 가드 + `searchLocalNotes` + `formatCitationFooter`
+- ✅ 4-A 패턴 동일 (단일 파일 수정, 회귀 0건)
+- ✅ check / build (794.1kb) / **818 tests passed**
+
+### 운영 검증 잔여
+- [ ] 회장님 텔레그램에서 "한남 PF 진행상황 어때?" → NotebookLM 회수 자료 인용 응답 확인
+- [ ] 약한 매칭 다운그레이드 동작 확인 (광범위 키워드 → RAG fallthrough)
+- [ ] 회수 자료 없는 일반 질의는 인용 절 없이 정상 응답
+
+### 다음 단계 후보
+- [ ] Phase 3-A `rag-bootstrap.ts` (Vertex AI 데이터스토어 초기화)
+- [ ] Phase 4-B 클라우드 RAG 전환 (3-A/B 완료 후)
+- [ ] Agent↔RAG 합성 (`notebook-query` 템플릿을 4-A 로 재라우팅)
 
 ---
 

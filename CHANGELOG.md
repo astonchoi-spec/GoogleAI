@@ -3,6 +3,31 @@
 
 ---
 
+## 2026-05-11 Phase 4-C — 텔레그램 RAG 적용 (Claude Code)
+
+### 작업 내용
+- Phase 4-A (웹 채팅 로컬 RAG) 패턴을 텔레그램 봇에 그대로 이식
+- `server/llm/telegramBot/messageRouter.ts`
+  - `INTENT_CONFIDENCE_THRESHOLD = 0.7` 가드 추가 — 약한 매칭(<0.7)은 LLM + RAG 로 다운그레이드
+  - `replyWithLlm` 내부에서 `searchLocalNotes(message, { k: 3 })` 호출, systemPrompt 에 `참고할 회수 자료(N건)` 블록 prepend
+  - 응답 본문 뒤 `formatCitationFooter(hits)` append → 한 메시지로 텔레그램 전송
+- 효과: 회장님이 텔레그램에서 "한남 PF 진행상황 어때?" 같은 자연 질의를 보내면 회수 자료(NotebookLM `*.md`) 본문을 인용한 답이 「📚 참고 자료」 절과 함께 도착
+
+### 수정 파일
+- `server/llm/telegramBot/messageRouter.ts`
+
+### 검증
+- `npm run check` ✅ (모듈 경계 0건 / tsc 통과)
+- `npm run build` ✅ (794.1kb)
+- `npm test` ✅ **818 passed** (7 skipped, 회귀 0건)
+- pnpm install 로 누락 의존성(`mammoth`, `pdf2json`, `@google-cloud/discoveryengine`) 해결
+
+### 남은 이슈
+- 운영 검증: 회장님 텔레그램에서 "한남 PF 진행상황 어때?" 직접 송신 후 인용 절 도착 확인
+- Phase 4-B(Vertex AI Search 통합) 는 Phase 3-A/B Bootstrap 완료 후 진행
+
+---
+
 ## 2026-05-10 Worktree 베이스 사고 정리 + 재발 방지 가드 (Claude Code)
 
 ### 배경

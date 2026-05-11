@@ -2,11 +2,17 @@ import type { Telegraf } from "telegraf";
 import { handleDealFile, isDealFileMessage } from "../../deals/telegramDealFileHandler.ts";
 import { getConversationByTelegramChatId, getOrCreateTelegramConversation, saveMessage } from "../../db-chat.ts";
 import { formatIntentRouteMessage, routeIntentMessage } from "../../intent/intentService.ts";
+import { formatCitationFooter, searchLocalNotes } from "../../rag/localMdSearch.ts";
 import type LLMCaller from "../caller.ts";
 import { getModel } from "../models.ts";
 import type { SessionManager } from "../session.ts";
 import { ADMIN_USER_ID, getConnectedGoogleUserId, saveAssistantMessage, type BotContext } from "./utils.ts";
 import { handleWorkspaceCommand } from "./workspaceCommands.ts";
+
+// Phase 4-C: 약하게 매칭된 인텐트(confidence < 임계치)는 LLM fallback + RAG 로 다운그레이드.
+// 0.55 같은 광범위 키워드 매칭이 자연 질의(예: "한남 PF 진행상황")를 가로채는 것을 방지.
+// execute 타입(requiresConfirmation)은 임계치와 무관하게 확인 단계 진행.
+const INTENT_CONFIDENCE_THRESHOLD = 0.7;
 
 export function setupMessageRouter(
   bot: Telegraf<BotContext>,
@@ -58,7 +64,9 @@ export function setupMessageRouter(
       });
       console.log("[TG INTENT] result: domain=", routed.intent.domain, "action=", routed.intent.action, "handled=", routed.handled);
 
-      if (routed.handled || (routed.requiresConfirmation && routed.response)) {
+      const isStrongMatch = routed.handled && routed.intent.confidence >= INTENT_CONFIDENCE_THRESHOLD;
+      const isExecuteConfirm = routed.requiresConfirmation && !!routed.response;
+      if (isStrongMatch || isExecuteConfirm) {
         const routedText = formatIntentRouteMessage(routed) || routed.response;
         console.log("[TG INTENT] returning result, length:", routedText.length);
         if (routedText && routed.intent.domain !== "chat") {
@@ -68,6 +76,15 @@ export function setupMessageRouter(
           await saveAssistantMessage(conversationId, routedText, sentMessage.message_id);
           return;
         }
+      } else if (routed.handled) {
+        // Phase 4-C: 약한 매칭 — 결과 폐기하고 LLM + RAG 로 fall-through
+        console.log(
+          "[TG INTENT] weak match (confidence",
+          routed.intent.confidence.toFixed(2),
+          "<",
+          INTENT_CONFIDENCE_THRESHOLD,
+          ") — falling through to RAG + LLM"
+        );
       }
 
       // Step 2: handleWorkspaceCommand 폴백 — send_drive_file 등 Telegram 전용 액션 처리
@@ -123,10 +140,25 @@ async function replyWithLlm(
   const history = await sessionManager.getHistory(userId, 10);
   const currentDate = new Date().toLocaleString("ko-KR", { timeZone: "Asia/Seoul" });
   const currentModel = getModel(session.engine, session.modelKey);
-  const systemPrompt = `당신은 구글 생태계와 텔레그램을 통합하는 AI 어시스턴트입니다. Gmail 전송, 캘린더 일정 생성, Drive 파일 조회 등 Google Workspace 기능을 실행할 수 있습니다. 사용자의 질문에 친절하고 정확하게 답변해주세요.
+  const baseSystemPrompt = `당신은 구글 생태계와 텔레그램을 통합하는 AI 어시스턴트입니다. Gmail 전송, 캘린더 일정 생성, Drive 파일 조회 등 Google Workspace 기능을 실행할 수 있습니다. 사용자의 질문에 친절하고 정확하게 답변해주세요.
 
 현재 날짜와 시간: ${currentDate}
 현재 사용 중인 엔진: ${session.engine}, 모델: ${currentModel?.name || session.modelKey}`;
+
+  // Phase 4-C: 로컬 NotebookLM 회수 자료 RAG 검색 (실패해도 일반 대화 진행)
+  const ragHits = await searchLocalNotes(userMessage, { k: 3 }).catch((err) => {
+    console.warn("[TG RAG] local search failed:", err);
+    return [];
+  });
+  console.log("[TG RAG] hits:", ragHits.length);
+
+  const ragContextBlock = ragHits.length
+    ? `\n\n참고할 회수 자료(${ragHits.length}건):\n${ragHits
+        .map((h, i) => `[${i + 1}] ${h.project}/${h.fileName}\n${h.snippet}`)
+        .join("\n\n")}\n\n위 자료를 우선 참고하되, 자료에 없는 사실을 만들어내지 마세요.`
+    : "";
+
+  const systemPrompt = `${baseSystemPrompt}${ragContextBlock}`;
 
   const { injectAttachments } = await import("../attachmentInject");
   const injected = await injectAttachments(systemPrompt, userMessage);
@@ -141,8 +173,10 @@ async function replyWithLlm(
     injected.systemPrompt
   );
 
-  await sessionManager.addMessage(userId, "assistant", response.content);
-  const sentMessage = await ctx.reply(response.content, {
+  const finalResponse = response.content + formatCitationFooter(ragHits);
+
+  await sessionManager.addMessage(userId, "assistant", finalResponse);
+  const sentMessage = await ctx.reply(finalResponse, {
     reply_parameters: { message_id: (ctx.message as any).message_id },
   });
 
@@ -150,5 +184,5 @@ async function replyWithLlm(
     await ctx.reply("⚠️ " + injected.warnings.join("\n"));
   }
 
-  await saveAssistantMessage(conversationId, response.content, sentMessage.message_id);
+  await saveAssistantMessage(conversationId, finalResponse, sentMessage.message_id);
 }

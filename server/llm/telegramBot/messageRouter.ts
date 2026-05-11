@@ -160,7 +160,7 @@ async function replyWithLlm(
 
   const systemPrompt = `${baseSystemPrompt}${ragContextBlock}`;
 
-  const { injectAttachments } = await import("../attachmentInject");
+  const { injectAttachments } = await import("../attachmentInject.ts");
   const injected = await injectAttachments(systemPrompt, userMessage);
 
   const response = await llmCaller.call(

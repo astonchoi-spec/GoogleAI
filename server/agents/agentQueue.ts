@@ -62,6 +62,8 @@ export class AgentQueue {
     if (!permission.allowed) {
       throw new Error(permission.reason ?? "에이전트 실행 권한이 없습니다.");
     }
+    // notebook-query 는 로컬 회수 자료(`*.md`)만 읽는 무해 작업. 권한 게이트 우회하여 즉시 실행.
+    const requiresApproval = permission.requiresApproval && template.id !== "notebook-query";
     const id = randomBytes(5).toString("base64url");
     const task: AgentTask = {
       id,
@@ -69,12 +71,12 @@ export class AgentQueue {
       templateLabel: template.label,
       target,
       inputs: input.inputs ?? {},
-      status: permission.requiresApproval ? "awaiting_approval" : "pending",
+      status: requiresApproval ? "awaiting_approval" : "pending",
       createdAt: new Date().toISOString(),
     };
     this.tasks.set(id, task);
     this.order.unshift(id);
-    if (permission.requiresApproval) {
+    if (requiresApproval) {
       this.scheduleApprovalTimeout(id);
       void this.notifyApprovalRequired(task);
     } else {

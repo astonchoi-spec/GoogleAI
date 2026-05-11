@@ -1,5 +1,29 @@
 ﻿# HANDOFF.md — 에스턴 워크스테이션
-> 업데이트: 2026-05-11 Agent↔RAG 합성 (notebook-query 재라우팅) ✅ | 브랜치: codex-google-workspace-expansion
+> 업데이트: 2026-05-11 자료 회수 라인 재설계 — 집에서 Step 1·1.5·2 진행 예정 | 브랜치: codex-google-workspace-expansion
+
+---
+
+## 🏠 집에서 이어갈 작업 (즉시)
+
+### 현황
+오늘 회장님과 자료 회수 라인 재설계 회의 결과:
+- **PDF가 G드라이브 위키 폴더에 회수 안 됨** — driveSync가 `.pdf`를 META_ONLY로 분류
+- **NotebookLM 자료 일괄 회수 부재** — Chrome Extension은 1회 1건 수동, UI 노이즈에 약함
+- **nlm-research 통째 도입은 비효율** (이중 진입점·5개 의존성) — 별도 폴더 + 단추 방식이 정합
+
+### 결정된 3단계
+1. **Step 1** — driveSync에 PDF 본문 추출 분기 추가 (30분, 위험 0)
+2. **Step 1.5** — Aston Wiki 페이지에 업로드 UI 신설 (옵션 A: project 직접 선택)
+3. **Step 2** — nlm-research 별도 폴더 + Aston 텔레그램 단추 (회장님 PC 설치 + claude CLI 비대화식 조사)
+
+상세 작업 내역: `TODO.md` 상단 "🏠 집에서 이어갈 작업" 섹션 참고.
+
+### 시작 명령
+집에서 워크스테이션 접속 후:
+```
+작업준비
+```
+→ 그 다음 Step 1부터 진행 또는 회장님이 특정 Step 지정.
 
 ---
 

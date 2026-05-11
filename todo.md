@@ -1,5 +1,71 @@
 ﻿# TODO.md — 에스턴 워크스테이션
-> 업데이트: 2026-05-11 Phase 4-C 텔레그램 RAG 적용 | 브랜치: codex-google-workspace-expansion
+> 업데이트: 2026-05-11 자료 회수 라인 재설계 (집에서 이어갈 작업) | 브랜치: codex-google-workspace-expansion
+
+---
+
+## 🏠 집에서 이어갈 작업 (2026-05-11 저녁 ~)
+
+### Step 1 — driveSync에 PDF 본문 추출 분기 추가 (30분, 위험 0)
+- [ ] `server/knowledge/driveSync.ts`:
+  - `SUPPORTED_AUTO_INGEST` 에 `.pdf` 추가
+  - `META_ONLY_TYPES` 에서 `.pdf` 제거
+  - `.docx` 분기 옆에 `.pdf` 분기 — `await import("../llm/attachmentExtract.ts")` 의 `extractAttachmentText(filePath)` 호출 (pdf2json 재사용, 신규 의존성 0)
+- [ ] 모듈 경계 검사: `knowledge → llm` 직접 import는 `llm`이 도메인 모듈 아니라 OK
+- [ ] 회귀 테스트: 기존 .md/.txt/.docx 회수 영향 없는지 + .pdf 본문 추출 케이스 1건 추가
+- [ ] check / build / test 통과 → 커밋 + push + PM2 재시작
+- [ ] 검증: G드라이브 `notebooklm-exports/_unmapped/` 에 PDF 1개 떨궈서 5초 내 Wiki 적재 + RAG 인용 확인
+
+### Step 1.5 — Aston Wiki 페이지 업로드 UI (옵션 A: project 직접 선택)
+- [ ] 백엔드 multipart 업로드 라우터 (`server/routers/wikiUpload.ts` 또는 기존 라우터 확장)
+  - POST /api/wiki/upload — multipart form (file + project + artifact_kind + tags)
+  - project 화이트리스트 검증 (rag-mapping.yaml 의 28개 + research-inbox + _unmapped)
+  - 파일 저장 경로: `{ASTON_WIKI_ROOT}/notebooklm-exports/{project}/{원본파일명}` (또는 슬러그화)
+  - 크기 50MB 상한, 확장자 화이트리스트(.pdf/.docx/.md/.txt/.png/.jpg)
+- [ ] 클라이언트 업로드 컴포넌트 (`client/src/components/WikiUpload.tsx`)
+  - drag-drop + 클릭 파일 선택
+  - 모달: project 드롭다운(28+research-inbox+_unmapped+"새 프로젝트") / artifact_kind 자동추론+수정가능 / 태그(선택)
+  - 업로드 진행률 + 결과 토스트
+- [ ] `client/src/pages/WikiPage.tsx` (또는 /wiki 페이지) 우측에 업로드 영역 통합
+- [ ] 검증: PDF 업로드 → 폴더 저장 → Drive Watcher 회수 → Wiki 적재 → RAG 인용 end-to-end
+- [ ] 새 프로젝트 생성 흐름: 슬러그 입력 → yaml 즉시 추가 → setAllowedProjects 갱신
+
+### Step 2 — nlm-research 별도 폴더 + Aston 텔레그램 단추
+- [ ] 회장님 워크스테이션에 nlm-research 1회 설치 (`git clone` + `uv tool install notebooklm-mcp-cli yt-dlp` + `nlm login`)
+- [ ] 회장님이 한 번 수동 실행: `cd D:\nlm-research && claude` 진입 후 `/research run "테스트 주제" --auto`
+- [ ] 출력 확인: `~/research-output/테스트-주제/` 에 .md 파일 떨어지는지
+- [ ] mklink: `~/research-output` → `G:\내 드라이브\Aston-Wiki\notebooklm-exports\research-inbox\` (Step 1.5 후 yaml에 research-inbox 등록 선행)
+- [ ] **사전 조사 필요**: `claude` CLI 비대화식 skill 실행 옵션 존재 여부 (`claude --help`)
+  - 있으면 → Aston 텔레그램 "/리서치 주제" → child_process 트리거 (완전 자동)
+  - 없으면 → 단추 = 명령어 안내 (회장님이 워크스테이션에서 복붙)
+- [ ] Aston 신규 인텐트 `research_run` 핸들러 (~50줄)
+
+### 검증 누적 (Step 1, 1.5, 2 완료 후)
+- [ ] Aston Wiki 페이지에서 PDF 업로드 → 5초 내 Wiki 적재 확인
+- [ ] 텔레그램 "한남 PF NPV 어때?" → 업로드한 PDF 본문 인용 확인
+- [ ] (Step 2 적용 시) 텔레그램 "/리서치 몽골 광산" → 5분 내 회수 + 인용 확인
+
+---
+
+## 2026-05-11 Agent↔RAG 합성 — notebook-query 재라우팅 (Claude Code)
+
+---
+
+## 2026-05-11 Agent↔RAG 합성 — notebook-query 재라우팅 (Claude Code)
+
+### 구현 완료
+- ✅ `_core/ragProxy.ts` 추가 (모듈 경계 준수)
+- ✅ `agentExecutor.ts` notebook-query 분기 — Phase 4-A 로컬 RAG 호출
+- ✅ `agentTemplates.ts` description/instructions 갱신
+- ✅ 테스트 2건 추가, 기존 OpenClaw 검증 1건 교체
+- ✅ check / build / **820 passed** (회귀 0)
+
+### 운영 검증 잔여
+- [ ] 텔레그램 `에이전트 실행 notebook-query 한남동644 NPV 수익률은?` 직접 송신 → 회수 자료 발췌 응답 확인
+- [ ] `에이전트 실행 notebook-query 빈프로젝트 ...` → 회수 자료 없음 안내 + Chrome Extension 가이드 출력 확인
+
+### 다음 단계 후보
+- [ ] `notebookLmMcp.ts` 데드 코드 정리 (4곳 사용처 점진 제거)
+- [ ] Phase 3-A `rag-bootstrap.ts` (Vertex AI 데이터스토어 초기화)
 
 ---
 

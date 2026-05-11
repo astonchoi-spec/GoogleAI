@@ -3,6 +3,28 @@
 
 ---
 
+## 2026-05-11 자료 회수 라인 재설계 + 운영 안정화 (Claude Code)
+
+### 추가 안정화 (커밋 4건)
+1. **`6bf0ea1`** fix(agents) — `notebook-query` 호출 시 question 입력 전달 + 사용법 안내 보강
+2. **`b1cfc81`** fix(agents) — notebook-query 권한 게이트 우회. 로컬 RAG 무해 작업은 awaiting_approval 안 거치고 즉시 실행
+3. **`58bf760`** fix(intent) — 자연어 PF 질의가 realestate_feasibility 가짜 시뮬을 호출하던 회귀 차단. classifier prompt + parseIntent normalizeIntent 2중 가드
+4. **`a27c4b0`** fix(extension v0.3.0) — UI 아이콘/페이지번호 노이즈 차단(Material Icons 40종 + 평균 줄 길이 검사) + 본문 임계치 20→300자
+
+### 자료 회수 라인 재설계 (회장님 결정 회의 결과, 코드 미진행)
+- nlm-research(외부 Python 앱) 통째 도입 ❌ — 이중 진입점·5개 의존성
+- 별도 폴더 + Aston 단추 ✅ — 회장님 제안, 의존성 격리 + 텔레그램 단일 진입점 유지
+- Aston Wiki 페이지 업로드 UI ✅ — 회장님 제안, PDF/문서를 G드라이브 폴더에 떨궈 Drive Watcher가 자동 회수
+- 분류 방식: 옵션 A(업로드 시 project 직접 선택) 권장
+- 다음 작업 3단계로 분리: Step 1 (PDF 본문추출), Step 1.5 (업로드 UI), Step 2 (nlm-research 단추)
+
+### 다음 작업
+- Step 1 — `server/knowledge/driveSync.ts` .pdf 본문 추출 분기 추가 (30분)
+- Step 1.5 — `/wiki` 페이지 업로드 UI + multipart 백엔드 라우터 (5시간)
+- Step 2 — nlm-research 별도 설치(회장님 PC) + Aston 텔레그램 단추 (claude CLI 비대화식 지원 조사 후)
+
+---
+
 ## 2026-05-11 Agent↔RAG 합성 — notebook-query 템플릿 재라우팅 (Claude Code)
 
 ### 작업 내용

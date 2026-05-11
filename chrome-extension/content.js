@@ -54,7 +54,25 @@
     "노트북 만들기",
     "Search emojis",
     "Loading",
+    "만족스러운 콘텐츠",
+    "불만족스러운 콘텐츠",
+    "소스 1개 기반",
+    "소스 기반",
   ];
+
+  // Google Material Symbols / Material Icons 이름 — NotebookLM UI 버튼에 자주 노출됨
+  // (회장님이 PDF 소스 뷰어에서 버튼 누르면 본문 대신 이것들이 긁힘)
+  const MATERIAL_ICON_NAMES = new Set([
+    "ios_share","edit","share","more_horiz","more_vert","play_arrow","pause",
+    "collapse_content","expand_content","close","add","remove","check","cancel",
+    "thumb_up","thumb_down","arrow_back","arrow_forward","arrow_drop_down",
+    "settings","menu","search","mic","stop","refresh","download","upload",
+    "save","delete","copy","content_copy","favorite","star","help","info",
+    "open_in_new","fullscreen","fullscreen_exit","keyboard_arrow_down",
+    "keyboard_arrow_up","chevron_left","chevron_right","attach_file",
+    "format_bold","format_italic","format_list_bulleted","format_list_numbered",
+    "수정","공유","삭제","복사","저장","닫기","열기","추가","제거","좋아요","싫어요",
+  ]);
 
   function isNoiseText(text) {
     const compact = text.replace(/\s+/g, " ").trim();
@@ -72,6 +90,31 @@
     // 의미 있는 알파벳/한글 문자 비율이 너무 낮으면 (공백/특수문자만 가득) noise
     const meaningful = compact.replace(/[\s\W_]+/g, "");
     if (meaningful.length / compact.length < 0.3) return true;
+
+    // Material Icons + 페이지 번호 패턴 검사 — NotebookLM PDF 뷰어에서 흔히 발생
+    // 줄 단위로 잘라서 각 줄이 단일 토큰(icon 이름 또는 1~3자리 숫자)인 비율 측정
+    const lines = text.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
+    if (lines.length >= 5) {
+      let junkLines = 0;
+      for (const line of lines) {
+        if (MATERIAL_ICON_NAMES.has(line.toLowerCase())) { junkLines++; continue; }
+        if (/^\d{1,3}$/.test(line)) { junkLines++; continue; } // 페이지 번호
+        if (/^[a-z_]{2,30}$/.test(line)) { junkLines++; continue; } // material_icon 미등록 변종
+      }
+      if (junkLines / lines.length > 0.5) {
+        console.log("[Aston Bridge] noise 판정 — UI 아이콘/페이지번호 비율", (junkLines / lines.length).toFixed(2));
+        return true;
+      }
+    }
+
+    // 평균 줄 길이가 너무 짧으면(평균 ≤ 8자) UI 라벨 모음
+    if (lines.length >= 8) {
+      const avg = compact.length / lines.length;
+      if (avg <= 8) {
+        console.log("[Aston Bridge] noise 판정 — 평균 줄 길이", avg.toFixed(1));
+        return true;
+      }
+    }
     return false;
   }
 
@@ -195,9 +238,16 @@
         firstChars: noteText.slice(0, 80),
       });
 
-      if (!noteText || noteText.length < 20) {
-        setButtonState(btn, "err", "❌ 본문 미감지 — 드래그 후 재시도");
-        console.warn("[Aston Bridge] 본문 추출 실패. 페이지에서 노트 영역을 드래그 선택 후 버튼을 다시 클릭하세요.");
+      // 본문 임계치 상향 (300자) — UI 아이콘/페이지번호만 잡힌 경우(이전 162자 케이스) 차단.
+      // 짧으면 noise 일 확률 매우 높음. 실제 저작물은 보통 1,000자 이상.
+      if (!noteText || noteText.length < 300) {
+        setButtonState(btn, "err", "❌ 본문이 너무 짧음 — Studio 저작물을 펼친 상태에서 재시도");
+        console.warn(
+          "[Aston Bridge] 본문 추출 실패 또는 너무 짧음 (length=" + (noteText?.length ?? 0) + ").\n" +
+          "  ① NotebookLM 우측 Studio 패널에서 보고서/요약/FAQ 등 저작물을 클릭해 본문이 화면에 표시된 상태에서 버튼 클릭.\n" +
+          "  ② 또는 화면에서 회수하려는 텍스트를 드래그 선택 후 버튼 클릭.\n" +
+          "  ⚠ 소스 PDF 뷰어 화면에서는 본문을 추출할 수 없습니다 (NotebookLM 이 원본 PDF 본문을 노출하지 않음)."
+        );
         setTimeout(
           () => setButtonState(btn, "idle", "📥 Aston Wiki로 가져오기"),
           RESET_AFTER_MS + 2000,

@@ -5,7 +5,7 @@
  * 두 채팅 진입점(웹 tRPC chat / 텔레그램 봇 메시지 핸들러)에서 공유 호출.
  */
 
-import { extractAttachmentText, type AttachmentExtractResult } from "./attachmentExtract";
+import { extractAttachmentText, type AttachmentExtractResult } from "./attachmentExtract.ts";
 
 const ATTACHMENT_PATTERN =
   /\[(?:첨부|Attached|ATTACHMENT)[:：]\s*["'`]?([\s\S]+?\.(?:pdf|md|txt|csv))["'`]?\s*\]/gi;

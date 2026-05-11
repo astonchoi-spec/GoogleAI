@@ -272,7 +272,7 @@ export const llmRouter = router({
       const systemPrompt = `${baseSystemPrompt}${ragContextBlock}`;
 
       // 인라인 첨부([첨부: <경로>]) 본문 추출 → systemPrompt에 prepend
-      const { injectAttachments } = await import("../llm/attachmentInject");
+      const { injectAttachments } = await import("../llm/attachmentInject.ts");
       const injected = await injectAttachments(systemPrompt, input.message);
 
       const response = await userLlmCaller.call(

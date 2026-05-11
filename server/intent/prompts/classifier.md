@@ -34,6 +34,9 @@
 - "일정 확인", "오늘 일정", "캘린더 목록", "다음 일정" → google_list_events
 - "일정 추가", "일정 잡아", "미팅 생성" → google_create_event
 - "딜 "로 시작하는 모든 메시지 → deals_command
+- **회수 자료/노트북/문서 검색 질의 (예: "한남동 NPV 어때?", "사업성 어떻게 돼?", "수익률 알려줘", "진행 상황은?") → chat** (RAG가 처리)
+- **realestate_feasibility 는 사용자가 명시적으로 PF 시뮬 파라미터(토지비/공사비/분양가 등 숫자)를 제공한 경우에만 사용**. 단순 자연어 질문은 chat 으로.
+- **realestate_portfolio_summary 는 "포트폴리오 요약", "전체 PF 현황" 같은 명시적 요청에만 사용**. 단일 딜 질의는 chat 으로.
 - 조회성 작업은 type=query, 변경성 작업(생성/삭제/수정/등록)은 type=execute
 - 파라미터를 최대한 추출
 - JSON 외 텍스트 금지

@@ -33,6 +33,29 @@ export function normalizeIntent(intent: ParsedIntent): ParsedIntent {
       params: {},
     };
   }
+  // 가짜 데이터 가드 — realestate_feasibility/portfolio_summary 가 명시적 PF 시뮬 파라미터
+  // (landCost/constructionCost 등 숫자) 없이 분류된 경우, 가짜 하드코딩 응답이 회장님께 가는 것을
+  // 차단하기 위해 confidence 를 0.5 로 강제 다운그레이드. Phase 4-C 가드(0.7)가 잡아 RAG fallback.
+  // 회장님 자연어 질의(예: "한남동644 NPV 수익률은?") 에 LLM이 0.9 confidence 로 잘못 매칭하던 회귀 차단.
+  if (
+    (intent.action === "realestate_feasibility" || intent.action === "realestate_portfolio_summary") &&
+    intent.confidence > 0.5
+  ) {
+    const params = (intent.params ?? {}) as Record<string, unknown>;
+    const hasRealNumbers =
+      typeof params.landCost === "number" && params.landCost > 0 &&
+      typeof params.constructionCost === "number" && params.constructionCost > 0;
+    if (!hasRealNumbers) {
+      console.warn(
+        "[INTENT] downgrading",
+        intent.action,
+        "from",
+        intent.confidence,
+        "→ 0.5 (no real PF params, natural-language query). Falling through to RAG.",
+      );
+      return { ...intent, confidence: 0.5 };
+    }
+  }
   return intent;
 }
 

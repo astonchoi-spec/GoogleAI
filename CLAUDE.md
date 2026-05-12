@@ -14,6 +14,7 @@
 2. **`npm run dev`는 PM2가 없을 때만 사용**. PM2가 살아있는데 `npm run dev`를 실행하면 포트 충돌이 발생한다.
 3. 서버 주소는 항상 **http://localhost:4000** (PM2 고정).
 4. **worktree 안에서는 절대 dev 서버를 띄우지 않는다.** worktree 베이스가 `master`(48bba87, 동결)인 경우가 많아 1달 전 화면이 떠서 사용자가 "내 작업이 사라졌다"고 오해한다 (2026-05-10 사고). dev 서버는 항상 메인 디렉토리(`C:\Users\user\Desktop\구글연동AI`)에서만 실행.
+5. **PM2 재시작 후 `Port 4000 is busy, using port 4001 instead` 로그 보이면 좀비 프로세스 의심.** 회장님이 4000 에 접속하면 옛 코드가 응답하는 사고 (2026-05-12 2회 발생). 처리: `netstat -ano | findstr ":4000"` → 점유 pid 확인 → PowerShell `Stop-Process -Id <pid> -Force` → `pm2 restart aston`. PM2 는 `dist` 가 아닌 TS 소스 직접 실행(`--experimental-strip-types`)이라 재시작 = 새 코드 즉시 반영.
 
 ---
 
@@ -274,6 +275,7 @@ Aston Workstation은 별도 앱/레포로 쪼개지 않는 **Modular Monolith**�
 - 각 모듈은 자체 `README.md`를 보유하고 책임, 비책임, 데이터 경로, 명령, 의존성, 환경 변수를 명시한다.
 - 새 기능 추가 시 기존 모듈에 추가할지 신규 모듈을 만들지 결정하고, 해당 모듈 `README.md`에 판단 근거를 짧게 기록한다.
 - `npm run check`는 `scripts/check-module-boundaries.ts`를 실행해 도메인 간 직접 import 위반을 검사한다.
+- **도메인 모듈 외부 데이터 주입은 setter 패턴 사용**: knowledge 모듈이 rag yaml 을 직접 import 하지 않고 `_core/index.ts` 가 부팅 시 `setAllowedProjects() / setExtensionUrlMappings() / setUploadAllowedProjects()` 로 주입. 신규 도메인 핸들러도 같은 패턴 따른다 — 모듈 경계 위반 없이 외부 yaml/config 활용.
 
 ---
 
@@ -295,6 +297,20 @@ Aston Workstation은 별도 앱/레포로 쪼개지 않는 **Modular Monolith**�
   - `data` 필드 반환 금지 (JSON preview 노출됨)
   - 한국어 텍스트만 반환, 이모지로 시각 구분 (📋 📈 💰 🛡 ✅ ⚠️ 🚫 등)
   - `formatXxx()` 함수로 포맷 분리
+- **Dynamic import 는 반드시 `.ts` 확장자 명시**: `await import("../path/file.ts")` — PM2 `node --experimental-strip-types` 런타임 호환. 누락 시 모듈 해석 실패로 운영 사고 (2026-05-11 fd53b07/3e696fb 처리 이력).
+- **multipart 업로드는 base64-in-JSON 으로 처리** (신규 의존성 0): 클라이언트 `FileReader.readAsDataURL` + `express.json({ limit:"50mb" })` 활용. multer/busboy/formidable 추가 금지. Step 1.5 `server/knowledge/wikiUpload.ts` 참고.
+
+---
+
+## 7-1. 인텐트 라우팅 가드 (필수)
+
+채팅 라우팅에서 회수된 사고들을 막기 위한 규칙. 2026-05-12 "검토" 단독 → BTC trading_pre_check 폭주 / Drive URL 환각 / 외부 위키 환각 P0~P3 수정 후 정착.
+
+- **키워드 매처는 명시적 화이트리스트로 가드**: 단일 키워드("검토", "올려줘") 만으로 트레이딩/실행 인텐트 라우팅 금지. crypto ticker (`KNOWN_CRYPTO_TICKERS` 화이트리스트 in `server/trading/reviewReport.ts`) 같은 명시 신호 동시 필요.
+- **`fallbackIntent.ts` 정규식은 단어 경계 명시**: `^...\s+(.+)$` 형태로 시작 위치 + 공백 강제. `compact.includes("검토")` 같은 substring 매칭 지양.
+- **`DEFAULT_SYMBOL` fallback 금지**: ticker 미확인 시 null 반환 → chat fallback 으로 위임. BTC 등 기본값 자동 부여하면 환각·오라우팅 사고.
+- **`TICKER_RE` 제외 목록 적극 보강**: 부동산·회사 약어(PFV/SPC/REIT/NPV/IRR) 와 일반 약어(PDF/API/URL) 누락 시 trading 인텐트로 잘못 흘러감. `preCheckEngine.ts` 의 `EXCLUDE_TICKERS` 참고.
+- **chat fallback systemPrompt 에 환각 가드 명시**: ① Drive URL 임의 생성 금지 ② 외부 위키 사이트(newiki.com / 나무위키 등) 환각 금지 ③ "내위키/위키/회수 자료 = Aston Wiki" 컨텍스트. 가드 누락 시 LLM 이 가짜 링크·외부 사이트 설명 환각. `server/routers/llm.ts` + `server/llm/telegramBot/messageRouter.ts` 양쪽 동시 적용.
 
 ---
 

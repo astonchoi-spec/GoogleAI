@@ -50,6 +50,42 @@ describe("parseReviewMessage", () => {
     expect(parseReviewMessage("비트코인 검토해")?.symbol).toBe("BTC");
     expect(parseReviewMessage("이더 매수 적합?")?.symbol).toBe("ETH");
   });
+
+  // P0 보강 가드 (2026-05-12 16:48) 회귀 — 가이드/문서/마크다운에 'BTC'+'검토' 섞인 경우 차단.
+  it("긴 텍스트(>200자) 안에 BTC+검토 섞여도 review 아님", () => {
+    const longGuide = `PC 도착 후 동선
+
+1단계 — 코드 동기화 + PM2 재시작
+
+cd "C:\\Users\\user\\Desktop\\구글연동AI"
+git pull --rebase origin codex-google-workspace-expansion
+pm2 restart aston
+
+2단계 — 텔레그램 봇 첫 명령어
+
+가장 짧은 검증부터: 내위키
+P0 (가장 위험했던 BTC 폭주 차단 검증): 한남644PFV ... 검토해
+→ BTC 리포트 사라지고 RAG 인용 답변 나오면 통과.`;
+    expect(longGuide.length).toBeGreaterThan(200);
+    expect(parseReviewMessage(longGuide)).toBeNull();
+  });
+
+  it("멀티라인(>5줄) 메시지는 review 아님", () => {
+    const multiline = "검토 BTC\n포지션\n진입\n타이밍\n참고\n자료";
+    expect(parseReviewMessage(multiline)).toBeNull();
+  });
+
+  it("마크다운 헤더/리스트/코드블록 포함 메시지는 review 아님", () => {
+    expect(parseReviewMessage("# BTC 검토\n본문")).toBeNull();
+    expect(parseReviewMessage("BTC 검토\n- 항목1\n- 항목2")).toBeNull();
+    expect(parseReviewMessage("```\nBTC 검토\n```")).toBeNull();
+  });
+
+  it("짧은 매매 검토 메시지는 정상 작동 (회귀 가드)", () => {
+    expect(parseReviewMessage("검토 BTC 5만원")?.symbol).toBe("BTC");
+    expect(parseReviewMessage("롱 BTC 15배")).toBeNull(); // 검토 키워드 없음
+    expect(parseReviewMessage("롱 검토 BTC 15배")?.symbol).toBe("BTC");
+  });
 });
 
 describe("formatReviewReport", () => {

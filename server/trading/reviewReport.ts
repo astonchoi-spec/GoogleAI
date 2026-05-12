@@ -167,6 +167,15 @@ export function parseReviewMessage(message: string): ReviewIntentInput | null {
   const explicitSymbol = findExplicitCryptoSymbol(message);
   if (!explicitSymbol) return null;
 
+  // P0 보강 가드 (2026-05-12 16:48): 긴 텍스트(가이드/문서/회의록 복붙)에 우연히 'BTC' + '검토' 가 섞인 경우 차단.
+  // 회장님이 안내 마크다운 전체를 복붙했을 때 BTC 리포트 폭주한 사고 재발 방지.
+  // 진짜 매매 검토 메시지는 보통 짧음 (예: "검토 BTC 5만원", "롱 BTC 15배").
+  if (message.length > 200) return null;
+  // 라인 수가 많거나 (멀티라인 문서) 마크다운 헤더(#)/코드블록(```)/리스트(- )가 보이면 검토 아님.
+  const lineCount = (message.match(/\n/g) ?? []).length + 1;
+  if (lineCount > 5) return null;
+  if (/```|^#{1,6}\s|\n#{1,6}\s|\n\s*[-*]\s/.test(message)) return null;
+
   const side: ReviewSide =
     /(숏|매도|short|sell)/i.test(message) ? "short" :
       /(롱|매수|long|buy)/i.test(message) ? "long" :

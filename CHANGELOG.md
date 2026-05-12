@@ -3,6 +3,53 @@
 
 ---
 
+## 2026-05-12 Step 2 — nlm-research 자동 실행 인텐트 + 핸들러 골격 (Claude Code)
+
+### 사전 조사 결과
+- `claude --help` 분석: `-p, --print` (비대화식) + `--add-dir` + `--output-format text/json/stream-json` + `--max-budget-usd` + `--dangerously-skip-permissions` 모두 지원 → child_process 트리거 자동화 가능
+- skill(slash command) 호출 방식: prompt 문자열에 `/research run "<주제>" --auto` 그대로 전달 → claude CLI 가 plugin/skill 디렉토리에서 해석
+
+### 구현
+- `server/intent/types.ts` — IntentAction 에 `"research_run"` 추가
+- `server/intent/handlers/researchRun.ts` (신규, ~200줄)
+  - env 가드 (NLM_RESEARCH_ENABLED + NLM_RESEARCH_ROOT) — 회장님 PC 외 환경에서 자동 차단
+  - 자동 실행: `spawn("claude", ["-p", '/research run "<topic>" --auto', "--add-dir <root>", "--output-format text", "--max-budget-usd 5", "--dangerously-skip-permissions"])` (fire-and-forget, detached + unref)
+  - 비활성 모드: 회장님 워크스테이션 콘솔 명령어 안내 메시지만 출력
+  - 입력 검증: 주제 누락 / 200자 초과 거부
+  - ROOT 디렉토리 존재 검증
+- `server/intent/registry.ts` — researchHandlers 등록
+- `server/intent/fallbackIntent.ts` — `/리서치 <주제>` / `리서치 시작 <주제>` / `리서치 <주제>` 매처 (브리핑 매처 뒤, 거래 매처 앞 우선순위)
+- `server/intent/prompts/classifier.md` — research_run 액션 + params.topic 명시
+- `server/__tests__/researchRun.test.ts` (신규, 10건) — 매칭 4건 / 비활성 3건 / 검증 3건
+- `.env.example` — NLM_RESEARCH_ENABLED / ROOT / OUTPUT / MAX_USD 4종 추가 (활성화 조건 주석 포함)
+
+### 효과
+- 회장님 텔레그램에서 `리서치 몽골 광산 채굴권 동향` 한 줄 → 워크스테이션에서 nlm-research 자동 실행 → `~/research-output/<topic>/*.md` 저장 → mklink 로 G드라이브 research-inbox 자동 회수 → Drive Watcher 가 Aston Wiki 적재 → 5~10분 후 RAG 인용 가능
+- 회사컴 / CI / 다른 환경에서는 env 가드로 차단되어 안내 메시지만 출력 (안전 fallback)
+
+### 수정 파일
+- `server/intent/handlers/researchRun.ts` (신규)
+- `server/__tests__/researchRun.test.ts` (신규)
+- `server/intent/types.ts`
+- `server/intent/registry.ts`
+- `server/intent/fallbackIntent.ts`
+- `server/intent/prompts/classifier.md`
+- `.env.example`
+
+### 검증
+- `npm run check` ✅ / `npm run build` ✅ (809.4 → 815.6kb, +6.2kb)
+- `npx vitest run researchRun` ✅ **10 passed**
+
+### 회장님 직접 작업 (집에서)
+- [ ] `git clone <nlm-research repo> D:\nlm-research`
+- [ ] `uv tool install notebooklm-mcp-cli yt-dlp` + `nlm login`
+- [ ] 1회 수동 검증: `cd D:\nlm-research && claude` → `/research run "테스트" --auto` → 출력 확인
+- [ ] mklink: `~/research-output` → `${ASTON_WIKI_ROOT}\notebooklm-exports\research-inbox\`
+- [ ] `.env`: `NLM_RESEARCH_ENABLED=true` + `NLM_RESEARCH_ROOT=D:\nlm-research`
+- [ ] PM2 재시작 후 텔레그램 `리서치 몽골 광산` → Wiki 회수 확인
+
+---
+
 ## 2026-05-12 chat 라우팅 안정화 — P0~P3 (Claude Code)
 
 ### 배경

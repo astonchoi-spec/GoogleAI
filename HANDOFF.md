@@ -1,9 +1,35 @@
 ﻿# HANDOFF.md — 에스턴 워크스테이션
-> 업데이트: 2026-05-12 Step 1.5 구현 완료 (Wiki 업로드 UI) — 회장님 라이브 검증만 남음 | 브랜치: codex-google-workspace-expansion
+> 업데이트: 2026-05-12 Step 2 코드 골격 완료 (research_run 인텐트 + 핸들러) — 회장님 PC 설치/활성화만 남음 | 브랜치: codex-google-workspace-expansion
 
 ---
 
-## 🏠 다음 작업 (Step 1.5 라이브 검증 → Step 2)
+## 🏠 다음 작업 (Step 2 회장님 PC 설치 / 활성화)
+
+### Step 2 — ✅ 2026-05-12 코드 골격 완료 (Claude Code)
+
+**구현**
+- `server/intent/types.ts` — `IntentAction "research_run"` 신규
+- `server/intent/handlers/researchRun.ts` (신규, ~200줄)
+  - env 가드 (NLM_RESEARCH_ENABLED + NLM_RESEARCH_ROOT) — 회장님 PC 외 자동 차단
+  - 활성 시 `spawn("claude", ["-p", "/research run \"<topic>\" --auto", "--add-dir <root>", ...])` fire-and-forget
+  - 비활성 시 워크스테이션 콘솔 명령어 안내 메시지 출력
+- `server/intent/registry.ts` / `fallbackIntent.ts` / `classifier.md` 라우팅 등록
+- `.env.example` — NLM_RESEARCH_* 4종 + 활성화 조건 주석
+- 사전 조사 결과: `claude -p` + `--add-dir` + `--max-budget-usd` 등 비대화식 옵션 활용 가능
+
+**검증**
+- `npm run check` ✅ / `npm run build` ✅ (809.4 → 815.6kb, +6.2kb)
+- `npx vitest run researchRun` ✅ **10 passed** (매칭 4 / 비활성 3 / 검증 3)
+
+**회장님 직접 작업 (집에서 워크스테이션)**
+- [ ] `git clone <nlm-research repo> D:\nlm-research`
+- [ ] `uv tool install notebooklm-mcp-cli yt-dlp` + `nlm login` (NotebookLM 계정 인증)
+- [ ] 1회 수동 검증: `cd D:\nlm-research && claude` → `/research run "테스트" --auto` → `~/research-output/테스트/*.md` 떨어지는지
+- [ ] mklink (PowerShell admin): `New-Item -ItemType Junction -Path "$env:USERPROFILE\research-output" -Target "G:\내 드라이브\Aston-Wiki\notebooklm-exports\research-inbox"`
+- [ ] `.env`: `NLM_RESEARCH_ENABLED=true` + `NLM_RESEARCH_ROOT=D:\nlm-research`
+- [ ] `pm2 restart aston` 후 텔레그램 `리서치 몽골 광산 동향` → 5~10분 후 Wiki 회수 자료에 자동 등장 + RAG 인용 동작 확인
+
+---
 
 ### Step 1.5 — ✅ 2026-05-12 구현 완료 (Claude Code)
 

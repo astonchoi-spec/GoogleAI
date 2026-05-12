@@ -35,14 +35,16 @@
 - [ ] (보류) 새 프로젝트 생성 흐름 — 슬러그 입력 → yaml 즉시 추가 → setAllowedProjects 갱신 (Step 1.5 마감 후 회장님 결정)
 
 ### Step 2 — nlm-research 별도 폴더 + Aston 텔레그램 단추
-- [ ] 회장님 워크스테이션에 nlm-research 1회 설치 (`git clone` + `uv tool install notebooklm-mcp-cli yt-dlp` + `nlm login`)
-- [ ] 회장님이 한 번 수동 실행: `cd D:\nlm-research && claude` 진입 후 `/research run "테스트 주제" --auto`
-- [ ] 출력 확인: `~/research-output/테스트-주제/` 에 .md 파일 떨어지는지
-- [ ] mklink: `~/research-output` → `G:\내 드라이브\Aston-Wiki\notebooklm-exports\research-inbox\` (Step 1.5 후 yaml에 research-inbox 등록 선행)
-- [ ] **사전 조사 필요**: `claude` CLI 비대화식 skill 실행 옵션 존재 여부 (`claude --help`)
-  - 있으면 → Aston 텔레그램 "/리서치 주제" → child_process 트리거 (완전 자동)
-  - 없으면 → 단추 = 명령어 안내 (회장님이 워크스테이션에서 복붙)
-- [ ] Aston 신규 인텐트 `research_run` 핸들러 (~50줄)
+- [x] **사전 조사 완료** (2026-05-12): `claude -p "<prompt>"` 비대화식 실행 지원 확인. `--add-dir / --output-format / --max-budget-usd / --dangerously-skip-permissions` 옵션 활용 가능 → child_process 자동화 OK.
+- [x] **인텐트 핸들러 구현 완료** (2026-05-12): `server/intent/handlers/researchRun.ts` (~200줄, env 가드 + spawn + 수동 안내 분기). `IntentAction "research_run"` 신규. `fallbackIntent.ts` `리서치 <주제>` 매처 + `classifier.md` 액션 등록.
+- [x] **회귀 가드 테스트 10건** (`researchRun.test.ts`): 매칭 / 비활성 안내 / ROOT 미존재 / 주제 누락 / 200자 초과.
+- [x] `.env.example` 보강 — `NLM_RESEARCH_ENABLED / ROOT / OUTPUT / MAX_USD` 4종.
+- [ ] **회장님 워크스테이션 1회 설치** (회장님 직접): `git clone <nlm-research> D:\nlm-research` + `uv tool install notebooklm-mcp-cli yt-dlp` + `nlm login`
+- [ ] 회장님 수동 검증: `cd D:\nlm-research && claude` → `/research run "테스트 주제" --auto` → `~/research-output/테스트-주제/` 에 .md 떨어지는지
+- [ ] mklink: `~/research-output` → `G:\내 드라이브\Aston-Wiki\notebooklm-exports\research-inbox\`
+- [ ] yaml 에 research-inbox project 등록 (이미 setUploadAllowedProjects 가 자동 추가하므로 별도 등록 불필요)
+- [ ] `.env` 활성화: `NLM_RESEARCH_ENABLED=true` + `NLM_RESEARCH_ROOT=D:\nlm-research` → PM2 재시작
+- [ ] 라이브 검증: 텔레그램 `리서치 몽골 광산 동향` → 5~10분 후 Wiki 회수 자료 등장 확인
 
 ### 검증 누적 (Step 1, 1.5, 2 완료 후)
 - [ ] Aston Wiki 페이지에서 PDF 업로드 → 5초 내 Wiki 적재 확인

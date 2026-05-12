@@ -15,6 +15,30 @@ export type BuildingInfo = Record<string, unknown>;
 export type RealTransactionType = "apt" | "land" | "office";
 export type RealTransaction = Record<string, unknown>;
 
+// MODIFIED: Add simplified feasibility analysis types
+export type LandUseRegulationResult = {
+  pnu: string;
+  address: string;
+  regulations: string[];
+};
+
+export type LandPriceResult = {
+  pnu: string;
+  price: number;
+  year: string;
+  area: number;
+};
+
+export type RealTransactionResult = {
+  transactions: Array<{
+    aptName: string;
+    price: number;
+    area: number;
+    floor: number;
+    date: string;
+  }>;
+};
+
 const LAND_REGULATION_URL = "http://apis.data.go.kr/1611000/nsdi/LandUseService/attr/getLandUseAttr";
 const BUILDING_INFO_URL = "http://apis.data.go.kr/1613000/BldRgstHubService/getBrBasisOulnInfo";
 const REAL_TRANSACTION_URLS: Record<RealTransactionType, string> = {
@@ -94,6 +118,69 @@ export async function getRealTransactionPrice(
     return items(data);
   } catch (error) {
     throw new Error(`Failed to fetch ${type} transaction prices for ${lawdCd}/${dealYmd}: ${errorMessage(error)}`);
+  }
+}
+
+// MODIFIED: Add simplified API functions for feasibility analysis
+// Reference: https://www.data.go.kr/
+export async function getLandUseRegulation(pnu: string): Promise<LandUseRegulationResult> {
+  if (!pnu.trim()) {
+    throw new Error("pnu is required");
+  }
+
+  try {
+    const regulation = await getLandRegulation(pnu);
+    return {
+      pnu,
+      address: regulation.useAreaName || pnu,
+      regulations: regulation.regulationInfo,
+    };
+  } catch (error) {
+    throw new Error(`토지이용규제 조회 실패: ${errorMessage(error)}`);
+  }
+}
+
+// Reference: https://www.data.go.kr/
+export async function getLandPrice(pnu: string, year?: string): Promise<LandPriceResult> {
+  if (!pnu.trim()) {
+    throw new Error("pnu is required");
+  }
+
+  try {
+    const regulation = await getLandRegulation(pnu);
+    const resultYear = year || new Date().getFullYear().toString();
+    // TODO: Integrate with actual land price API once endpoint is confirmed
+    return {
+      pnu,
+      price: 0,
+      year: resultYear,
+      area: regulation.area || 0,
+    };
+  } catch (error) {
+    throw new Error(`공시지가 조회 실패: ${errorMessage(error)}`);
+  }
+}
+
+// Reference: https://www.data.go.kr/
+export async function getRealTransaction(
+  regionCode: string,
+  yearMonth: string
+): Promise<RealTransactionResult> {
+  validateRequired({ regionCode, yearMonth });
+
+  try {
+    const transactions = await getRealTransactionPrice(regionCode, yearMonth, "apt");
+    return {
+      transactions: transactions.map((item) => ({
+        aptName: stringValue(item.buildingName ?? item.aptName) || "",
+        price: numberValue(item.dealAmount ?? item.price) || 0,
+        area: numberValue(item.area ?? item.dealArea) || 0,
+        floor: numberValue(item.floor ?? item.dealFloor) || 0,
+        date: stringValue(item.dealDate ?? item.date) || "",
+      })),
+    };
+  } catch (error) {
+    throw new Error(`실거래가 조회 실패: ${errorMessage(error)}`);
   }
 }
 

@@ -1,10 +1,9 @@
 const actions = [
-  "Binance 잔고 조회",
-  "현재 포지션 확인",
-  "BTC/USDT 1시간봉 기술분석",
-  "PF 딜 파이프라인 요약",
-  "DART 공시 조회",
-  "회사명으로 DART 검색",
+  "잔고 조회",
+  "포지션 확인",
+  "BTC 기술적 분석",
+  "PF 포트폴리오 요약",
+  "사업성 분석",
 ];
 
 type QuickActionsProps = {
@@ -18,7 +17,6 @@ export default function QuickActions({ onSelect, disabled = false }: QuickAction
       {actions.map((action) => (
         <button
           key={action}
-          type="button"
           onClick={() => onSelect(action)}
           disabled={disabled}
           className="shrink-0 rounded-full border border-slate-700 bg-slate-800/70 px-3 py-1.5 text-xs font-medium text-slate-300 transition-colors hover:border-cyan-600/50 hover:text-cyan-300 disabled:cursor-not-allowed disabled:opacity-50"
@@ -29,3 +27,4 @@ export default function QuickActions({ onSelect, disabled = false }: QuickAction
     </div>
   );
 }
+

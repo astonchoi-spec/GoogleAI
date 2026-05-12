@@ -1,49 +1,46 @@
-import { Loader2, TrendingUp } from "lucide-react";
+import { TrendingUp } from "lucide-react";
 import { Link } from "wouter";
 import { trpc } from "@/lib/trpc";
 
+function formatNumber(value: number): string {
+  return value.toLocaleString("en-US", { maximumFractionDigits: 2 });
+}
+
 export default function TradingSummaryWidget() {
-  const balanceQuery = trpc.trading.getBalance.useQuery({ exchange: "gate" }, { retry: false });
-  const positionsQuery = trpc.trading.getPositions.useQuery({ exchange: "gate" }, { retry: false });
-  const alertsQuery = trpc.trading.getAlerts.useQuery(undefined, { retry: false });
+  const positions = trpc.trading.getPositions.useQuery({ exchange: "binance" }, { retry: false }); // MODIFIED: feed home trading widget with live position snapshot from trading router.
+  const alerts = trpc.trading.listAlerts.useQuery(undefined, { retry: false }); // MODIFIED: show active alert count from backend instead of fixed mock value.
+
+  const totalPnl = (positions.data ?? []).reduce((sum, p) => sum + (p.unrealizedPnl ?? 0), 0);
+  const activePositions = (positions.data ?? []).length;
+  const activeAlerts = (alerts.data ?? []).filter((a) => a.active).length;
 
   return (
-    <Link
-      href="/trading"
-      className="block rounded-xl border border-border bg-card p-5 transition-colors hover:border-cyan-600/50 hover:bg-card/80"
-    >
+    <Link href="/trading" className="block rounded-2xl border border-white/10 bg-black/15 p-5 transition-colors hover:border-cyan-500/30 hover:bg-white/5">
         <div className="mb-4 flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-cyan-500/15">
+          <div className="flex h-10 w-10 items-center justify-center rounded-lg border border-cyan-500/20 bg-cyan-500/10">
             <TrendingUp className="h-5 w-5 text-cyan-400" />
           </div>
           <div>
-            <h3 className="text-base font-semibold text-card-foreground">트레이딩 요약</h3>
-            <p className="text-xs text-muted-foreground">거래소 잔고와 포지션 상태</p>
+            <h3 className="text-base font-semibold text-[var(--aston-text)]">트레이딩 요약</h3>
+            <p className="text-xs text-[var(--aston-muted)]">포지션과 알림 상태를 보여줍니다.</p>
           </div>
         </div>
-        {balanceQuery.isLoading ? (
-          <div className="flex items-center text-sm text-muted-foreground">
-            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-            조회 중
+        <div className="grid gap-2 text-sm">
+          <div className="flex justify-between">
+            <span className="text-[var(--aston-muted)]">평가손익</span>
+            <span className={`font-semibold ${totalPnl >= 0 ? "text-emerald-400" : "text-rose-400"}`}>
+              {positions.isLoading ? "..." : `${totalPnl >= 0 ? "+" : ""}${formatNumber(totalPnl)} USDT`}
+            </span>
           </div>
-        ) : balanceQuery.error ? (
-          <p className="text-sm text-red-400">거래소를 연결해주세요.</p>
-        ) : (
-          <div className="grid gap-2 text-sm">
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">USDT 잔고</span>
-              <span className="font-semibold text-card-foreground">{(balanceQuery.data?.total?.USDT ?? 0).toLocaleString("en-US", { maximumFractionDigits: 2 })}</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">활성 포지션</span>
-              <span className="text-card-foreground">{positionsQuery.data?.length ?? 0}개</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">활성 알림</span>
-              <span className="text-card-foreground">{alertsQuery.data?.filter((alert) => alert.active).length ?? 0}개</span>
-            </div>
+          <div className="flex justify-between">
+            <span className="text-[var(--aston-muted)]">열린 포지션</span>
+            <span className="text-[var(--aston-text)]">{positions.isLoading ? "..." : `${activePositions}`}</span>
           </div>
-        )}
+          <div className="flex justify-between">
+            <span className="text-[var(--aston-muted)]">활성 알림</span>
+            <span className="text-[var(--aston-text)]">{alerts.isLoading ? "..." : `${activeAlerts}`}</span>
+          </div>
+        </div>
     </Link>
   );
 }

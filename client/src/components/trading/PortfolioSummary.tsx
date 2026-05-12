@@ -1,59 +1,105 @@
-import { Activity, Bell, Loader2, Wallet } from "lucide-react";
+import { Activity, Bell, Wallet } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 
-function formatMoney(value: number, suffix = "USDT") {
-  return `${value.toLocaleString("en-US", { maximumFractionDigits: 2 })} ${suffix}`;
+function sumTotal(total: Record<string, number>): number {
+  return Object.values(total).reduce((s, v) => s + (Number.isFinite(v) ? v : 0), 0);
 }
 
 export default function PortfolioSummary() {
-  const balanceQuery = trpc.trading.getBalance.useQuery({ exchange: "gate" }, { retry: false });
-  const positionsQuery = trpc.trading.getPositions.useQuery({ exchange: "gate" }, { retry: false });
-  const alertsQuery = trpc.trading.getAlerts.useQuery(undefined, { retry: false });
+  const binanceBal = trpc.trading.getBalance.useQuery({ exchange: "binance" }, { retry: false });
+  const binancePos = trpc.trading.getPositions.useQuery({ exchange: "binance" }, { retry: false });
+  const upbitBal   = trpc.trading.getBalance.useQuery({ exchange: "upbit" }, { retry: false });
+  const alerts     = trpc.trading.listAlerts.useQuery(undefined, { retry: false });
 
-  const totalUsdt = balanceQuery.data?.total?.USDT ?? 0;
-  const totalPnl = positionsQuery.data?.reduce((sum, position) => sum + (position.unrealizedPnl ?? 0), 0) ?? 0;
+  const binanceOk  = !binanceBal.isError;  // loading or data — binance configured
+  const upbitOk    = !upbitBal.isError;    // loading or data — upbit configured
+  const anyLoading = binanceBal.isLoading || upbitBal.isLoading;
 
-  const metrics = [
-    { label: "총 자산", value: formatMoney(totalUsdt), tone: "text-white" },
-    { label: "미실현 손익", value: formatMoney(totalPnl), tone: totalPnl >= 0 ? "text-[#00c853]" : "text-[#ff1744]" },
-    { label: "활성 포지션", value: `${positionsQuery.data?.length ?? 0}개`, tone: "text-cyan-300" },
-  ];
+  // 두 거래소 다 키 없음 (로딩 완료 후 둘 다 에러)
+  if (!anyLoading && !binanceOk && !upbitOk) {
+    return (
+      <div className="rounded-2xl border border-white/10 bg-[var(--aston-panel)] flex items-center gap-2 px-4 py-3 text-sm text-[var(--aston-muted)]">
+        <Wallet className="h-4 w-4 text-slate-500 shrink-0" />
+        <span>거래소 API 키를 설정해주세요</span>
+      </div>
+    );
+  }
+
+  const totalAsset    = binanceBal.data ? sumTotal(binanceBal.data.total) : 0;
+  const totalPnl      = (binancePos.data ?? []).reduce((s, p) => s + (p.unrealizedPnl ?? 0), 0);
+  const openPositions = (binancePos.data ?? []).length;
+  const activeAlerts  = (alerts.data ?? []).filter((a) => a.active).length;
+  const upbitKrw      = upbitBal.data?.total?.KRW ?? 0;
+  const upbitCoins    = upbitBal.data
+    ? Object.entries(upbitBal.data.total).filter(([k, v]) => k !== "KRW" && v > 0)
+    : [];
+
+  const fmtUsdt = (v: number) => v.toLocaleString("en-US", { maximumFractionDigits: 2 });
+  const fmtKrw  = (v: number) => v.toLocaleString("ko-KR", { maximumFractionDigits: 0 });
 
   return (
-    <div className="rounded-xl border border-slate-700 bg-slate-900/50 p-4">
+    <div className="rounded-2xl border border-white/10 bg-[var(--aston-panel)] p-4">
       <div className="mb-4 flex items-center gap-2">
         <Wallet className="h-4 w-4 text-cyan-400" />
-        <h2 className="text-sm font-semibold text-white">포트폴리오 요약</h2>
+        <h2 className="text-sm font-semibold text-[var(--aston-text)]">Portfolio Summary</h2>
       </div>
 
-      {balanceQuery.isLoading || positionsQuery.isLoading ? (
-        <div className="flex h-24 items-center justify-center text-slate-400">
-          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-          거래소 데이터를 불러오는 중
-        </div>
-      ) : balanceQuery.error ? (
-        <div className="rounded-lg border border-red-900/60 bg-red-950/30 p-3 text-sm text-red-300">
-          {balanceQuery.error.message || "거래소를 연결해주세요."}
-        </div>
-      ) : (
-        <div className="grid gap-3 sm:grid-cols-3">
-          {metrics.map((metric) => (
-            <div key={metric.label} className="rounded-lg border border-slate-700 bg-slate-800/70 p-3">
-              <p className="text-xs text-slate-500">{metric.label}</p>
-              <p className={`mt-1 text-lg font-semibold ${metric.tone}`}>{metric.value}</p>
+      <div className="grid gap-3 sm:grid-cols-3">
+        {/* Binance — API 키 있을 때만 */}
+        {binanceOk && (
+          <>
+            <div className="rounded-xl border border-white/10 bg-black/15 p-3">
+              <p className="text-xs text-[var(--aston-muted)]">Total Asset (Binance)</p>
+              <p className="mt-1 text-lg font-semibold text-[var(--aston-text)]">
+                {binanceBal.isLoading ? "Loading..." : `${fmtUsdt(totalAsset)} USDT`}
+              </p>
             </div>
-          ))}
-        </div>
-      )}
+            <div className="rounded-xl border border-white/10 bg-black/15 p-3">
+              <p className="text-xs text-[var(--aston-muted)]">Unrealized PnL</p>
+              <p className={`mt-1 text-lg font-semibold ${totalPnl >= 0 ? "text-[#00c853]" : "text-[#ff1744]"}`}>
+                {binanceBal.isLoading ? "Loading..." : `${totalPnl >= 0 ? "+" : ""}${fmtUsdt(totalPnl)} USDT`}
+              </p>
+            </div>
+            <div className="rounded-xl border border-white/10 bg-black/15 p-3">
+              <p className="text-xs text-[var(--aston-muted)]">Open Positions</p>
+              <p className="mt-1 text-lg font-semibold text-cyan-300">
+                {binanceBal.isLoading ? "Loading..." : `${openPositions}`}
+              </p>
+            </div>
+          </>
+        )}
+
+        {/* Upbit — API 키 있을 때만 */}
+        {upbitOk && (
+          <div className="rounded-xl border border-white/10 bg-black/15 p-3 sm:col-span-3">
+            <p className="text-xs text-[var(--aston-muted)]">총 자산 (Upbit)</p>
+            {upbitBal.isLoading ? (
+              <p className="mt-1 text-lg font-semibold text-[var(--aston-text)]">Loading...</p>
+            ) : (
+              <>
+                <p className="mt-1 text-lg font-semibold text-[var(--aston-text)]">
+                  ₩{fmtKrw(upbitKrw)} KRW
+                </p>
+                {upbitCoins.length > 0 && (
+                  <p className="mt-1 text-xs text-[var(--aston-muted)]">
+                    보유: {upbitCoins.map(([k, v]) => `${k} ${v.toFixed(4)}`).join(" · ")}
+                  </p>
+                )}
+              </>
+            )}
+          </div>
+        )}
+      </div>
 
       <div className="mt-4 grid gap-2 sm:grid-cols-2">
-        <div className="flex items-center gap-2 rounded-lg bg-cyan-950/30 px-3 py-2 text-xs text-cyan-300">
+        {/* Live position 배너 — 거래소 연결 시만 */}
+        <div className="flex items-center gap-2 rounded-lg border border-cyan-500/20 bg-cyan-500/10 px-3 py-2 text-xs text-cyan-300">
           <Activity className="h-3.5 w-3.5" />
-          실시간 포지션 감시
+          Live position snapshot enabled
         </div>
-        <div className="flex items-center gap-2 rounded-lg bg-blue-950/30 px-3 py-2 text-xs text-blue-300">
+        <div className="flex items-center gap-2 rounded-lg border border-blue-500/20 bg-blue-500/10 px-3 py-2 text-xs text-blue-300">
           <Bell className="h-3.5 w-3.5" />
-          활성 알림 {alertsQuery.data?.filter((alert) => alert.active).length ?? 0}개
+          Active alerts: {alerts.isLoading ? "..." : activeAlerts}
         </div>
       </div>
     </div>

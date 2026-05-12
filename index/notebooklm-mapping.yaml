@@ -1,0 +1,231 @@
+# NotebookLM 노트북 ↔ Aston-Wiki 프로젝트 매핑
+#
+# 본 파일의 운영 위치: Google Drive/Aston-Wiki/index/notebooklm-mapping.yaml
+# (이 레포의 사본은 스켈레톤·템플릿 용도)
+#
+# 작성: 2026-05-07 (Phase A·B-0 확정 시점)
+# 1차 채움: 2026-05-07 (회장님 NotebookLM 스크린샷 기준 28개)
+# 사용처: NotebookLM 결과 회수 시 자동으로 올바른 projects/{project}/notebooklm/ 폴더 결정
+#
+# Schema (각 항목당 필수 필드):
+#   notebook_name : NotebookLM에서 보이는 노트북 이름 (한글 가능)
+#   project       : 매핑되는 Wiki 프로젝트 폴더명 (영문 케밥)
+#   display_name  : UI/텔레그램에 표시할 한글명
+#   category      : 분류 (real-estate / system / trading / learning / legal /
+#                       personal / research / business / health / mongolia)
+#   status        : active / paused / archived
+#
+# 선택 필드:
+#   notes         : 추가 메모
+#   tags          : 검색용 태그 배열
+#   created_at    : ISO 8601 (YYYY-MM-DD)
+
+notebooks:
+  # ── 시스템·자동화 ──────────────────────────────────────────
+  - notebook_name: "Aston-Quant-Guard 오토퍼스 실행 노트북"
+    project: "system-aston-quant-guard"
+    display_name: "Aston Quant Guard"
+    category: "system"
+    status: "active"
+    created_at: "2026-05-04"
+
+  - notebook_name: "트레이딩뷰 봇 및 퀀트 전략 자동화 시스템 가이드"
+    project: "system-trading-automation"
+    display_name: "트레이딩 자동화"
+    category: "trading"
+    status: "active"
+    created_at: "2026-05-04"
+
+  # ── 학습·AI 에이전트 ──────────────────────────────────────
+  - notebook_name: "AI 에이전트와 하네스 엔지니어링 실전 가이드"
+    project: "learning-ai-harness"
+    display_name: "AI 하네스 엔지니어링"
+    category: "learning"
+    status: "active"
+    created_at: "2026-05-03"
+
+  - notebook_name: "NotebookLM 활용법과 금융 및 미디어 분석 전략"
+    project: "learning-notebooklm"
+    display_name: "NotebookLM 활용법"
+    category: "learning"
+    status: "active"
+    created_at: "2026-05-03"
+
+  - notebook_name: "온톨로지 기반 AI 에이전트"
+    project: "learning-ontology-agent"
+    display_name: "온톨로지 AI 에이전트"
+    category: "learning"
+    status: "active"
+    created_at: "2026-04-19"
+
+  - notebook_name: "보안과 효율을 잡은 차세대 AI 에이전트, 맥스클로"
+    project: "learning-maxclaw"
+    display_name: "맥스클로 (차세대 AI)"
+    category: "learning"
+    status: "active"
+    created_at: "2026-04-08"
+
+  - notebook_name: "실리콘밸리 엔지니어의 클로드 코드 활용법과 메타 생존기"
+    project: "learning-claude-code"
+    display_name: "클로드 코드 활용법"
+    category: "learning"
+    status: "active"
+    created_at: "2026-04-07"
+
+  - notebook_name: "AI 에이전트와 오케스트레이션으로 실현하는 1인 기업의 미래"
+    project: "learning-solo-founder"
+    display_name: "1인 기업 오케스트레이션"
+    category: "learning"
+    status: "active"
+    created_at: "2026-04-05"
+
+  # ── 리서치·매크로 ────────────────────────────────────────
+  - notebook_name: "트럼프의 반세계화와 미국의 새로운 에너지 패권 전략+비트코인"
+    project: "research-trump-energy"
+    display_name: "트럼프·에너지·비트코인"
+    category: "research"
+    status: "active"
+    created_at: "2026-05-02"
+
+  - notebook_name: "2026 김창익의 빅 픽처: 빛 없는 돈의 홍수"
+    project: "research-kim-changik-2026"
+    display_name: "김창익 빅픽처 2026"
+    category: "research"
+    status: "active"
+    created_at: "2026-05-02"
+
+  - notebook_name: "2026년 3월 글로벌 경제 동향과 유가 전망"
+    project: "research-march-2026-macro"
+    display_name: "2026.3 글로벌·유가"
+    category: "research"
+    status: "active"
+    created_at: "2026-03-26"
+
+  # ── 부동산 PF ────────────────────────────────────────────
+  - notebook_name: "한남동 644 시그니처 공동주택 개발사업 투자 설명서"
+    project: "hannam-644"
+    display_name: "한남동 644 시그니처"
+    category: "real-estate"
+    status: "active"
+    created_at: "2026-04-13"
+
+  - notebook_name: "한남644PFV"
+    project: "hannam-644-pfv"
+    display_name: "한남644 PFV"
+    category: "real-estate"
+    status: "active"
+    notes: "hannam-644 sub-project (PFV 구조·후순위 리스크)"
+    created_at: "2026-03-24"
+
+  - notebook_name: "시흥시 대야동 시그니웰메디타워 신탁부동산 공매 공고 및 계약서"
+    project: "siheung-daeya-signiwell"
+    display_name: "시흥 대야동 시그니웰"
+    category: "real-estate"
+    status: "active"
+    created_at: "2026-04-28"
+
+  - notebook_name: "퇴촌 프르디앙리버타워 오피스텔 및 도시형생활주택 신탁부동산 공매공고"
+    project: "toechon-prudie-river"
+    display_name: "퇴촌 프르디앙리버타워"
+    category: "real-estate"
+    status: "active"
+    created_at: "2026-04-28"
+
+  - notebook_name: "Pyeongchang 700 Wellness Leisure Development Plan"
+    project: "pyeongchang-700-wellness"
+    display_name: "평창 700 웰니스"
+    category: "real-estate"
+    status: "active"
+    created_at: "2025-05-25"
+
+  - notebook_name: "포항_해상케이블카"
+    project: "pohang-cable-car"
+    display_name: "포항 해상케이블카"
+    category: "real-estate"
+    status: "active"
+    created_at: "2026-04-25"
+
+  - notebook_name: "기흥구 중동 1042-7 토지매매계약서 및 합의서"
+    project: "jungdong-1042-7"
+    display_name: "기흥 중동 1042-7"
+    category: "real-estate"
+    status: "active"
+    tags: ["계약서", "토지매매"]
+    created_at: "2026-04-16"
+
+  - notebook_name: "행당동 역세권 장기전세주택 사업수지 및 개발 요약"
+    project: "haengdang-station"
+    display_name: "행당동 역세권 장기전세"
+    category: "real-estate"
+    status: "active"
+    created_at: "2026-04-17"
+
+  - notebook_name: "에버랜드 시니어타운_임대형"
+    project: "everland-senior-town"
+    display_name: "에버랜드 시니어타운"
+    category: "real-estate"
+    status: "active"
+    created_at: "2026-03-31"
+
+  - notebook_name: "역복동 PF 용역수수료 및 자문료 지급 확약서"
+    project: "yeokbuk-pf"
+    display_name: "역북동 PF"
+    category: "real-estate"
+    status: "active"
+    notes: "스크린샷 표기 '역복동' → 실제는 '역북동' PF로 추정. 회장님 확인 후 정정 가능"
+    tags: ["확약서", "자문료"]
+    created_at: "2026-03-31"
+
+  - notebook_name: "기숙사형학원 신축 PF 추진 가이드"
+    project: "dormitory-academy-pf"
+    display_name: "기숙사형학원 신축 PF"
+    category: "real-estate"
+    status: "active"
+    created_at: "2026-03-10"
+
+  - notebook_name: "개발행위 인허가 오류와 설계 리셋 전략 제언"
+    project: "legal-permit-reset"
+    display_name: "인허가 오류·설계 리셋"
+    category: "legal"
+    status: "active"
+    notes: "부동산 인허가 법무 일반론. 특정 사이트로 귀속 안 됨"
+    created_at: "2026-04-08"
+
+  # ── 회사·사업 ────────────────────────────────────────────
+  - notebook_name: "태화건설 2026년 공사 수주 세부 현황 보고서"
+    project: "company-taehwa-2026"
+    display_name: "태화건설 2026 수주"
+    category: "business"
+    status: "active"
+    created_at: "2026-03-27"
+
+  - notebook_name: "화이트리어 역삼·몽골 공동창업 및 총판 확장 전략"
+    project: "mongolia-whitelier"
+    display_name: "화이트리어 역삼·몽골"
+    category: "mongolia"
+    status: "active"
+    tags: ["공동창업", "총판"]
+    created_at: "2026-04-22"
+
+  # ── 개인·여행·전략 ──────────────────────────────────────
+  - notebook_name: "2026 중국 상하이 여행 가이드: 비자부터 결제 및 코스 총정리"
+    project: "personal-shanghai-travel"
+    display_name: "상하이 여행 2026"
+    category: "personal"
+    status: "active"
+    created_at: "2026-05-02"
+
+  - notebook_name: "2026 정유일주 사업 운용 및 커리어 점검 전략 보고서"
+    project: "personal-jung-yu-ilju-2026"
+    display_name: "정유일주 사업·커리어 점검"
+    category: "personal"
+    status: "active"
+    created_at: "2026-04-01"
+
+  # ── 가족·건강 ────────────────────────────────────────────
+  - notebook_name: "만성 췌장염 관리와 수명 유지를 위한 실천 지침"
+    project: "health-pancreatitis"
+    display_name: "만성 췌장염 관리"
+    category: "health"
+    status: "active"
+    created_at: "2026-04-17"

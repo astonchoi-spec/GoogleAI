@@ -133,6 +133,49 @@ export class SheetsConnector {
     }
   }
 
+  async getFirstSheetInfo(spreadsheetId: string): Promise<{ sheetId: number; title: string }> {
+    try {
+      const response = await this.sheets.spreadsheets.get({
+        spreadsheetId,
+        fields: "sheets.properties(sheetId,title)",
+      });
+      const properties = response.data.sheets?.[0]?.properties;
+      const sheetId = properties?.sheetId;
+      if (typeof sheetId !== "number" || !properties?.title) {
+        throw new Error("Spreadsheet does not contain a writable sheet tab");
+      }
+      return {
+        sheetId,
+        title: properties.title,
+      };
+    } catch (error) {
+      throw new Error(`Failed to get first sheet info: ${error instanceof Error ? error.message : String(error)}`);
+    }
+  }
+
+  async renameSheet(spreadsheetId: string, sheetId: number, title: string): Promise<void> {
+    try {
+      await this.sheets.spreadsheets.batchUpdate({
+        spreadsheetId,
+        requestBody: {
+          requests: [
+            {
+              updateSheetProperties: {
+                properties: {
+                  sheetId,
+                  title,
+                },
+                fields: "title",
+              },
+            },
+          ],
+        },
+      });
+    } catch (error) {
+      throw new Error(`Failed to rename sheet: ${error instanceof Error ? error.message : String(error)}`);
+    }
+  }
+
   /**
    * Get spreadsheet metadata
    */

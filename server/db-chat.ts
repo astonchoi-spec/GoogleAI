@@ -1,35 +1,7 @@
 import { getDb } from "./db.ts";
-import { conversations, messages, type Conversation, type Message } from "../drizzle/schema.ts";
-import { eq, and, desc, gte, lt, lte, sql } from "drizzle-orm";
-
-export type MessageSourceFilter = "all" | "web" | "telegram";
-
-export interface SearchMessagesOptions {
-  userId: number;
-  keyword: string;
-  conversationId?: number;
-  source?: MessageSourceFilter;
-  from?: Date;
-  to?: Date;
-  limit?: number;
-}
-
-export interface SearchMessageResult {
-  conversationId: number;
-  conversationTitle: string | null;
-  messageId: number;
-  role: "user" | "assistant";
-  content: string;
-  source: "web" | "telegram";
-  telegramMessageId: number | null;
-  metadata: string | null;
-  createdAt: Date;
-}
-
-export interface ConversationMessagePage {
-  messages: Message[];
-  hasMore: boolean;
-}
+import { conversations, messages, users } from "../drizzle/schema.ts";
+import type { Conversation, Message } from "../drizzle/schema.ts";
+import { eq, and, desc, gte, lte, like, isNotNull } from "drizzle-orm";
 
 export async function getOrCreateConversation(userId: number): Promise<Conversation> {
   const db = getDb();
@@ -107,28 +79,21 @@ export async function saveMessage(
   return inserted;
 }
 
-export async function updateMessageContent(
-  messageId: number,
+export async function updateMessage(
   conversationId: number,
+  messageId: number,
   content: string
-): Promise<Message> {
+): Promise<void> {
   const db = getDb();
-  const [updated] = await db
+  await db
     .update(messages)
     .set({ content })
-    .where(and(eq(messages.id, messageId), eq(messages.conversationId, conversationId)))
-    .returning();
-
-  if (!updated) {
-    throw new Error("Failed to update message");
-  }
-
-  return updated;
+    .where(and(eq(messages.id, messageId), eq(messages.conversationId, conversationId)));
 }
 
 export async function deleteMessage(
-  messageId: number,
-  conversationId: number
+  conversationId: number,
+  messageId: number
 ): Promise<void> {
   const db = getDb();
   await db
@@ -136,39 +101,37 @@ export async function deleteMessage(
     .where(and(eq(messages.id, messageId), eq(messages.conversationId, conversationId)));
 }
 
-export async function getConversationMessages(
-  conversationId: number,
-  limit: number = 50,
-  before?: Date
-): Promise<ConversationMessagePage> {
+export async function clearConversationMessages(
+  conversationId: number
+): Promise<void> {
   const db = getDb();
-  const conditions = [eq(messages.conversationId, conversationId)];
-
-  if (before) {
-    conditions.push(lt(messages.createdAt, before));
-  }
-
-  const rows = await db
-    .select()
-    .from(messages)
-    .where(and(...conditions))
-    .orderBy(desc(messages.createdAt))
-    .limit(limit + 1);
-
-  const hasMore = rows.length > limit;
-  return {
-    messages: hasMore ? rows.slice(0, limit) : rows,
-    hasMore,
-  };
+  await db
+    .delete(messages)
+    .where(eq(messages.conversationId, conversationId)); // MODIFIED: support clearing the full chat timeline while keeping the conversation link.
 }
 
-export async function getAllConversationMessages(conversationId: number): Promise<Message[]> {
+export async function getConversationMessages(
+  conversationId: number,
+  limit: number = 50
+): Promise<Message[]> {
   const db = getDb();
   return db
     .select()
     .from(messages)
     .where(eq(messages.conversationId, conversationId))
-    .orderBy(desc(messages.createdAt));
+    .orderBy(desc(messages.createdAt))
+    .limit(limit);
+}
+
+export async function getConversationMessagesAsc(
+  conversationId: number
+): Promise<Message[]> {
+  const db = getDb();
+  return db
+    .select()
+    .from(messages)
+    .where(eq(messages.conversationId, conversationId))
+    .orderBy(messages.createdAt);
 }
 
 export async function getRecentMessages(
@@ -181,6 +144,42 @@ export async function getRecentMessages(
     .from(messages)
     .where(and(eq(messages.conversationId, conversationId), gte(messages.createdAt, since)))
     .orderBy(desc(messages.createdAt));
+}
+
+export async function searchConversationMessages(params: { // MODIFIED: support message search by keyword/date/source for unified chat history.
+  conversationId: number;
+  query?: string;
+  source?: "all" | "web" | "telegram";
+  dateFrom?: Date;
+  dateTo?: Date;
+  limit?: number;
+}): Promise<Message[]> {
+  const db = getDb();
+  const conditions = [eq(messages.conversationId, params.conversationId)];
+
+  const normalizedQuery = params.query?.trim();
+  if (normalizedQuery) {
+    conditions.push(like(messages.content, `%${normalizedQuery}%`));
+  }
+
+  if (params.source && params.source !== "all") {
+    conditions.push(eq(messages.source, params.source));
+  }
+
+  if (params.dateFrom) {
+    conditions.push(gte(messages.createdAt, params.dateFrom));
+  }
+
+  if (params.dateTo) {
+    conditions.push(lte(messages.createdAt, params.dateTo));
+  }
+
+  return db
+    .select()
+    .from(messages)
+    .where(and(...conditions))
+    .orderBy(desc(messages.createdAt))
+    .limit(params.limit ?? 100);
 }
 
 export async function getConversationByTelegramChatId(
@@ -209,19 +208,21 @@ export async function updateConversationTitle(
 export async function updateConversationPinned(
   conversationId: number,
   pinned: boolean
-): Promise<Conversation> {
+): Promise<void> {
   const db = getDb();
-  const [updated] = await db
+  await db
     .update(conversations)
     .set({ pinned, updatedAt: new Date() })
-    .where(eq(conversations.id, conversationId))
-    .returning();
+    .where(eq(conversations.id, conversationId));
+}
 
-  if (!updated) {
-    throw new Error("Failed to update conversation pin state");
-  }
-
-  return updated;
+export async function getPinnedConversations(userId: number): Promise<Conversation[]> {
+  const db = getDb();
+  return db
+    .select()
+    .from(conversations)
+    .where(and(eq(conversations.userId, userId), eq(conversations.pinned, true)))
+    .orderBy(desc(conversations.updatedAt));
 }
 
 export async function getConversationById(id: number): Promise<Conversation | null> {
@@ -234,56 +235,71 @@ export async function getConversationById(id: number): Promise<Conversation | nu
   return result[0] || null;
 }
 
-export async function searchMessages(options: SearchMessagesOptions): Promise<SearchMessageResult[]> {
+export async function mergeTelegramConversationIntoUser(
+  telegramChatId: number,
+  targetUserId: number
+): Promise<boolean> {
   const db = getDb();
-  const conditions = [eq(conversations.userId, options.userId)];
+  const telegramConvs = await db
+    .select()
+    .from(conversations)
+    .where(eq(conversations.telegramChatId, telegramChatId))
+    .limit(1);
 
-  if (options.conversationId) {
-    conditions.push(eq(conversations.id, options.conversationId));
+  if (!telegramConvs[0] || telegramConvs[0].userId === targetUserId) return false;
+
+  const webConv = await getOrCreateConversation(targetUserId);
+
+  // Move all messages from telegram conv → web conv
+  await db
+    .update(messages)
+    .set({ conversationId: webConv.id })
+    .where(eq(messages.conversationId, telegramConvs[0].id));
+
+  // Link telegramChatId to web conv
+  await db
+    .update(conversations)
+    .set({ telegramChatId, updatedAt: new Date() })
+    .where(eq(conversations.id, webConv.id));
+
+  // Remove the now-empty ghost conversation
+  await db.delete(conversations).where(eq(conversations.id, telegramConvs[0].id));
+
+  console.log(
+    `[DB-CHAT] merged telegramChatId=${telegramChatId} conv(${telegramConvs[0].id}) → user=${targetUserId} conv(${webConv.id})`
+  );
+  return true;
+}
+
+export async function autoMergeTelegramConversations(): Promise<number> {
+  const db = getDb();
+
+  // Find conversations owned by the ghost admin user (id=1) that have a telegramChatId
+  const ghostConvs = await db
+    .select()
+    .from(conversations)
+    .where(and(eq(conversations.userId, 1), isNotNull(conversations.telegramChatId)));
+
+  if (ghostConvs.length === 0) return 0;
+
+  // Find the first real web user (has email, not ghost userId=1)
+  const realUsers = await db
+    .select()
+    .from(users)
+    .where(and(isNotNull(users.email), isNotNull(users.openId)))
+    .limit(1);
+
+  if (!realUsers[0] || realUsers[0].id === 1) return 0;
+
+  let merged = 0;
+  for (const conv of ghostConvs) {
+    if (!conv.telegramChatId) continue;
+    const ok = await mergeTelegramConversationIntoUser(conv.telegramChatId, realUsers[0].id);
+    if (ok) merged++;
   }
 
-  if (options.source && options.source !== "all") {
-    conditions.push(eq(messages.source, options.source));
+  if (merged > 0) {
+    console.log(`[DB-CHAT] autoMerge: merged ${merged} Telegram conversation(s) into userId=${realUsers[0].id}`);
   }
-
-  if (options.from) {
-    conditions.push(gte(messages.createdAt, options.from));
-  }
-
-  if (options.to) {
-    conditions.push(lte(messages.createdAt, options.to));
-  }
-
-  const keyword = options.keyword.trim();
-  if (keyword) {
-    const pattern = `%${keyword.toLowerCase()}%`;
-    conditions.push(
-      sql`(lower(${messages.content}) like ${pattern} or lower(coalesce(${conversations.title}, '')) like ${pattern})`
-    );
-  }
-
-  const rows = await db
-    .select({
-      conversationId: conversations.id,
-      conversationTitle: conversations.title,
-      messageId: messages.id,
-      role: messages.role,
-      content: messages.content,
-      source: messages.source,
-      telegramMessageId: messages.telegramMessageId,
-      metadata: messages.metadata,
-      createdAt: messages.createdAt,
-    })
-    .from(messages)
-    .innerJoin(conversations, eq(messages.conversationId, conversations.id))
-    .where(and(...conditions))
-    .orderBy(desc(messages.createdAt))
-    .limit(options.limit ?? 25);
-
-  return rows.map((row) => ({
-    ...row,
-    conversationTitle: row.conversationTitle ?? null,
-    telegramMessageId: row.telegramMessageId ?? null,
-    metadata: row.metadata ?? null,
-  }));
+  return merged;
 }

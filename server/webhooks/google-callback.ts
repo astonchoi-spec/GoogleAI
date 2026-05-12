@@ -6,77 +6,14 @@
 import express from "express";
 import type { Request, Response } from "express";
 import GoogleAuthManager from "../google/auth.ts";
-import { SessionManager } from "../llm/session.ts";
+import { COOKIE_NAME, ONE_YEAR_MS } from "../../shared/const.ts";
+import { getSessionCookieOptions } from "../_core/cookies.ts";
+import { sdk } from "../_core/sdk.ts";
+import * as db from "../db.ts";
 
 const router = express.Router();
-const sessionManager = new SessionManager();
 
 let googleAuthManager: GoogleAuthManager | null = null;
-
-function renderPopupClosePage(status: "success" | "error", message: string): string {
-  const safeStatus = JSON.stringify(status);
-  const safeMessage = JSON.stringify(message);
-
-  return `<!doctype html>
-<html lang="ko">
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Google 연결 ${status === "success" ? "완료" : "실패"}</title>
-    <style>
-      body {
-        margin: 0;
-        min-height: 100vh;
-        display: grid;
-        place-items: center;
-        background: #020617;
-        color: #e2e8f0;
-        font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-      }
-      main {
-        width: min(420px, calc(100vw - 32px));
-        padding: 28px;
-        border: 1px solid #1e293b;
-        border-radius: 14px;
-        background: #0f172a;
-        text-align: center;
-      }
-      h1 {
-        margin: 0 0 10px;
-        font-size: 20px;
-      }
-      p {
-        margin: 0 0 18px;
-        color: #94a3b8;
-        line-height: 1.6;
-      }
-      button {
-        border: 0;
-        border-radius: 10px;
-        background: #0891b2;
-        color: white;
-        font-weight: 700;
-        padding: 10px 16px;
-        cursor: pointer;
-      }
-    </style>
-  </head>
-  <body>
-    <main>
-      <h1>${status === "success" ? "Google 연결 완료" : "Google 연결 실패"}</h1>
-      <p>${message}</p>
-      <button type="button" onclick="window.close()">창 닫기</button>
-    </main>
-    <script>
-      const payload = { type: "google-oauth:${status}", status: ${safeStatus}, message: ${safeMessage} };
-      if (window.opener && !window.opener.closed) {
-        window.opener.postMessage(payload, window.location.origin);
-      }
-      window.close();
-    </script>
-  </body>
-</html>`;
-}
 
 /**
  * Initialize Google Auth Manager
@@ -120,23 +57,59 @@ router.get("/google/callback", async (req: Request, res: Response) => {
     const userId = state as string;
 
     // Exchange code for tokens
-    await googleAuthManager.exchangeCodeForTokens(code as string, userId);
+    const exchangeResult = await googleAuthManager.exchangeCodeForTokens(code as string, userId);
+    const openId = `google:${exchangeResult.profile.id}`;
 
-    res
-      .status(200)
-      .type("html")
-      .send(renderPopupClosePage("success", "원래 창으로 돌아갑니다. 이 창은 자동으로 닫힙니다."));
+    await db.upsertUser({
+      openId,
+      name: exchangeResult.profile.name || exchangeResult.profile.email || "Google User",
+      email: exchangeResult.profile.email,
+      loginMethod: "google",
+      lastSignedIn: new Date(),
+      role: "admin",
+    });
+
+    const user = await db.getUserByOpenId(openId);
+    if (user) {
+      await googleAuthManager.storeTokensForUser(
+        String(user.id),
+        exchangeResult.accessToken,
+        exchangeResult.refreshToken,
+        exchangeResult.expiresIn
+      );
+    }
+
+    const token = await sdk.createSessionToken(openId, {
+      name: exchangeResult.profile.name || exchangeResult.profile.email || "Google User",
+    });
+
+    res.cookie(COOKIE_NAME, token, {
+      ...getSessionCookieOptions(req),
+      maxAge: ONE_YEAR_MS,
+    });
+
+    res.type("html").send(`<!doctype html>
+<html>
+  <head><meta charset="utf-8"><title>Google connected</title></head>
+  <body>
+    <script>
+      if (window.opener && !window.opener.closed) {
+        window.opener.postMessage({ type: "google-oauth-connected" }, window.location.origin);
+        window.opener.location.href = "/?google=connected";
+        window.close();
+      } else {
+        window.location.href = "/?google=connected";
+      }
+    </script>
+    <p>Google 연결이 완료되었습니다. 창을 닫아도 됩니다.</p>
+  </body>
+</html>`);
   } catch (error) {
     console.error("[Google Callback] Error:", error);
-    res
-      .status(500)
-      .type("html")
-      .send(
-        renderPopupClosePage(
-          "error",
-          error instanceof Error ? error.message : "Google 연결 중 오류가 발생했습니다."
-        )
-      );
+    res.status(500).json({
+      ok: false,
+      error: error instanceof Error ? error.message : "Internal server error",
+    });
   }
 });
 

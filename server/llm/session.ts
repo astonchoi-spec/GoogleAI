@@ -247,6 +247,24 @@ export class SessionManager {
   }
 
   /**
+   * Find any userId that has valid Google tokens stored on disk.
+   * Used by Telegram bot to locate the web-authenticated user's tokens
+   * regardless of which userId was assigned during OAuth.
+   */
+  async getAnyAuthenticatedGoogleUserId(): Promise<string | null> {
+    const store = await this.readGoogleTokenStore();
+    for (const [userId, tokens] of Object.entries(store)) {
+      if (tokens?.accessToken) {
+        const isExpired = tokens.expiresAt < Date.now();
+        if (!isExpired || tokens.refreshToken) {
+          return userId;
+        }
+      }
+    }
+    return null;
+  }
+
+  /**
    * Switch engine and model (alias for setEngine)
    */
   async switchEngine(

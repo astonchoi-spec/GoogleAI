@@ -1,8 +1,9 @@
-import { toast } from "sonner";
+﻿import { toast } from "sonner";
 import { motion } from "framer-motion";
 import { LogIn, LogOut, Loader2, AlertTriangle, CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { watchPopupClose } from "@/lib/popupMonitor";
 import { trpc } from "@/lib/trpc";
 
 export default function GoogleAuthCard() {
@@ -10,7 +11,7 @@ export default function GoogleAuthCard() {
   const { data: authUrlData } = trpc.googleWorkspace.getAuthUrl.useQuery();
   const revokeMutation = trpc.googleWorkspace.revokeAuth.useMutation({
     onSuccess: () => {
-      toast.success("Google 연결을 해제했습니다.");
+      toast.success("Google 연결이 해제되었습니다.");
       refetch();
     },
     onError: (err) => toast.error(`연결 해제 실패: ${err.message}`),
@@ -21,51 +22,20 @@ export default function GoogleAuthCard() {
 
   const handleConnect = () => {
     if (!authUrlData?.authUrl) return;
-
     const popup = window.open(authUrlData.authUrl, "_blank", "width=500,height=600");
-    if (!popup) {
-      toast.error("팝업이 차단되었습니다. 브라우저에서 팝업을 허용해주세요.");
-      return;
-    }
-
-    const handleOAuthMessage = (event: MessageEvent) => {
-      if (event.origin !== window.location.origin) return;
-
-      if (event.data?.type === "google-oauth:success") {
-        cleanup();
-        if (!popup.closed) popup.close();
-        refetch();
-        toast.success("Google 연결이 완료되었습니다.");
-      }
-
-      if (event.data?.type === "google-oauth:error") {
-        cleanup();
-        toast.error(event.data?.message || "Google 연결에 실패했습니다.");
-      }
-    };
-
-    const timer = window.setInterval(() => {
-      if (popup.closed) {
-        cleanup();
-        refetch();
-      }
-    }, 1000);
-
-    const cleanup = () => {
-      window.clearInterval(timer);
-      window.removeEventListener("message", handleOAuthMessage);
-    };
-
-    window.addEventListener("message", handleOAuthMessage);
+    watchPopupClose(popup, () => {
+      refetch();
+      toast.success("Google 연결이 완료되었습니다.");
+    });
   };
 
   const handleDisconnect = () => revokeMutation.mutate();
 
   if (isLoading) {
     return (
-      <Card className="bg-slate-800 border-slate-700 p-4 flex flex-col sm:flex-row items-start sm:items-center gap-3">
-        <Loader2 className="w-5 h-5 animate-spin text-cyan-400" />
-        <span className="text-slate-400 text-sm">Google 연결 상태 확인 중...</span>
+      <Card className="flex items-center gap-3 border-white/10 bg-[var(--aston-panel)] p-4">
+        <Loader2 className="h-5 w-5 animate-spin text-cyan-400" />
+        <span className="text-sm text-[var(--aston-muted)]">Google 연결 상태 확인 중...</span>
       </Card>
     );
   }
@@ -73,15 +43,15 @@ export default function GoogleAuthCard() {
   if (!isConfigured) {
     return (
       <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }}>
-        <Card className="bg-amber-950/30 border-amber-700/50 p-4">
-          <div className="flex flex-col sm:flex-row items-start gap-3">
-            <AlertTriangle className="w-5 h-5 text-amber-400 mt-0.5 shrink-0" />
+        <Card className="border-amber-500/20 bg-amber-500/10 p-4">
+          <div className="flex items-start gap-3">
+            <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-amber-400" />
             <div>
-              <p className="text-amber-300 font-medium text-sm">Google OAuth 설정 필요</p>
-              <p className="text-amber-400/70 text-xs mt-1">
-                .env 파일에 다음 항목을 추가해주세요.
+              <p className="text-sm font-medium text-amber-300">Google OAuth 설정 필요</p>
+              <p className="mt-1 text-xs text-amber-300/70">
+                .env 파일에 아래 항목을 추가하세요.
               </p>
-              <pre className="mt-2 text-xs bg-slate-900/60 rounded p-2 text-amber-300 font-mono">
+              <pre className="mt-2 rounded bg-black/15 p-2 font-mono text-xs text-amber-300">
 {`GOOGLE_CLIENT_ID=your_client_id
 GOOGLE_CLIENT_SECRET=your_client_secret
 GOOGLE_REDIRECT_URI=http://localhost:4000/api/webhooks/google/callback`}
@@ -90,9 +60,9 @@ GOOGLE_REDIRECT_URI=http://localhost:4000/api/webhooks/google/callback`}
                 href="https://console.cloud.google.com/apis/credentials"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-xs text-cyan-400 hover:text-cyan-300 underline mt-2 inline-block"
+                className="mt-2 inline-block text-xs text-cyan-400 underline hover:text-cyan-300"
               >
-                Google Cloud Console에서 OAuth 만들기
+                Google Cloud Console에서 OAuth 클라이언트 만들기
               </a>
             </div>
           </div>
@@ -103,18 +73,19 @@ GOOGLE_REDIRECT_URI=http://localhost:4000/api/webhooks/google/callback`}
 
   return (
     <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }}>
-      <Card className="bg-slate-800 border-slate-700 p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div className="flex items-start sm:items-center gap-3">
+      {/* MODIFIED: allow the auth row to wrap on narrow screens instead of clipping actions. */}
+      <Card className="flex flex-col gap-4 border-white/10 bg-[var(--aston-panel)] p-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex min-w-0 items-center gap-3">
           {isAuthenticated ? (
-            <CheckCircle2 className="w-5 h-5 text-green-400" />
+            <CheckCircle2 className="h-5 w-5 text-green-400" />
           ) : (
-            <div className="w-5 h-5 rounded-full border-2 border-slate-500" />
+            <div className="h-5 w-5 rounded-full border-2 border-slate-500" />
           )}
           <div>
-            <p className="text-white text-sm font-medium">
+            <p className="text-sm font-medium text-[var(--aston-text)]">
               {isAuthenticated ? "Google 계정 연결됨" : "Google 계정 미연결"}
             </p>
-            <p className="text-slate-400 text-xs">
+            <p className="text-xs text-[var(--aston-muted)]">
               {isAuthenticated
                 ? "Gmail, Calendar, Drive, Sheets 사용 가능"
                 : "연결하면 Google Workspace 서비스를 사용할 수 있습니다"}
@@ -127,13 +98,13 @@ GOOGLE_REDIRECT_URI=http://localhost:4000/api/webhooks/google/callback`}
             disabled={revokeMutation.isPending}
             variant="outline"
             size="sm"
-            className="w-full sm:w-auto bg-red-950/30 border-red-700/50 text-red-300 hover:bg-red-900/40"
+            className="border-red-500/20 bg-red-500/10 text-red-300 hover:bg-red-500/20"
           >
             {revokeMutation.isPending ? (
-              <Loader2 className="w-3 h-3 animate-spin" />
+              <Loader2 className="h-3 w-3 animate-spin" />
             ) : (
               <>
-                <LogOut className="w-3 h-3 mr-1" />
+                <LogOut className="mr-1 h-3 w-3" />
                 연결 해제
               </>
             )}
@@ -142,9 +113,9 @@ GOOGLE_REDIRECT_URI=http://localhost:4000/api/webhooks/google/callback`}
           <Button
             onClick={handleConnect}
             size="sm"
-            className="w-full sm:w-auto bg-cyan-600 hover:bg-cyan-700 text-white"
+            className="self-start bg-cyan-500 text-slate-950 hover:bg-cyan-400 sm:self-auto"
           >
-            <LogIn className="w-3 h-3 mr-1" />
+            <LogIn className="mr-1 h-3 w-3" />
             Google 연결
           </Button>
         )}

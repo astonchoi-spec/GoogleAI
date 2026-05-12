@@ -4,16 +4,15 @@
  */
 
 import { z } from "zod";
-import { TRPCError } from "@trpc/server";
-import { publicProcedure, router } from "../_core/trpc.ts";
+import { protectedProcedure, publicProcedure, router } from "../_core/trpc.ts";
 import GoogleAuthManager from "../google/auth.ts";
 import GmailConnector from "../google/gmail.ts";
 import CalendarConnector from "../google/calendar.ts";
 import DriveConnector from "../google/drive.ts";
 import SheetsConnector from "../google/sheets.ts";
-import { SessionManager } from "../llm/session.ts";
-
-const sessionManager = new SessionManager();
+import { getConfiguredWorkspaceSheet, saveConfiguredWorkspaceSheet, saveWorkspaceSchemaResult } from "../google/workspace-sheet-config.ts";
+import { ensureWorkspaceSchema, REQUIRED_TABS } from "../google/workspaceSchema.ts";
+import { sessionManager } from "../llm/session.ts"; // MODIFIED: reuse the shared session store so Google auth state stays aligned with chat and Telegram.
 
 // Initialize Google Auth Manager
 const googleAuthManager = new GoogleAuthManager(
@@ -26,33 +25,6 @@ const googleAuthManager = new GoogleAuthManager(
 );
 
 export { googleAuthManager };
-
-function getGoogleAuthError(error: unknown): TRPCError {
-  const message = error instanceof Error ? error.message : String(error);
-  const requiresReconnect =
-    message.includes("No tokens found") ||
-    message.includes("Token expired") ||
-    message.includes("refresh token") ||
-    message.includes("invalid_grant") ||
-    message.includes("Failed to refresh tokens");
-
-  return new TRPCError({
-    code: requiresReconnect ? "UNAUTHORIZED" : "INTERNAL_SERVER_ERROR",
-    message: requiresReconnect
-      ? "Google 인증이 만료되었습니다. Google 계정을 다시 연결해주세요."
-      : message,
-  });
-}
-
-async function getGoogleClientForUser(ctx: any) {
-  const userId = ctx.user?.id.toString() || "anonymous";
-
-  try {
-    return await googleAuthManager.getAuthenticatedClient(userId);
-  } catch (error) {
-    throw getGoogleAuthError(error);
-  }
-}
 
 export const googleWorkspaceRouter = router({
   /**
@@ -79,19 +51,13 @@ export const googleWorkspaceRouter = router({
    * Check if user is authenticated with Google
    */
   isAuthenticated: publicProcedure.query(async ({ ctx }: any) => {
-    const userId = ctx.user?.id.toString() || "anonymous";
-    let authenticated = false;
-
-    try {
-      authenticated = await googleAuthManager.isAuthenticated(userId);
-      if (authenticated) {
-        await googleAuthManager.getAuthenticatedClient(userId);
-      }
-    } catch {
-      authenticated = false;
+    if (ctx.user?.loginMethod !== "google") {
+      return { authenticated: false, appAuthenticated: !!ctx.user, loginMethod: ctx.user?.loginMethod ?? null };
     }
 
-    return { authenticated };
+    const userId = ctx.user?.id.toString() || "anonymous";
+    const authenticated = await googleAuthManager.isAuthenticated(userId);
+    return { authenticated, appAuthenticated: true, loginMethod: "google" };
   }),
 
   /**
@@ -111,7 +77,8 @@ export const googleWorkspaceRouter = router({
     getEmails: publicProcedure
       .input(z.object({ maxResults: z.number().default(10), query: z.string().optional() }))
       .query(async ({ ctx, input }: any) => {
-        const auth = await getGoogleClientForUser(ctx);
+        const userId = ctx.user?.id.toString() || "anonymous";
+        const auth = await googleAuthManager.getAuthenticatedClient(userId);
         const gmail = new GmailConnector(auth);
         const emails = await gmail.getEmails(input.maxResults, input.query);
         return { emails };
@@ -131,7 +98,8 @@ export const googleWorkspaceRouter = router({
         })
       )
       .mutation(async ({ ctx, input }: any) => {
-        const auth = await getGoogleClientForUser(ctx);
+        const userId = ctx.user?.id.toString() || "anonymous";
+        const auth = await googleAuthManager.getAuthenticatedClient(userId);
         const gmail = new GmailConnector(auth);
         const messageId = await gmail.sendEmail(input);
         return { messageId };
@@ -143,7 +111,8 @@ export const googleWorkspaceRouter = router({
     markAsRead: publicProcedure
       .input(z.object({ messageId: z.string() }))
       .mutation(async ({ ctx, input }: any) => {
-        const auth = await getGoogleClientForUser(ctx);
+        const userId = ctx.user?.id.toString() || "anonymous";
+        const auth = await googleAuthManager.getAuthenticatedClient(userId);
         const gmail = new GmailConnector(auth);
         await gmail.markAsRead(input.messageId);
         return { success: true };
@@ -155,7 +124,8 @@ export const googleWorkspaceRouter = router({
     deleteEmail: publicProcedure
       .input(z.object({ messageId: z.string() }))
       .mutation(async ({ ctx, input }: any) => {
-        const auth = await getGoogleClientForUser(ctx);
+        const userId = ctx.user?.id.toString() || "anonymous";
+        const auth = await googleAuthManager.getAuthenticatedClient(userId);
         const gmail = new GmailConnector(auth);
         await gmail.deleteEmail(input.messageId);
         return { success: true };
@@ -170,11 +140,30 @@ export const googleWorkspaceRouter = router({
     getUpcomingEvents: publicProcedure
       .input(z.object({ maxResults: z.number().default(10) }))
       .query(async ({ ctx, input }: any) => {
-        const auth = await getGoogleClientForUser(ctx);
+        const userId = ctx.user?.id.toString() || "anonymous";
+        const auth = await googleAuthManager.getAuthenticatedClient(userId);
         const calendar = new CalendarConnector(auth);
         const events = await calendar.getUpcomingEvents(input.maxResults);
         return { events };
       }),
+
+    /**
+     * Get today's events (KST 00:00 ~ 24:00)
+     */
+    getTodayEvents: publicProcedure.query(async ({ ctx }: any) => {
+      const userId = ctx.user?.id.toString() || "anonymous";
+      const auth = await googleAuthManager.getAuthenticatedClient(userId);
+      const calendar = new CalendarConnector(auth);
+      const KST_OFFSET_MS = 9 * 60 * 60 * 1000;
+      const nowKst = new Date(Date.now() + KST_OFFSET_MS);
+      const y = nowKst.getUTCFullYear();
+      const m = nowKst.getUTCMonth();
+      const d = nowKst.getUTCDate();
+      const start = new Date(Date.UTC(y, m, d) - KST_OFFSET_MS);
+      const end = new Date(Date.UTC(y, m, d + 1) - KST_OFFSET_MS);
+      const events = await calendar.getEventsByDateRange(start, end);
+      return { events };
+    }),
 
     /**
      * Create event
@@ -192,7 +181,8 @@ export const googleWorkspaceRouter = router({
         })
       )
       .mutation(async ({ ctx, input }: any) => {
-        const auth = await getGoogleClientForUser(ctx);
+        const userId = ctx.user?.id.toString() || "anonymous";
+        const auth = await googleAuthManager.getAuthenticatedClient(userId);
         const calendar = new CalendarConnector(auth);
         const event = await calendar.createEvent({
           title: input.title,
@@ -212,7 +202,8 @@ export const googleWorkspaceRouter = router({
     getMonthEvents: publicProcedure
       .input(z.object({ year: z.number(), month: z.number() }))
       .query(async ({ ctx, input }: any) => {
-        const auth = await getGoogleClientForUser(ctx);
+        const userId = ctx.user?.id.toString() || "anonymous";
+        const auth = await googleAuthManager.getAuthenticatedClient(userId);
         const calendar = new CalendarConnector(auth);
         const start = new Date(input.year, input.month - 1, 1);
         const end = new Date(input.year, input.month, 1);
@@ -241,7 +232,8 @@ export const googleWorkspaceRouter = router({
     deleteEvent: publicProcedure
       .input(z.object({ eventId: z.string() }))
       .mutation(async ({ ctx, input }: any) => {
-        const auth = await getGoogleClientForUser(ctx);
+        const userId = ctx.user?.id.toString() || "anonymous";
+        const auth = await googleAuthManager.getAuthenticatedClient(userId);
         const calendar = new CalendarConnector(auth);
         await calendar.deleteEvent(input.eventId);
         return { success: true };
@@ -256,7 +248,8 @@ export const googleWorkspaceRouter = router({
     listFolder: publicProcedure
       .input(z.object({ folderId: z.string().default("root"), maxResults: z.number().default(50) }))
       .query(async ({ ctx, input }: any) => {
-        const auth = await getGoogleClientForUser(ctx);
+        const userId = ctx.user?.id.toString() || "anonymous";
+        const auth = await googleAuthManager.getAuthenticatedClient(userId);
         const drive = new DriveConnector(auth);
         const files = await drive.searchFiles(
           `'${input.folderId}' in parents and trashed = false`,
@@ -278,7 +271,8 @@ export const googleWorkspaceRouter = router({
     searchFiles: publicProcedure
       .input(z.object({ query: z.string(), maxResults: z.number().default(20) }))
       .query(async ({ ctx, input }: any) => {
-        const auth = await getGoogleClientForUser(ctx);
+        const userId = ctx.user?.id.toString() || "anonymous";
+        const auth = await googleAuthManager.getAuthenticatedClient(userId);
         const drive = new DriveConnector(auth);
         const files = await drive.searchFiles(input.query, input.maxResults);
         return { files };
@@ -290,7 +284,8 @@ export const googleWorkspaceRouter = router({
     createFolder: publicProcedure
       .input(z.object({ folderName: z.string(), parentFolderId: z.string().optional() }))
       .mutation(async ({ ctx, input }: any) => {
-        const auth = await getGoogleClientForUser(ctx);
+        const userId = ctx.user?.id.toString() || "anonymous";
+        const auth = await googleAuthManager.getAuthenticatedClient(userId);
         const drive = new DriveConnector(auth);
         const folderId = await drive.createFolder(input.folderName, input.parentFolderId);
         return { folderId };
@@ -302,7 +297,8 @@ export const googleWorkspaceRouter = router({
     deleteFile: publicProcedure
       .input(z.object({ fileId: z.string() }))
       .mutation(async ({ ctx, input }: any) => {
-        const auth = await getGoogleClientForUser(ctx);
+        const userId = ctx.user?.id.toString() || "anonymous";
+        const auth = await googleAuthManager.getAuthenticatedClient(userId);
         const drive = new DriveConnector(auth);
         await drive.deleteFile(input.fileId);
         return { success: true };
@@ -320,7 +316,8 @@ export const googleWorkspaceRouter = router({
         })
       )
       .mutation(async ({ ctx, input }: any) => {
-        const auth = await getGoogleClientForUser(ctx);
+        const userId = ctx.user?.id.toString() || "anonymous";
+        const auth = await googleAuthManager.getAuthenticatedClient(userId);
         const drive = new DriveConnector(auth);
         await drive.shareFile(input.fileId, input.email, input.role);
         return { success: true };
@@ -339,7 +336,8 @@ export const googleWorkspaceRouter = router({
         })
       )
       .mutation(async ({ ctx, input }: any) => {
-        const auth = await getGoogleClientForUser(ctx);
+        const userId = ctx.user?.id.toString() || "anonymous";
+        const auth = await googleAuthManager.getAuthenticatedClient(userId);
         const drive = new DriveConnector(auth);
         const buffer = Buffer.from(input.base64Content, "base64");
         const fileId = await drive.uploadFile({
@@ -354,13 +352,83 @@ export const googleWorkspaceRouter = router({
 
   // Sheets operations
   sheets: router({
+    getDefaultSpreadsheet: publicProcedure.query(async () => {
+      const configured = await getConfiguredWorkspaceSheet();
+      return {
+        spreadsheetId: configured?.spreadsheetId || "",
+        title: configured?.title || "",
+        sheetTitle: configured?.sheetTitle || "",
+        configured: !!configured?.spreadsheetId,
+        source: process.env.WORKSPACE_SPREADSHEET_ID ? "env" : configured?.spreadsheetId ? "local" : "none",
+      };
+    }),
+
+    connectDefaultSpreadsheet: protectedProcedure
+      .input(
+        z.object({
+          title: z.string().trim().min(1).max(200).default("Aston Workspace Data"),
+        })
+      )
+      .mutation(async ({ ctx, input }) => {
+        const existing = await getConfiguredWorkspaceSheet();
+        if (existing?.spreadsheetId) {
+          return { ...existing, created: false };
+        }
+
+        const userId = ctx.user.id.toString();
+        const auth = await googleAuthManager.getAuthenticatedClient(userId);
+        const sheets = new SheetsConnector(auth);
+        const spreadsheetId = await sheets.createSpreadsheet(input.title);
+        const firstSheet = await sheets.getFirstSheetInfo(spreadsheetId);
+        const sheetTitle = "Workspace";
+        if (firstSheet.title !== sheetTitle) {
+          await sheets.renameSheet(spreadsheetId, firstSheet.sheetId, sheetTitle);
+        }
+
+        await sheets.writeSheet({
+          spreadsheetId,
+          range: `'${sheetTitle.replace(/'/g, "''")}'!A1:F1`,
+          values: [["구분", "제목", "내용", "상태", "담당", "작성일"]],
+        });
+
+        const saved = await saveConfiguredWorkspaceSheet({
+          spreadsheetId,
+          title: input.title,
+          sheetTitle,
+        });
+
+        return { ...saved, created: true };
+      }),
+
+    /**
+     * 워크스페이스 스프레드시트 필수 탭 스키마 확인/생성 (비파괴).
+     * 누락된 탭만 생성하고, tabs 결과를 workspace-sheet.json에 기록.
+     */
+    ensureSchema: protectedProcedure.mutation(async ({ ctx }) => {
+      const configured = await getConfiguredWorkspaceSheet();
+      if (!configured?.spreadsheetId) {
+        throw new Error("WORKSPACE_SPREADSHEET_ID 또는 workspace-sheet.json 설정이 필요합니다.");
+      }
+      const userId = ctx.user.id.toString();
+      const result = await ensureWorkspaceSchema(userId, configured.spreadsheetId);
+      await saveWorkspaceSchemaResult({
+        spreadsheetId: result.spreadsheetId,
+        tabs: result.resolvedTabs,
+      });
+      return {
+        ...result,
+        requiredTabs: REQUIRED_TABS.map((t) => ({ key: t.key, title: t.title, description: t.description })),
+      };
+    }),
+
     /**
      * Read sheet data
      */
     readSheet: publicProcedure
       .input(z.object({ spreadsheetId: z.string(), range: z.string() }))
       .query(async ({ ctx, input }: any) => {
-        const auth = await getGoogleClientForUser(ctx);
+        const userId = ctx.user?.id.toString() || "anonymous";
+        const auth = await googleAuthManager.getAuthenticatedClient(userId);
         const sheets = new SheetsConnector(auth);
         const data = await sheets.readSheet(input.spreadsheetId, input.range);
         return { data };
@@ -378,7 +446,8 @@ export const googleWorkspaceRouter = router({
         })
       )
       .mutation(async ({ ctx, input }: any) => {
-        const auth = await getGoogleClientForUser(ctx);
+        const userId = ctx.user?.id.toString() || "anonymous";
+        const auth = await googleAuthManager.getAuthenticatedClient(userId);
         const sheets = new SheetsConnector(auth);
         await sheets.writeSheet(input);
         return { success: true };
@@ -396,7 +465,8 @@ export const googleWorkspaceRouter = router({
         })
       )
       .mutation(async ({ ctx, input }: any) => {
-        const auth = await getGoogleClientForUser(ctx);
+        const userId = ctx.user?.id.toString() || "anonymous";
+        const auth = await googleAuthManager.getAuthenticatedClient(userId);
         const sheets = new SheetsConnector(auth);
         await sheets.appendSheet(input);
         return { success: true };
@@ -408,7 +478,8 @@ export const googleWorkspaceRouter = router({
     createSpreadsheet: publicProcedure
       .input(z.object({ title: z.string() }))
       .mutation(async ({ ctx, input }: any) => {
-        const auth = await getGoogleClientForUser(ctx);
+        const userId = ctx.user?.id.toString() || "anonymous";
+        const auth = await googleAuthManager.getAuthenticatedClient(userId);
         const sheets = new SheetsConnector(auth);
         const spreadsheetId = await sheets.createSpreadsheet(input.title);
         return { spreadsheetId };

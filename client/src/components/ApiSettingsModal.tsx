@@ -5,7 +5,7 @@
 
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, Eye, EyeOff, Loader2, Check, AlertCircle, Trash2 } from "lucide-react";
+import { Eye, EyeOff, Loader2, Check, AlertCircle, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
@@ -308,15 +308,6 @@ export default function ApiSettingsModal({ isOpen, onClose }: ApiSettingsModalPr
           )}
         </div>
 
-        {/* Close Button */}
-        <Button
-          onClick={onClose}
-          variant="ghost"
-          className="absolute right-4 top-4 text-slate-400 hover:text-slate-300"
-          size="icon"
-        >
-          <X className="w-4 h-4" />
-        </Button>
       </DialogContent>
     </Dialog>
   );

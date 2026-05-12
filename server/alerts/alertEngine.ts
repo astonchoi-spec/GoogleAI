@@ -38,9 +38,7 @@ const ALERT_REPEAT_JOB_NAME = "check-alerts";
 const ALERT_REPEAT_JOB_ID = "alert-checker-10s";
 const KIMCHI_FX_RATE = 1380;
 
-const bullConnection = createBullConnection();
-
-let alertQueue: Queue | null = null;
+let alertQueue: Queue | null = null; // MODIFIED: lazily create BullMQ queue to avoid Redis connection during app bootstrap.
 let alertWorker: Worker | null = null;
 
 export class AlertEngine {
@@ -246,7 +244,8 @@ function createBullConnection() {
 }
 
 export async function startAlertScheduler(): Promise<void> {
-  if (!alertQueue) {
+  const bullConnection = createBullConnection(); // MODIFIED: create Redis connection config only when scheduler is explicitly requested.
+  if (!alertQueue) { // MODIFIED: defer queue creation until first alert registration.
     alertQueue = new Queue(ALERT_QUEUE_NAME, {
       connection: bullConnection,
     });

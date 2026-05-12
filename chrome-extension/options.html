@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Aston NotebookLM Bridge — 설정</title>
+    <style>
+      body {
+        font-family: 'Segoe UI', system-ui, sans-serif;
+        margin: 24px;
+        background: #0a0e27;
+        color: #e2e8f0;
+        min-width: 360px;
+      }
+      h1 { font-size: 16px; margin-bottom: 16px; color: #67e8f9; }
+      label { display: block; font-size: 12px; margin: 12px 0 4px; color: #94a3b8; }
+      input {
+        width: 100%;
+        padding: 8px 10px;
+        background: rgba(255, 255, 255, 0.05);
+        border: 1px solid rgba(255, 255, 255, 0.15);
+        border-radius: 6px;
+        color: #e2e8f0;
+        font-size: 13px;
+      }
+      button {
+        margin-top: 16px;
+        padding: 8px 16px;
+        background: #0c4a6e;
+        border: 1px solid #0ea5e9;
+        border-radius: 6px;
+        color: white;
+        cursor: pointer;
+        font-size: 13px;
+      }
+      button:hover { background: #0e5a82; }
+      .help {
+        font-size: 11px;
+        color: #94a3b8;
+        margin-top: 4px;
+      }
+      .status {
+        margin-top: 12px;
+        font-size: 12px;
+        padding: 8px;
+        border-radius: 6px;
+      }
+      .status.ok { background: rgba(16, 185, 129, 0.1); color: #86efac; border: 1px solid rgba(16, 185, 129, 0.3); }
+    </style>
+  </head>
+  <body>
+    <h1>📥 Aston NotebookLM Bridge</h1>
+
+    <label for="endpoint">백엔드 엔드포인트 URL</label>
+    <input id="endpoint" type="url" placeholder="http://localhost:4000/api/rag/extension-ingest" />
+    <div class="help">
+      기본값: <code>http://localhost:4000/api/rag/extension-ingest</code><br />
+      운영 환경 변경 시에만 수정.
+    </div>
+
+    <button id="save">저장</button>
+    <div id="status" class="status" style="display:none;"></div>
+
+    <script src="options.js"></script>
+  </body>
+</html>

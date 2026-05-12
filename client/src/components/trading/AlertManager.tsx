@@ -1,99 +1,124 @@
-import { Bell, Loader2, Plus, Trash2 } from "lucide-react";
+import { Bell, Plus, Trash2 } from "lucide-react";
 import { useState } from "react";
+import { toast } from "sonner";
 import { trpc } from "@/lib/trpc";
 
 export default function AlertManager() {
-  const [form, setForm] = useState({
-    type: "price" as "price" | "rsi" | "funding" | "kimchi_premium",
-    exchange: "gate" as "gate" | "binance" | "upbit" | "bybit",
-    symbol: "BTC/USDT",
-    operator: "above" as "above" | "below",
-    value: "66000",
-  });
+  const [symbol, setSymbol] = useState("BTC/USDT");
+  const [value, setValue] = useState(0);
+  const [operator, setOperator] = useState<"above" | "below">("above");
+  const [type, setType] = useState<"price" | "rsi" | "funding" | "kimchi_premium">("price");
+  const [exchange, setExchange] = useState<"binance" | "upbit" | "bybit">("binance");
+  const [telegramChatId, setTelegramChatId] = useState("");
   const utils = trpc.useUtils();
-  const alertsQuery = trpc.trading.getAlerts.useQuery(undefined, { retry: false });
-  const setAlert = trpc.trading.setAlert.useMutation({
-    onSuccess: () => utils.trading.getAlerts.invalidate(),
-  });
-  const removeAlert = trpc.trading.removeAlert.useMutation({
-    onSuccess: () => utils.trading.getAlerts.invalidate(),
-  });
 
-  const submit = () => {
-    const value = Number(form.value);
-    if (!Number.isFinite(value)) return;
-    setAlert.mutate({ ...form, value });
-  };
+  const alertsQuery = trpc.trading.listAlerts.useQuery(); // MODIFIED: load alerts from Redis-backed alert engine through trading router.
+  const addMutation = trpc.trading.addAlert.useMutation({
+    onSuccess: async () => {
+      await utils.trading.listAlerts.invalidate(); // MODIFIED: refresh alert list after creation.
+      toast.success("Alert added");
+    },
+    onError: (error) => toast.error(error.message),
+  });
+  const removeMutation = trpc.trading.removeAlert.useMutation({
+    onSuccess: async () => {
+      await utils.trading.listAlerts.invalidate(); // MODIFIED: refresh alert list after deletion.
+      toast.success("Alert removed");
+    },
+    onError: (error) => toast.error(error.message),
+  });
 
   return (
     <div className="rounded-xl border border-slate-700 bg-slate-900/50 p-4">
       <div className="mb-4 flex items-center justify-between">
         <h2 className="flex items-center gap-2 text-sm font-semibold text-white">
           <Bell className="h-4 w-4 text-cyan-400" />
-          알림 설정
+          Alert Settings
         </h2>
       </div>
 
-      <div className="mb-4 grid gap-2 md:grid-cols-[0.8fr_0.8fr_1fr_0.8fr_0.8fr_auto]">
-        <select value={form.type} onChange={(e) => setForm((prev) => ({ ...prev, type: e.target.value as typeof form.type }))} className="rounded-md border border-slate-600 bg-slate-800 px-3 py-2 text-sm text-white">
-          <option value="price">가격</option>
-          <option value="rsi">RSI</option>
-          <option value="funding">펀딩비</option>
-          <option value="kimchi_premium">김프</option>
+      <div className="mb-4 grid gap-2 md:grid-cols-6">
+        <input
+          value={symbol}
+          onChange={(e) => setSymbol(e.target.value)}
+          className="rounded-md border border-slate-600 bg-slate-800 px-3 py-2 text-sm text-white"
+          placeholder="Symbol (e.g. BTC/USDT)"
+        />
+        <select
+          value={type}
+          onChange={(e) => setType(e.target.value as "price" | "rsi" | "funding" | "kimchi_premium")}
+          className="rounded-md border border-slate-600 bg-slate-800 px-3 py-2 text-sm text-white"
+        >
+          <option value="price">price</option>
+          <option value="rsi">rsi</option>
+          <option value="funding">funding</option>
+          <option value="kimchi_premium">kimchi_premium</option>
         </select>
-        <select value={form.exchange} onChange={(e) => setForm((prev) => ({ ...prev, exchange: e.target.value as typeof form.exchange }))} className="rounded-md border border-slate-600 bg-slate-800 px-3 py-2 text-sm text-white">
-          <option value="gate">Gate.io</option>
-          <option value="binance">Binance</option>
-          <option value="upbit">Upbit</option>
-          <option value="bybit">Bybit</option>
+        <select
+          value={operator}
+          onChange={(e) => setOperator(e.target.value as "above" | "below")}
+          className="rounded-md border border-slate-600 bg-slate-800 px-3 py-2 text-sm text-white"
+        >
+          <option value="above">above</option>
+          <option value="below">below</option>
         </select>
-        <input value={form.symbol} onChange={(e) => setForm((prev) => ({ ...prev, symbol: e.target.value }))} className="rounded-md border border-slate-600 bg-slate-800 px-3 py-2 text-sm text-white" />
-        <select value={form.operator} onChange={(e) => setForm((prev) => ({ ...prev, operator: e.target.value as typeof form.operator }))} className="rounded-md border border-slate-600 bg-slate-800 px-3 py-2 text-sm text-white">
-          <option value="above">이상</option>
-          <option value="below">이하</option>
+        <input
+          type="number"
+          value={value}
+          onChange={(e) => setValue(Number(e.target.value))}
+          className="rounded-md border border-slate-600 bg-slate-800 px-3 py-2 text-sm text-white"
+          placeholder="Trigger value"
+        />
+        <select
+          value={exchange}
+          onChange={(e) => setExchange(e.target.value as "binance" | "upbit" | "bybit")}
+          className="rounded-md border border-slate-600 bg-slate-800 px-3 py-2 text-sm text-white"
+        >
+          <option value="binance">binance</option>
+          <option value="upbit">upbit</option>
+          <option value="bybit">bybit</option>
         </select>
-        <input value={form.value} onChange={(e) => setForm((prev) => ({ ...prev, value: e.target.value }))} className="rounded-md border border-slate-600 bg-slate-800 px-3 py-2 text-sm text-white" />
-        <button onClick={submit} disabled={setAlert.isPending} className="flex items-center justify-center gap-1 rounded-md bg-cyan-600 px-3 py-2 text-sm font-medium text-white hover:bg-cyan-700 disabled:opacity-50">
-          {setAlert.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
-          추가
-        </button>
+        <input
+          value={telegramChatId}
+          onChange={(e) => setTelegramChatId(e.target.value)}
+          className="rounded-md border border-slate-600 bg-slate-800 px-3 py-2 text-sm text-white"
+          placeholder="Telegram chatId"
+        />
       </div>
 
-      {alertsQuery.isLoading ? (
-        <div className="flex items-center text-sm text-slate-400">
-          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-          알림 조회 중
-        </div>
-      ) : alertsQuery.error ? (
-        <div className="rounded-lg border border-red-900/60 bg-red-950/30 p-3 text-sm text-red-300">
-          Redis 연결을 확인해주세요.
-        </div>
-      ) : !alertsQuery.data?.length ? (
-        <div className="rounded-lg border border-slate-800 bg-slate-950/60 p-6 text-center text-sm text-slate-400">
-          등록된 알림이 없습니다.
-        </div>
-      ) : (
-        <div className="grid gap-3">
-          {alertsQuery.data.map((alert) => (
-            <div key={alert.id} className="flex flex-col gap-3 rounded-lg border border-slate-700 bg-slate-800/70 p-4 sm:flex-row sm:items-center sm:justify-between">
-              <div>
-                <p className="font-semibold text-white">{alert.symbol}</p>
-                <p className="mt-1 text-sm text-slate-400">
-                  {alert.exchange} · {alert.type} {alert.operator === "above" ? "이상" : "이하"} {alert.value}
-                </p>
-              </div>
+      <button
+        onClick={() => addMutation.mutate({ symbol, type, operator, value, exchange, telegramChatId })} // MODIFIED: create alert via backend mutation instead of local-only state append.
+        disabled={addMutation.isPending || !telegramChatId.trim()}
+        className="mb-4 flex items-center gap-1 rounded-md bg-cyan-600 px-3 py-2 text-sm font-medium text-white hover:bg-cyan-700 disabled:opacity-60"
+      >
+        <Plus className="h-4 w-4" />
+        Add Alert
+      </button>
+
+      <div className="grid gap-3">
+        {alertsQuery.isLoading && <p className="text-sm text-slate-400">Loading alerts...</p>}
+        {alertsQuery.error && <p className="text-sm text-red-300">{alertsQuery.error.message}</p>}
+        {(alertsQuery.data ?? []).map((alert) => (
+          <div key={alert.id} className="flex flex-col gap-3 rounded-lg border border-slate-700 bg-slate-800/70 p-4 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <p className="font-semibold text-white">{alert.symbol}</p>
+              <p className="mt-1 text-sm text-slate-400">
+                {alert.type} {alert.operator} {alert.value} ({alert.exchange}) - {alert.active ? "active" : "inactive"}
+              </p>
+            </div>
+            <div className="flex items-center gap-3">
               <button
-                onClick={() => removeAlert.mutate({ alertId: alert.id })}
-                disabled={removeAlert.isPending}
-                className="rounded-md p-2 text-slate-400 hover:bg-red-950/30 hover:text-[#ff1744] disabled:opacity-50"
+                onClick={() => removeMutation.mutate({ id: alert.id })} // MODIFIED: remove alert through server mutation for consistent Redis state.
+                className="rounded-md p-2 text-slate-400 hover:bg-red-950/30 hover:text-[#ff1744]"
                 aria-label="Delete alert"
               >
                 <Trash2 className="h-4 w-4" />
               </button>
             </div>
-          ))}
-        </div>
-      )}
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
+

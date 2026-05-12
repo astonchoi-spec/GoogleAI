@@ -1,0 +1,16 @@
+import { createClient } from '@libsql/client';
+const client = createClient({ url: 'file:./data/chat.db' });
+console.log('=== users ===');
+const cols = await client.execute("PRAGMA table_info(users)");
+console.log('user cols:', cols.rows.map(r => r.name).join(','));
+const u = await client.execute('SELECT * FROM users LIMIT 5');
+console.log(u.rows);
+console.log('=== conversations ===');
+const c = await client.execute('SELECT id, userId, telegramChatId, isActive FROM conversations');
+console.log(c.rows);
+console.log('=== last 12 messages ===');
+const m = await client.execute('SELECT id, conversationId, role, source, substr(content,1,60) as preview FROM messages ORDER BY id DESC LIMIT 30');
+console.log('\n=== telegram-source counts ===');
+const tg = await client.execute("SELECT source, COUNT(*) as cnt FROM messages GROUP BY source");
+console.log(tg.rows);
+console.log(m.rows);

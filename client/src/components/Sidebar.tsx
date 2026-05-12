@@ -1,148 +1,169 @@
-import { motion } from "framer-motion";
-import { ChevronRight, Landmark, LayoutGrid, MessageCircle } from "lucide-react";
-import { Link } from "wouter";
+import { Link, useLocation } from "wouter";
+import {
+  Bot,
+  LayoutDashboard,
+  MessageSquare,
+  TrendingUp,
+  Building2,
+  Mail,
+  BookOpen,
+  Library,
+  Activity,
+  Settings,
+  Send,
+  CalendarPlus,
+  BarChart3,
+} from "lucide-react";
 
 interface SidebarProps {
   isOpen: boolean;
   onClose: () => void;
 }
 
-const navItems = [
-  { label: "Overview", id: "overview" },
-  { label: "Architecture", id: "architecture" },
-  { label: "Features", id: "features" },
-  { label: "Flow", id: "flow" },
-  { label: "Tech", id: "tech" },
-  { label: "Code", id: "code" },
-  { label: "API", id: "api" },
-  { label: "Security", id: "security" },
-  { label: "Roadmap", id: "roadmap" },
+interface NavItem {
+  kind: "link";
+  href: string;
+  label: string;
+  sub: string;
+  icon: React.ComponentType<{ size?: number; strokeWidth?: number; style?: React.CSSProperties }>;
+}
+
+const navItems: NavItem[] = [
+  { kind: "link",     href: "/",              label: "홈",              sub: "대시보드",               icon: LayoutDashboard },
+  { kind: "link",     href: "/chat",          label: "AI 채팅",          sub: "자연어 지시 · Telegram",  icon: MessageSquare },
+  { kind: "link",     href: "/trading",       label: "트레이딩",          sub: "차트 · 포지션 · 분석",    icon: TrendingUp },
+  { kind: "link",     href: "/real-estate-pf",label: "부동산 PF",         sub: "딜 · 사업성 분석",        icon: Building2 },
+  { kind: "link",     href: "/google",        label: "Google Workspace", sub: "메일 · 드라이브 · 캘린더", icon: Mail },
+  { kind: "link",     href: "/notebook-lm",   label: "노트북LM",          sub: "AI 리서치 · 분석",        icon: BookOpen },
+  { kind: "link",     href: "/wiki",          label: "에스턴 위키",        sub: "지식 저장소",             icon: Library },
+  { kind: "link",     href: "/agents",        label: "Agent Control",   sub: "에이전트 작업 큐",         icon: Bot },
+  { kind: "link",     href: "/monitoring",    label: "모니터링",          sub: "시스템 상태",             icon: Activity },
+  { kind: "link",     href: "/google?tab=gmail",    label: "메일 작성",   sub: "Gmail 바로가기",   icon: Send },
+  { kind: "link",     href: "/google?tab=calendar", label: "일정 만들기", sub: "캘린더 바로가기", icon: CalendarPlus },
+  { kind: "link",     href: "/trading",       label: "포지션 확인",       sub: "트레이딩 포지션",         icon: BarChart3 },
+  { kind: "link",     href: "/settings",      label: "설정",              sub: "API 키 · 테마",           icon: Settings },
 ];
 
-export default function Sidebar({ isOpen, onClose }: SidebarProps) {
-  const handleNavClick = (id: string) => {
-    const element = document.getElementById(id);
-    if (element) {
-      element.scrollIntoView({ behavior: "smooth" });
-      onClose();
-    }
-  };
+const itemStyle = (active: boolean): React.CSSProperties => ({
+  display: "flex",
+  alignItems: "center",
+  gap: "8px",
+  borderRadius: "8px",
+  padding: "10px 12px",
+  border: active ? "1px solid rgba(0,255,255,0.3)" : "1px solid rgba(255,255,255,0.06)",
+  background: active ? "rgba(0,255,255,0.07)" : "transparent",
+  textDecoration: "none",
+  transition: "all 0.15s",
+  cursor: "pointer",
+  width: "100%",
+  boxSizing: "border-box",
+});
 
-  const linkClass = "flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-semibold transition-colors";
+function NavItemRow({
+  item,
+  active,
+  onClick,
+}: {
+  item: NavItem;
+  active: boolean;
+  onClick: () => void;
+}) {
+  const Icon = item.icon;
 
   return (
+    <Link
+      href={item.href}
+      onClick={onClick}
+      style={itemStyle(active)}
+      className={active ? "" : "sidebar-nav-inactive"}
+    >
+      <Icon
+        size={18}
+        strokeWidth={1.5}
+        style={{ flexShrink: 0, color: active ? "rgb(34,211,238)" : "rgb(156,163,175)" }}
+      />
+      <div style={{ minWidth: 0 }}>
+        <div style={{ fontSize: "13px", fontWeight: 500, lineHeight: "1.2", color: active ? "rgb(207,250,254)" : "var(--aston-text)" }}>
+          {item.label}
+        </div>
+        <div style={{ fontSize: "11px", lineHeight: "1.2", color: "var(--aston-muted)", opacity: 0.5, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+          {item.sub}
+        </div>
+      </div>
+    </Link>
+  );
+}
+
+function SidebarContent({ onClose }: { onClose: () => void }) {
+  const [location] = useLocation();
+
+  return (
+    <div className="flex h-full flex-col" style={{ padding: "12px 10px 10px" }}>
+      {/* Logo */}
+      <Link
+        href="/"
+        onClick={onClose}
+        className="flex items-center gap-2 rounded-lg px-3 py-2 mb-3 transition hover:bg-white/5"
+      >
+        <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md border border-cyan-500/20 bg-cyan-500/10">
+          <Bot size={15} strokeWidth={1.5} className="text-cyan-400" />
+        </div>
+        <div className="min-w-0">
+          <div className="truncate text-[13px] font-semibold leading-tight text-[var(--aston-text)]">에스턴 워크스테이션</div>
+          <div className="text-[10px] leading-tight text-emerald-400 opacity-80">● 안정 운영 중</div>
+        </div>
+      </Link>
+
+      {/* Nav items */}
+      <nav className="flex flex-col" style={{ gap: "4px" }}>
+        {navItems.map((item) => {
+          const active = item.kind === "link" && location === item.href;
+          return (
+            <NavItemRow
+              key={item.label}
+              item={item}
+              active={active}
+              onClick={onClose}
+            />
+          );
+        })}
+      </nav>
+
+      {/* Footer */}
+      <div style={{ marginTop: "auto", paddingTop: "10px", textAlign: "center" }}>
+        <div style={{ fontSize: "10px", color: "var(--aston-muted)", opacity: 0.4 }}>
+          Aston Workstation · Google · Telegram · AI
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export default function Sidebar({ isOpen, onClose }: SidebarProps) {
+  return (
     <>
-      <motion.aside
-        className="hidden md:flex fixed left-0 top-0 h-screen w-64 bg-sidebar text-sidebar-foreground border-r border-sidebar-border flex-col p-6 z-40"
-        initial={{ x: -256 }}
-        animate={{ x: 0 }}
-        transition={{ duration: 0.3 }}
+      <style>{`
+        .sidebar-nav-inactive:hover {
+          background: rgba(0,255,255,0.05) !important;
+          border-color: rgba(0,255,255,0.15) !important;
+        }
+      `}</style>
+
+      {/* Desktop */}
+      <aside className="hidden lg:fixed lg:inset-y-0 lg:left-0 lg:z-50 lg:flex lg:w-[256px] lg:flex-col border-r border-white/10 bg-[var(--aston-panel)] text-[var(--aston-text)]">
+        <SidebarContent onClose={onClose} />
+      </aside>
+
+      {/* Mobile */}
+      <aside
+        className={[
+          "fixed inset-y-0 left-0 z-50 w-[256px] border-r border-white/10 bg-[var(--aston-panel)] text-[var(--aston-text)] lg:hidden",
+          "transform transition-transform duration-300",
+          isOpen ? "translate-x-0" : "-translate-x-full",
+        ].join(" ")}
       >
-        <motion.div
-          className="mb-8"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.2 }}
-        >
-          <h2 className="text-2xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
-            GoogleTG
-          </h2>
-          <p className="text-sm text-sidebar-foreground/60 mt-1">Integration Design</p>
-        </motion.div>
-
-        <nav className="flex-1 space-y-2">
-          {navItems.map((item, index) => (
-            <motion.button
-              key={item.id}
-              onClick={() => handleNavClick(item.id)}
-              className="w-full text-left px-4 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground group flex items-center justify-between"
-              initial={{ opacity: 0, x: -20 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: 0.1 + index * 0.05 }}
-              whileHover={{ x: 4 }}
-            >
-              <span>{item.label}</span>
-              <ChevronRight className="w-4 h-4 opacity-0 group-hover:opacity-100 transition-opacity" />
-            </motion.button>
-          ))}
-        </nav>
-
-        <motion.div
-          className="pt-4 border-t border-sidebar-border space-y-2"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.5 }}
-        >
-          <Link href="/chat" className={`${linkClass} bg-primary/10 hover:bg-primary/20 text-primary`}>
-            <MessageCircle className="w-4 h-4" />
-            AI Chat
-          </Link>
-          <Link href="/finance" className={`${linkClass} bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-300`}>
-            <Landmark className="w-4 h-4" />
-            DART Finance
-          </Link>
-          <Link href="/google" className={`${linkClass} bg-blue-500/10 hover:bg-blue-500/20 text-blue-400`}>
-            <LayoutGrid className="w-4 h-4" />
-            Google Workspace
-          </Link>
-        </motion.div>
-
-        <motion.div
-          className="pt-4 text-xs text-sidebar-foreground/60"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.6 }}
-        >
-          <p>Google Ecosystem +</p>
-          <p>Telegram Integration</p>
-        </motion.div>
-      </motion.aside>
-
-      <motion.aside
-        className="fixed left-0 top-0 h-screen w-64 bg-sidebar text-sidebar-foreground border-r border-sidebar-border flex flex-col p-6 z-40 md:hidden"
-        initial={{ x: isOpen ? 0 : -256 }}
-        animate={{ x: isOpen ? 0 : -256 }}
-        transition={{ duration: 0.3 }}
-      >
-        <div className="mb-8">
-          <h2 className="text-2xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
-            GoogleTG
-          </h2>
-          <p className="text-sm text-sidebar-foreground/60 mt-1">Integration Design</p>
-        </div>
-
-        <nav className="flex-1 space-y-2">
-          {navItems.map((item) => (
-            <button
-              key={item.id}
-              onClick={() => handleNavClick(item.id)}
-              className="w-full text-left px-4 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
-            >
-              {item.label}
-            </button>
-          ))}
-        </nav>
-
-        <div className="pt-4 border-t border-sidebar-border space-y-2">
-          <Link href="/chat" className={`${linkClass} bg-primary/10 hover:bg-primary/20 text-primary`} onClick={onClose}>
-            <MessageCircle className="w-4 h-4" />
-            AI Chat
-          </Link>
-          <Link href="/finance" className={`${linkClass} bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-300`} onClick={onClose}>
-            <Landmark className="w-4 h-4" />
-            DART Finance
-          </Link>
-          <Link href="/google" className={`${linkClass} bg-blue-500/10 hover:bg-blue-500/20 text-blue-400`} onClick={onClose}>
-            <LayoutGrid className="w-4 h-4" />
-            Google Workspace
-          </Link>
-        </div>
-
-        <div className="pt-4 text-xs text-sidebar-foreground/60">
-          <p>Google Ecosystem +</p>
-          <p>Telegram Integration</p>
-        </div>
-      </motion.aside>
+        <SidebarContent onClose={onClose} />
+      </aside>
     </>
   );
 }

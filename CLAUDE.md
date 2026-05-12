@@ -1,31 +1,365 @@
 # CLAUDE.md
+> Claude Code용 작업 원칙 | 에스턴 워크스테이션
 
-## 프로젝트: 에스턴 워크스테이션 (GoogleTG)
-Google Workspace(Gmail, Calendar, Drive, Sheets) + Telegram + AI 통합 앱
+---
 
-## 기술 스택
-- 프론트: React + TypeScript + Vite
-- 백엔드: Node.js + tRPC
-- 상태관리: Redis (FSM 기반 세션)
-- AI: Gemini API
-- 인증: Google OAuth 2.0
-- 메시징: Telegram Bot Webhook + Google Pub/Sub
-- DB 대용: Google Sheets API
+## 앱 실행 규칙 (필수 — 매번 준수)
 
-## 핵심 파일 구조
-- server/_core/ : Redis 인스턴스, voiceTranscription 등 코어 유틸
-- server/trpc/ : tRPC 라우터 (appRouter, llm.chat 등)
-- client/components/UnifiedChatInterface.tsx : 메인 AI 채팅 UI
-- .env : 환경변수
+앱을 실행하거나 서버 상태를 확인할 때 반드시 아래 순서를 따른다:
 
-## 코딩 규칙
-- 기존 UI/라우터를 절대 삭제하지 않는다
-- 새 기능은 새 파일/컴포넌트로 추가한다
-- 기존 컴포넌트 수정 시 최소한으로, 주석으로 변경 이유 표시
-- tRPC 라우터는 server/trpc/routers/에 파일별 분리
-- TypeScript strict mode
+1. **먼저 `pm2 list` 실행**
+   - `aston` 상태가 `online` → **추가 실행 금지**. 이미 포트 4000에서 실행 중.
+   - `aston` 상태가 `stopped` / `errored` → `pm2 restart aston` 실행.
+   - PM2 자체가 없거나 `aston` 항목이 없을 때만 → `npm run dev` 실행.
+2. **`npm run dev`는 PM2가 없을 때만 사용**. PM2가 살아있는데 `npm run dev`를 실행하면 포트 충돌이 발생한다.
+3. 서버 주소는 항상 **http://localhost:4000** (PM2 고정).
+4. **worktree 안에서는 절대 dev 서버를 띄우지 않는다.** worktree 베이스가 `master`(48bba87, 동결)인 경우가 많아 1달 전 화면이 떠서 사용자가 "내 작업이 사라졌다"고 오해한다 (2026-05-10 사고). dev 서버는 항상 메인 디렉토리(`C:\Users\user\Desktop\구글연동AI`)에서만 실행.
+5. **PM2 재시작 후 `Port 4000 is busy, using port 4001 instead` 로그 보이면 좀비 프로세스 의심.** 회장님이 4000 에 접속하면 옛 코드가 응답하는 사고 (2026-05-12 2회 발생). 처리: `netstat -ano | findstr ":4000"` → 점유 pid 확인 → PowerShell `Stop-Process -Id <pid> -Force` → `pm2 restart aston`. PM2 는 `dist` 가 아닌 TS 소스 직접 실행(`--experimental-strip-types`)이라 재시작 = 새 코드 즉시 반영.
 
-## Git 운영 규칙
-- 중요한 작업을 시작하기 전에는 현재 변경분을 먼저 커밋해 작업 복구 지점을 만든다
-- 큰 작업은 단계별로 쪼개서 커밋하고, 검증 결과를 커밋 메시지 또는 작업 보고에 남긴다
-- 커밋 전에는 git status로 포함 파일을 확인하고, 사용자 변경분을 임의로 되돌리지 않는다
+---
+
+## Quick Commands
+
+```bash
+# 검증 (수정 후 매번)
+npm run check               # tsc --noEmit + scripts/check-module-boundaries.ts
+npm run build               # esbuild server bundle + vite client bundle
+npm test                    # vitest 전체
+npx vitest run server/__tests__/<name>.test.ts  # 단일 테스트
+npm run smoke:routes        # 빌드 스모크 (CI용)
+
+# 개발
+npm run dev                 # PM2 없을 때만 사용 (PM2 살아있으면 4000 충돌)
+
+# PM2 운영
+pm2 list                    # aston 상태 확인 (npm run dev 전 필수)
+pm2 restart aston           # TS 소스 즉시 반영
+pm2 logs aston --lines 50 --nostream   # 부팅·런타임 로그
+
+# 좀비 프로세스 진단 (Port 4000 fallback 시)
+netstat -ano | findstr ":4000"
+# PowerShell: Stop-Process -Id <pid> -Force
+```
+
+---
+
+## 🛑 브랜치 / Worktree 베이스 규칙 (필수 — 코드 수정 전 매번 준수)
+
+**작업 시작 전 반드시 다음 4-step을 실행하고, codex 라인이 아니면 코드 작성 금지.** 아래 규칙은 2026-05-10 worktree 사고(master 베이스 worktree에서 6시간 작업 → 사용자 진짜 작업물과 무관한 별개 패치) 재발 방지를 위한 것.
+
+```bash
+# 1. 현재 위치 — 메인인지 worktree인지
+pwd
+
+# 2. 메인 디렉토리 활성 브랜치 (반드시 codex-google-workspace-expansion 이어야 함)
+# 메인 디렉토리 경로: 집컴 → C:\Users\user\Desktop\구글연동AI / 회사컴 → D:\구글연동AI
+# (양쪽 모두 같은 원격 https://github.com/astonchoi-spec/GoogleAI 추적)
+git branch --show-current
+
+# 3. 코드베이스 풍부도 — 16개 라우터 / 13개 페이지가 있어야 정상
+ls server/routers/   # agents, alerts, analysis, finance, intent, rag, trading, wiki, ...
+ls client/src/pages/ # AgentControl, KnowledgeRagPage, Monitoring, FinancePage, ...
+
+# 4. PM2 상태 확인
+pm2 list             # aston 항목이 online 이면 4000번에서 본체 동작 중
+```
+
+**판정 결과별 행동:**
+- ✅ 메인 디렉토리 + `codex-google-workspace-expansion` + 풍부한 코드베이스 → 정상. 작업 시작.
+- ❌ worktree 내부(`.claude/worktrees/*`) → **즉시 중단**. 사용자에게 "메인 디렉토리에서 작업해야 하지 않나요?"로 확인. dev 서버 시작·코드 수정 모두 금지.
+- ❌ 다른 브랜치(master, main, 기타) 또는 라우터/페이지 빈약 → **즉시 보고 + 대기**. master/main은 동결, 그 위에서 한 작업은 본체에 흡수되지 않는다.
+
+**worktree 폐기 시 절차** (잘못된 베이스 worktree 발견 시):
+```powershell
+cd "C:\Users\user\Desktop\구글연동AI"
+git worktree remove --force ".claude/worktrees/<이름>"
+git branch -D claude/<이름>
+# 빈 디렉토리 잔여 시 추가:
+Remove-Item ".claude\worktrees\<이름>" -Recurse -Force
+```
+
+---
+## 자동 실행 규칙
+
+모든 작업 요청을 받으면 코드 수정 전에 반드시 다음을 먼저 수행하라:
+1. TODO.md 읽기
+2. CHANGELOG.md 읽기
+3. HANDOFF.md 읽기
+4. CLAUDE.md 읽기 (이 파일)
+
+"작업준비" 또는 "작업:" 이라는 단어가 포함된 요청을 받으면 위 4개 파일을 자동으로 읽고 현재 상태를 한 줄로 요약한 뒤 작업을 시작하라.
+
+---
+
+## 자동 명령어
+
+### "작업준비"
+다음을 순서대로 자동 수행:
+1. `git fetch origin` 실행 (원격 최신화)
+2. `git log HEAD..origin/codex-google-workspace-expansion --oneline` 으로 원격에 새로 들어온 커밋 확인
+3. 원격 신규 커밋이 있으면 `git pull --rebase origin codex-google-workspace-expansion` 실행 (충돌 시 사용자에게 보고 후 중단)
+4. TODO.md, CHANGELOG.md, HANDOFF.md, CLAUDE.md 읽기
+5. 현재 상태 요약 한 줄 출력 (브랜치, HEAD 커밋, 진행 중 작업, 다음 추천 작업)
+
+### "작업정리"
+다음을 자동 수행:
+1. `git status` + `git log --oneline -5` 로 현재 변경분 파악
+2. CHANGELOG.md에 오늘 날짜로 작업 내역 추가 (날짜 | 도구 | 작업 | 수정파일 | 검증결과 | 잔여이슈)
+3. TODO.md에서 완료 항목 체크, 새로 발견된 이슈 추가
+4. HANDOFF.md 갱신 (현재상태, 마지막완료, 진행중, 주의영역, 다음추천)
+5. 결과 요약 출력
+
+### "커밋"
+작업정리 수행 후, 변경분을 논리적 단위로 나눠 커밋 (feat/fix/docs 프리픽스 사용). 커밋 후 반드시 git push origin 현재브랜치 실행.
+
+### "현재작업"
+다음을 순서대로 자동 수행:
+1. 프로젝트 루트에 `CURRENT_TASK.md`가 존재하는지 확인한다.
+   - **없으면 즉시 중단**: "CURRENT_TASK.md가 없습니다" 라고 보고하고 작업하지 않는다.
+2. `CURRENT_TASK.md`를 읽고 작업 지시 내용을 파악한다.
+3. `git fetch origin` 실행 후 `git log HEAD..origin/codex-google-workspace-expansion --oneline` 으로 원격 신규 커밋 확인. 있으면 `git pull --rebase` (충돌 시 보고 후 중단).
+4. `TODO.md`, `CHANGELOG.md`, `HANDOFF.md`를 읽어 현재 상태를 확인한다.
+5. `CURRENT_TASK.md`에 명시된 범위 내 작업만 수행한다. 범위 밖 작업은 하지 않는다.
+6. 작업 완료 후 `npm run check && npm run build`를 실행한다.
+7. 완료된 지시서를 `docs/tasks/YYYY-MM-DD-{slug}.md` 로 아카이브한다.
+8. `CURRENT_TASK.md` 를 빈 템플릿으로 초기화한다 (상태: 없음).
+9. `TODO.md`, `CHANGELOG.md`, `HANDOFF.md`를 갱신한다.
+10. 변경분을 논리 단위로 커밋하고 `git push origin 현재브랜치`를 실행한다.
+11. 결과만 요약 보고한다.
+
+---
+
+## CURRENT_TASK.md 운영 규칙
+
+- `CURRENT_TASK.md`는 프로젝트 루트에 두는 **현재 작업 지시서**다.
+- 작업 지시·범위·완료 조건을 명시한다.
+- **"현재작업" 명령은 이 파일이 없으면 실행하지 않는다.**
+- 작업이 끝나면 이 파일을 삭제하거나 내용을 비워 완료 상태임을 표시한다.
+- `.gitignore`에 추가하지 않는다 — Codex·Claude Code 모두 공유해야 한다.
+
+---
+
+---
+
+## 1. 프로젝트 정체성
+
+**에스턴 워크스테이션(Aston Workstation)**은 한국어 우선 Executive Command Center다.
+목적은 기능 과시가 아니라 회장님의 일상 업무 부담을 줄이는 것이다.
+
+다루는 도메인:
+- 가족 · 부동산 PF · 금융 트레이딩 · AI 워크스테이션
+- 몽골 사업 · 회사 운영 · 법무/계약 · 리서치 · 개인 전략
+
+이 앱은 코딩 실험이 아니라 **개인 비즈니스 운영체제**다.
+
+---
+
+## 2. 기술 스택
+
+| 레이어 | 기술 |
+|--------|------|
+| 프론트엔드 | React + TypeScript + Vite |
+| 백엔드 | Node.js + tRPC |
+| 상태관리 | Redis (FSM 기반 세션) |
+| AI | Gemini API (LLMAdapter 경유) |
+| 인증 | Google OAuth 2.0 |
+| 메시징 | Telegram Bot API (Webhook) |
+| DB 대용 | Google Sheets API |
+
+---
+
+## 3. 핵심 파일 구조
+
+```
+server/_core/          → Redis, LLMAdapter, tRPC core, intentRouter
+server/routers/        → 도메인별 tRPC 라우터 (16개: agents/alerts/analysis/finance/intent/llm/notebooklm/rag/realestate/tradingRisk/trading/wiki 등)
+server/intent/         → 인텐트 파싱·라우팅 (handlers/ + fallbackIntent.ts + classifier.md + registry.ts)
+server/exchanges/      → 거래소 커넥터 (Binance/Upbit/Gate/Bybit, 인증 필요한 호출만)
+server/google/         → Gmail/Calendar/Drive/Sheets/OAuth
+server/realestate/     → 부동산 PF 엔진 (feasibility, dealPipeline)
+server/finance/        → DART 공시·재무
+server/trading/        → 매매·riskGuard·preCheckEngine·reviewReport
+server/knowledge/      → Wiki 파이프라인·driveSync·extensionIngest·wikiUpload (모듈 외부 setter 주입)
+server/rag/            → 로컬 RAG 검색·Vertex AI Search 클라이언트·rag-mapping.yaml 로더
+server/agents/         → 에이전트 큐·템플릿·OpenClaw 연동
+server/llm/            → LLM 어댑터·텔레그램봇·attachmentInject·attachmentExtract
+server/deals/          → 부동산 딜 폴더·Sheets sync·D-day notifier·folderWatcher
+server/intelligence/   → 모닝 브리핑·MTProto collector
+server/notebooklm/     → NotebookLM 매핑 yaml 로더 (legacy, rag/ 로 점진 이동)
+client/src/pages/      → 13개 페이지 (AgentControl/Chat/FinancePage/Home/KnowledgeRagPage/RealEstatePage/TradingPage/WikiPage 등)
+client/src/components/UnifiedChatInterface.tsx  → 메인 AI 채팅 UI
+.env / .env.example    → 환경변수 (절대 커밋 금지)
+```
+
+---
+
+## 4. 공통 작업 원칙 (AGENTS.md와 CLAUDE.md 공유)
+
+### 절대 금지
+
+- 새 기능을 남발하지 않는다
+- P0 안정화가 끝나기 전 P2 고급 자동화로 넘어가지 않는다
+- 기존 UI · 라우터 · 컴포넌트를 삭제하지 않는다
+- 기존 다크 테마(배경 #0a0e27 계열)와 한국어 UI를 임의로 변경하지 않는다
+- 새 디자인 시스템을 만들지 않는다
+- 대규모 리팩토링을 하지 않는다
+- 새 외부 의존성을 추가하지 않는다
+- 비밀키 · 토큰 · 개인정보를 코드에 하드코딩하지 않는다
+- NotebookLM과 Aston Wiki는 현재 별도 앱이 아니라 내부 모듈이다. 별도 앱으로 분리하지 않는다
+
+### 필수 작업 규칙
+
+1. 작업 시작 전 **TODO.md**와 **CHANGELOG.md**를 먼저 확인한다
+2. 관련 파일을 먼저 읽고 수정한다
+3. 요청 범위를 벗어나지 않는다
+4. 한 번에 하나의 작업만 한다
+5. **Codex와 Claude Code가 동시에 같은 파일을 수정하지 않는다** — HANDOFF.md 확인 필수
+6. 완료 후 CHANGELOG.md와 HANDOFF.md를 갱신한다
+7. 가능하면 `npm run check && npm run build`를 실행한다
+8. 실패하면 실패 내용을 숨기지 말고 CHANGELOG.md에 기록한다
+9. 작업은 작게, 검증 가능하게, 되돌릴 수 있게 한다
+
+### 코드 수정 규칙
+
+- 기존 파일을 삭제하거나 기능을 제거하지 않는다
+- 기존 컴포넌트 수정 시 최소한의 변경만 한다
+- tRPC 라우터는 `server/trpc/routers/`에 파일별 분리 후 appRouter에 등록
+- Redis 인스턴스는 `server/_core/redis.ts`에서 import (새로 만들지 않는다)
+- 새 환경변수 추가 시 `.env.example`에도 반드시 추가
+- 모든 tRPC input은 zod로 검증
+- TypeScript strict mode 준수
+
+### Git 운영
+
+- 중요한 작업 시작 전 현재 변경분을 먼저 커밋해 복구 지점을 만든다
+- 큰 작업은 단계별로 쪼개서 커밋, 검증 결과를 커밋 메시지에 남긴다
+- 커밋 전 `git status`로 포함 파일을 확인하고, 사용자 변경분을 임의로 되돌리지 않는다
+- 커밋 메시지 형식: `feat|fix|docs|chore: 한글 설명`
+
+### 3계층 우선순위
+
+- 세부 직원 구현 전, `Command Channel`(`1계층`)인 `AI 채팅` 라우팅과 `Knowledge Core`(`2계층`) 연결 안정화를 우선한다.
+- 신규 작업 지시를 받으면 그 작업이 `Command Channel` / `Knowledge Core` / `Execution Modules` 중 어디에 해당하는지 먼저 식별하고, `1·2계층` 미완성 상태에서 `3계층` 직원 작업을 시작하지 않는다.
+- 모든 업무는 `AI 채팅`을 단일 진입점으로 가정하고 설계한다.
+
+---
+
+## 5. Claude Code-specific Rules
+
+자동 명령어("현재작업" / "커밋" / "작업준비" / "작업정리") 정의는 §자동 명령어(상단) 참조 — 단일 출처(SSOT) 유지.
+
+§5 는 Claude Code 만의 추가 규칙(자율 결정 / Codex 와 충돌 회피)만 다룬다.
+
+## 자율 결정 원칙
+구현 디테일(슬러그 규칙, 정규식, 변수명, 에러 문구, 정렬 순서, 파일 포맷 세부사항, frontmatter 필드, 충돌 처리 방식, 카테고리 매핑 초기 테이블 등)은 AI가 자율 결정한다. 회장에게 묻지 않는다.
+
+회장에게 묻는 것은 전략 방향(저장 위치, 인터페이스, 작업 범위, 우선순위)뿐이다. 회장 시간을 디테일에 쓰지 않는다.
+
+판단이 갈리는 디테일은 일반적인 베스트 프랙티스를 따른다. 결정 근거를 작업 보고서에 짧게 남긴다.
+
+- **작업 영역**: 진단/디버깅, 문서 정리, 소규모 서버 수정, 빌드 검증, 인텐트 서비스 수정
+- 작업 전 항상 HANDOFF.md를 읽어 Codex가 현재 작업 중인 파일을 확인한다
+- 진단 명령(grep, curl, node -e) 결과를 그대로 보고하고, 지시 없이 추가 수정하지 않는다
+- 사용자가 "다른 작업 하지 마라"고 하면 지시된 작업만 수행한다
+- 완료 후 HANDOFF.md와 CHANGELOG.md를 갱신한다
+- 보고는 한국어로 작성한다
+- UI 화면에 영향을 주는 변경은 미리 알린다
+
+---
+
+## 6. 아키텍처 규칙
+
+### 도메인 분리 (DDD)
+
+| 도메인 디렉토리 | 책임 |
+|----------------|------|
+| `server/trading/` | 매매, 리스크(riskGuard/riskCalculator), 진입 점검(preCheckEngine), 기술적 분석, 거래일지 |
+| `server/google/` | Gmail, Calendar, Drive, Sheets, OAuth |
+| `server/realestate/` | 부동산 PF 엔진 (feasibility, dealPipeline) |
+| `server/finance/` | DART API, 공시·주식 데이터 |
+| `server/intent/` | 인텐트 파싱·라우팅 전용 (intentService.ts). **비즈니스 로직 금지** — 각 도메인 모듈을 호출만 한다 |
+| `server/exchanges/` | 거래소 ccxt 커넥터(Binance/Upbit/Gate/Bybit). 인증 필요한 잔고/포지션/체결 전용 |
+| `server/_core/` | Redis, LLMAdapter, tRPC core, intentRouter — 도메인 간 공통 인프라 |
+
+**연결 규칙**:
+- 도메인 간 직접 import 금지 (예: `trading/`이 `realestate/`를 import 금지)
+- 공유가 필요하면 `server/_core/`를 거쳐 연결한다
+- `intent/`는 모든 도메인을 호출할 수 있지만, 도메인은 `intent/`를 import하지 않는다 (단방향)
+
+---
+
+## 6-1. 모듈 독립성 원칙 (Modular Monolith)
+
+Aston Workstation은 별도 앱/레포로 쪼개지 않는 **Modular Monolith**다. 회장님께는 텔레그램 1개 인터페이스로 보이고, 내부 구현은 도메인 모듈 단위로 분리한다.
+
+- 각 도메인 모듈(`server/wiki`, `server/deals`, `server/trading`, `server/intelligence`, `server/google`, `server/finance`, `server/realestate`)은 다른 도메인 모듈을 직접 import하지 않는다.
+- 모듈 간 데이터 공유는 파일 시스템 경로를 통해서만 한다. 예: `WIKI_ROOT`, `DEALS_ROOT`, Google Drive/Sheets 경로.
+- 공유 유틸리티, 공통 타입, 공통 인프라는 `server/_core/`에만 둔다.
+- `server/intent/`는 라우팅 레이어이므로 도메인 모듈을 호출할 수 있다. 반대로 도메인 모듈은 `server/intent/`를 import하지 않는다.
+- 각 모듈은 자체 `README.md`를 보유하고 책임, 비책임, 데이터 경로, 명령, 의존성, 환경 변수를 명시한다.
+- 새 기능 추가 시 기존 모듈에 추가할지 신규 모듈을 만들지 결정하고, 해당 모듈 `README.md`에 판단 근거를 짧게 기록한다.
+- `npm run check`는 `scripts/check-module-boundaries.ts`를 실행해 도메인 간 직접 import 위반을 검사한다.
+- **도메인 모듈 외부 데이터 주입은 setter 패턴 사용**: knowledge 모듈이 rag yaml 을 직접 import 하지 않고 `_core/index.ts` 가 부팅 시 `setAllowedProjects() / setExtensionUrlMappings() / setUploadAllowedProjects()` 로 주입. 신규 도메인 핸들러도 같은 패턴 따른다 — 모듈 경계 위반 없이 외부 yaml/config 활용.
+
+---
+
+## 7. 코딩 컨벤션
+
+- **파일명**: camelCase (예: `preCheckEngine.ts`, `riskGuard.ts`, `exchangeConnector.ts`)
+- **함수명**: camelCase, 동사 시작 (예: `runPreCheck`, `formatPreCheck`, `getStatus`)
+- **타입/인터페이스**: PascalCase (예: `PreCheckResult`, `RiskGuardState`, `IntentAction`)
+- **상수**: SCREAMING_SNAKE_CASE (예: `KIMCHI_FX_RATE`, `KOREAN_TICKER_MAP`)
+- **에러 처리**:
+  - 외부 API/I/O 호출은 try-catch 필수
+  - catch 블록에 `console.error("[모듈명] context:", e)` 필수 (디버깅용)
+  - 사용자에게 노출되는 에러 메시지는 **한국어**만 (영문 스택 노출 금지, 예: "일부 데이터를 가져오지 못했습니다")
+- **외부 API 호출**:
+  - 공개 데이터(시세·펀딩·캔들 등)는 `fetch` 직접 사용 — `exchangeConnector` 경유 금지 (API 키 미설정 시 전부 실패)
+  - 인증 필요한 데이터(잔고·포지션)만 `exchangeConnector` 사용
+  - 각 fetch 호출은 독립적 try-catch (한 곳 실패가 다른 데이터 차단하지 않도록)
+- **텔레그램 응답**:
+  - `data` 필드 반환 금지 (JSON preview 노출됨)
+  - 한국어 텍스트만 반환, 이모지로 시각 구분 (📋 📈 💰 🛡 ✅ ⚠️ 🚫 등)
+  - `formatXxx()` 함수로 포맷 분리
+- **Dynamic import 는 반드시 `.ts` 확장자 명시**: `await import("../path/file.ts")` — PM2 `node --experimental-strip-types` 런타임 호환. 누락 시 모듈 해석 실패로 운영 사고 (2026-05-11 fd53b07/3e696fb 처리 이력).
+- **multipart 업로드는 base64-in-JSON 으로 처리** (신규 의존성 0): 클라이언트 `FileReader.readAsDataURL` + `express.json({ limit:"50mb" })` 활용. multer/busboy/formidable 추가 금지. Step 1.5 `server/knowledge/wikiUpload.ts` 참고.
+
+---
+
+## 7-1. 인텐트 라우팅 가드 (필수)
+
+채팅 라우팅에서 회수된 사고들을 막기 위한 규칙. 2026-05-12 "검토" 단독 → BTC trading_pre_check 폭주 / Drive URL 환각 / 외부 위키 환각 P0~P3 수정 후 정착.
+
+- **키워드 매처는 명시적 화이트리스트로 가드**: 단일 키워드("검토", "올려줘") 만으로 트레이딩/실행 인텐트 라우팅 금지. crypto ticker (`KNOWN_CRYPTO_TICKERS` 화이트리스트 in `server/trading/reviewReport.ts`) 같은 명시 신호 동시 필요.
+- **`fallbackIntent.ts` 정규식은 단어 경계 명시**: `^...\s+(.+)$` 형태로 시작 위치 + 공백 강제. `compact.includes("검토")` 같은 substring 매칭 지양.
+- **`DEFAULT_SYMBOL` fallback 금지**: ticker 미확인 시 null 반환 → chat fallback 으로 위임. BTC 등 기본값 자동 부여하면 환각·오라우팅 사고.
+- **`TICKER_RE` 제외 목록 적극 보강**: 부동산·회사 약어(PFV/SPC/REIT/NPV/IRR) 와 일반 약어(PDF/API/URL) 누락 시 trading 인텐트로 잘못 흘러감. `preCheckEngine.ts` 의 `EXCLUDE_TICKERS` 참고.
+- **chat fallback systemPrompt 에 환각 가드 명시**: ① Drive URL 임의 생성 금지 ② 외부 위키 사이트(newiki.com / 나무위키 등) 환각 금지 ③ "내위키/위키/회수 자료 = Aston Wiki" 컨텍스트. 가드 누락 시 LLM 이 가짜 링크·외부 사이트 설명 환각. `server/routers/llm.ts` + `server/llm/telegramBot/messageRouter.ts` 양쪽 동시 적용.
+
+---
+
+## 8. 테스트 규칙
+
+- **위치**: 모든 테스트는 `server/__tests__/` 한 곳에 모은다
+- **파일명**: `{모듈명}.test.ts` (예: `riskGuard.test.ts`, `preCheckEngine.test.ts`)
+- **신규 모듈 생성 시**: 테스트 파일 동시 생성 필수
+- **최소 커버리지**: 핵심 함수의 정상 케이스 + 에러 케이스 (네트워크 실패, 잘못된 입력, 빈 응답)
+- **테스트 도구**: vitest (`npm test`)
+- **외부 의존(Telegram 토큰 등)**: 기본 `npm test`에서 분리 — 환경변수 가드로 skip 처리
+
+---
+
+## 9. 파일 크기 제한
+
+- **단일 파일 500줄 초과 금지**. 초과 시 도메인/관심사별 분리 필수.
+- **분리 완료 이력**: `intentService.ts` 는 2026-05-09 Phase 7-B 에서 11개 도메인 핸들러(`intent/handlers/*.ts`) + `pipeline/{planIntent,dispatchIntent,formatReply}.ts` 로 분리 완료. 현재 192줄.
+- **신규 위반 점검** (주기적으로 실행):
+  ```bash
+  find server client -name "*.ts" -o -name "*.tsx" | grep -v __tests__ | grep -v node_modules \
+    | xargs wc -l 2>/dev/null | awk '$1>500 && $2!="total" {print $1, $2}' | sort -rn | head -10
+  ```
+- **분리 원칙**:
+  - 핸들러는 도메인별 파일로
+  - `IntentAction` 유니온 타입은 `intent/types.ts`에 모은다
+  - `parseXxxMessage()`/`formatXxx()`는 해당 도메인 모듈로 이동
+- **컴포넌트(client)도 동일 적용**: `UnifiedChatInterface.tsx`처럼 핵심 UI는 예외, 그 외는 500줄 초과 시 분리

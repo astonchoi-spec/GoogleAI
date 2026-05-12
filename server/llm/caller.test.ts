@@ -5,7 +5,7 @@
 
 import { describe, it, expect } from "vitest";
 import LLMCaller from "./caller";
-import { getModel, getAllEngines, getModelsByEngine } from "./models";
+import { DEFAULT_ENGINE, DEFAULT_MODEL_KEY, getModel, getAllEngines, getModelsByEngine, getDefaultModel } from "./models";
 
 describe("LLMCaller", () => {
   describe("Model Registry", () => {
@@ -150,15 +150,12 @@ describe("LLMCaller", () => {
   });
 
   describe("Default Configuration", () => {
-    it("should have default engine and model", () => {
-      const engines = getAllEngines();
-      expect(engines).toContain("gemma4");
+    it("should default to the configured Gemini Pro model", () => {
+      const defaultModel = getDefaultModel(); // MODIFIED: assert the runtime default model (pro) instead of the legacy flash option.
 
-      const models = getModelsByEngine("gemma4");
-      expect(models.length).toBeGreaterThan(0);
-
-      const defaultModel = models.find((m) => m.key === "e4b");
-      expect(defaultModel).toBeDefined();
+      expect(DEFAULT_ENGINE).toBe("gemini");
+      expect(DEFAULT_MODEL_KEY).toBe("pro");
+      expect(defaultModel.name).toBe("Gemini 2.5 Pro");
     });
   });
 });

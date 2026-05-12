@@ -7,29 +7,22 @@ import { router, protectedProcedure, publicProcedure } from "../_core/trpc.ts";
 import { z } from "zod";
 import {
   getOrCreateConversation,
-  getOrCreateTelegramConversation,
   getConversationMessages,
-  getAllConversationMessages,
+  getConversationMessagesAsc,
   getRecentMessages,
-  searchMessages,
-  saveMessage,
-  updateMessageContent,
   deleteMessage,
+  clearConversationMessages,
+  updateMessage,
+  searchConversationMessages,
+  saveMessage,
   getConversationByTelegramChatId,
   getConversationById,
+  getPinnedConversations,
   updateConversationTitle,
   updateConversationPinned,
+  mergeTelegramConversationIntoUser,
 } from "../db-chat.ts";
 import { forwardToTelegram } from "../telegram-service.ts";
-
-async function assertConversationOwnership(conversationId: number, userId: number) {
-  const conversation = await getConversationById(conversationId);
-  if (!conversation || conversation.userId !== userId) {
-    throw new Error("Access denied");
-  }
-
-  return conversation;
-}
 
 export const chatSyncRouter = router({
   /**
@@ -51,20 +44,19 @@ export const chatSyncRouter = router({
       z.object({
         conversationId: z.number(),
         limit: z.number().max(100).default(50),
-        before: z.date().optional(),
       })
     )
     .query(async ({ input, ctx }) => {
-      await assertConversationOwnership(input.conversationId, ctx.user.id);
+      const conversation = await getConversationById(input.conversationId);
+      if (!conversation || conversation.userId !== ctx.user.id) {
+        throw new Error("Conversation not found");
+      }
 
-      const page = await getConversationMessages(input.conversationId, input.limit, input.before);
-      return {
-        messages: page.messages.map((msg) => ({
-          ...msg,
-          metadata: msg.metadata ? JSON.parse(msg.metadata) : null,
-        })),
-        hasMore: page.hasMore,
-      };
+      const msgs = await getConversationMessages(input.conversationId, input.limit);
+      return msgs.map((msg) => ({
+        ...msg,
+        metadata: msg.metadata ? JSON.parse(msg.metadata) : null,
+      }));
     }),
 
   /**
@@ -78,7 +70,10 @@ export const chatSyncRouter = router({
       })
     )
     .query(async ({ input, ctx }) => {
-      await assertConversationOwnership(input.conversationId, ctx.user.id);
+      const conversation = await getConversationById(input.conversationId);
+      if (!conversation || conversation.userId !== ctx.user.id) {
+        throw new Error("Conversation not found");
+      }
 
       const msgs = await getRecentMessages(input.conversationId, input.since);
       return msgs.map((msg) => ({
@@ -88,33 +83,36 @@ export const chatSyncRouter = router({
     }),
 
   /**
-   * Search messages across the user's conversations
+   * Search conversation messages by keyword/date/source
    */
-  searchMessages: protectedProcedure
+  searchMessages: protectedProcedure // MODIFIED: add server-side message search with filters for unified chat UI.
     .input(
       z.object({
-        keyword: z.string().min(1).max(200),
-        conversationId: z.number().optional(),
+        conversationId: z.number(),
+        query: z.string().max(500).optional(),
         source: z.enum(["all", "web", "telegram"]).default("all"),
-        from: z.date().optional(),
-        to: z.date().optional(),
-        limit: z.number().min(1).max(100).default(25),
+        dateFrom: z.date().optional(),
+        dateTo: z.date().optional(),
+        limit: z.number().min(1).max(200).default(100),
       })
     )
     .query(async ({ input, ctx }) => {
-      const results = await searchMessages({
-        userId: ctx.user.id,
-        keyword: input.keyword,
+      const conversation = await getConversationById(input.conversationId);
+      if (!conversation || conversation.userId !== ctx.user.id) {
+        throw new Error("Conversation not found");
+      }
+
+      const msgs = await searchConversationMessages({
         conversationId: input.conversationId,
+        query: input.query,
         source: input.source,
-        from: input.from,
-        to: input.to,
+        dateFrom: input.dateFrom,
+        dateTo: input.dateTo,
         limit: input.limit,
       });
-
-      return results.map((result) => ({
-        ...result,
-        metadata: result.metadata ? JSON.parse(result.metadata) : null,
+      return msgs.map((msg) => ({
+        ...msg,
+        metadata: msg.metadata ? JSON.parse(msg.metadata) : null,
       }));
     }),
 
@@ -129,9 +127,7 @@ export const chatSyncRouter = router({
         content: z.string(),
       })
     )
-    .mutation(async ({ input, ctx }) => {
-      await assertConversationOwnership(input.conversationId, ctx.user.id);
-
+    .mutation(async ({ input }) => {
       const msg = await saveMessage(
         input.conversationId,
         input.role,
@@ -155,10 +151,8 @@ export const chatSyncRouter = router({
       })
     )
     .mutation(async ({ input }) => {
-      const conversation = await getOrCreateTelegramConversation(
-        input.userId,
-        input.telegramChatId
-      );
+      // Get or create conversation linked to Telegram
+      const conversation = await getOrCreateConversation(input.userId);
 
       const msg = await saveMessage(
         conversation.id,
@@ -180,17 +174,15 @@ export const chatSyncRouter = router({
         title: z.string().max(255),
       })
     )
-    .mutation(async ({ input, ctx }) => {
-      await assertConversationOwnership(input.conversationId, ctx.user.id);
-
+    .mutation(async ({ input }) => {
       await updateConversationTitle(input.conversationId, input.title);
       return { success: true };
     }),
 
   /**
-   * Pin or unpin the current conversation
+   * Toggle conversation pin/favorite state
    */
-  togglePin: protectedProcedure
+  togglePinned: protectedProcedure // MODIFIED: let users mark the active conversation as a favorite.
     .input(
       z.object({
         conversationId: z.number(),
@@ -198,72 +190,120 @@ export const chatSyncRouter = router({
       })
     )
     .mutation(async ({ input, ctx }) => {
-      await assertConversationOwnership(input.conversationId, ctx.user.id);
-      const conversation = await updateConversationPinned(input.conversationId, input.pinned);
-      return {
-        ...conversation,
-      };
+      const conversation = await getConversationById(input.conversationId);
+      if (!conversation || conversation.userId !== ctx.user.id) {
+        throw new Error("Conversation not found");
+      }
+
+      await updateConversationPinned(input.conversationId, input.pinned);
+      return { success: true, pinned: input.pinned };
     }),
 
   /**
-   * Edit a message in the conversation
+   * List pinned conversations for the current user
    */
-  editMessage: protectedProcedure
-    .input(
-      z.object({
-        conversationId: z.number(),
-        messageId: z.number(),
-        content: z.string().min(1).max(4000),
-      })
-    )
-    .mutation(async ({ input, ctx }) => {
-      await assertConversationOwnership(input.conversationId, ctx.user.id);
-
-      const msg = await updateMessageContent(input.messageId, input.conversationId, input.content);
-      return {
-        ...msg,
-        metadata: msg.metadata ? JSON.parse(msg.metadata) : null,
-      };
-    }),
+  getPinnedConversations: protectedProcedure.query(async ({ ctx }) => { // MODIFIED: expose favorites for future sidebar/history surfaces.
+    return getPinnedConversations(ctx.user.id);
+  }),
 
   /**
-   * Delete a message from the conversation
+   * Export conversation as JSON with full message history
    */
-  deleteMessage: protectedProcedure
-    .input(
-      z.object({
-        conversationId: z.number(),
-        messageId: z.number(),
-      })
-    )
-    .mutation(async ({ input, ctx }) => {
-      await assertConversationOwnership(input.conversationId, ctx.user.id);
-      await deleteMessage(input.messageId, input.conversationId);
-      return { success: true };
-    }),
-
-  /**
-   * Export a conversation as JSON
-   */
-  exportConversation: protectedProcedure
+  exportConversation: protectedProcedure // MODIFIED: expose structured conversation export for chat history download.
     .input(
       z.object({
         conversationId: z.number(),
       })
     )
     .query(async ({ input, ctx }) => {
-      const conversation = await assertConversationOwnership(input.conversationId, ctx.user.id);
-      const messages = await getAllConversationMessages(input.conversationId);
+      const conversation = await getConversationById(input.conversationId);
+      if (!conversation || conversation.userId !== ctx.user.id) {
+        throw new Error("Conversation not found");
+      }
 
+      const messages = await getConversationMessagesAsc(input.conversationId);
       return {
         conversation: {
           ...conversation,
-          messages: messages.map((msg) => ({
-            ...msg,
-            metadata: msg.metadata ? JSON.parse(msg.metadata) : null,
-          })),
+          createdAt: conversation.createdAt?.toISOString?.() ?? conversation.createdAt,
+          updatedAt: conversation.updatedAt?.toISOString?.() ?? conversation.updatedAt,
         },
+        messages: messages.map((msg) => ({
+          ...msg,
+          metadata: msg.metadata ? JSON.parse(msg.metadata) : null,
+          createdAt: msg.createdAt?.toISOString?.() ?? msg.createdAt,
+        })),
       };
+    }),
+
+  /**
+   * Delete a single message from the current conversation
+   */
+  deleteMessage: protectedProcedure // MODIFIED: allow users to prune a message from the unified timeline.
+    .input(
+      z.object({
+        conversationId: z.number(),
+        messageId: z.number(),
+      })
+    )
+    .mutation(async ({ input, ctx }) => {
+      const conversation = await getConversationById(input.conversationId);
+      if (!conversation || conversation.userId !== ctx.user.id) {
+        throw new Error("Conversation not found");
+      }
+
+      await deleteMessage(input.conversationId, input.messageId);
+      return { success: true };
+    }),
+
+  /**
+   * Clear all messages in the current conversation
+   */
+  clearConversation: protectedProcedure // MODIFIED: give the UI a durable chat reset action instead of only clearing local state.
+    .input(
+      z.object({
+        conversationId: z.number(),
+      })
+    )
+    .mutation(async ({ input, ctx }) => {
+      const conversation = await getConversationById(input.conversationId);
+      if (!conversation || conversation.userId !== ctx.user.id) {
+        throw new Error("Conversation not found");
+      }
+
+      await clearConversationMessages(input.conversationId);
+      return { success: true };
+    }),
+
+  /**
+   * Edit a single message in the current conversation
+   */
+  editMessage: protectedProcedure // MODIFIED: add message editing capability for the unified chat timeline.
+    .input(
+      z.object({
+        conversationId: z.number(),
+        messageId: z.number(),
+        content: z.string().trim().min(1).max(10_000),
+      })
+    )
+    .mutation(async ({ input, ctx }) => {
+      const conversation = await getConversationById(input.conversationId);
+      if (!conversation || conversation.userId !== ctx.user.id) {
+        throw new Error("Conversation not found");
+      }
+
+      await updateMessage(input.conversationId, input.messageId, input.content);
+      return { success: true };
+    }),
+
+  /**
+   * Link a Telegram chat to the current user's conversation (manual merge)
+   */
+  linkTelegramChat: protectedProcedure
+    .input(z.object({ telegramChatId: z.number() }))
+    .mutation(async ({ input, ctx }) => {
+      const ok = await mergeTelegramConversationIntoUser(input.telegramChatId, ctx.user.id);
+      return { success: ok };
     }),
 
   /**
@@ -276,7 +316,7 @@ export const chatSyncRouter = router({
     }),
 
   /**
-   * Forward web messages to Telegram (web -> telegram sync)
+   * Forward web messages to Telegram (양방향 sync: web → telegram)
    */
   forwardToTelegram: protectedProcedure
     .input(
@@ -286,12 +326,11 @@ export const chatSyncRouter = router({
         aiResponse: z.string(),
       })
     )
-    .mutation(async ({ input, ctx }) => {
-      const conversation = await assertConversationOwnership(input.conversationId, ctx.user.id);
-      if (!conversation.telegramChatId) {
+    .mutation(async ({ input }) => {
+      const conversation = await getConversationById(input.conversationId);
+      if (!conversation?.telegramChatId) {
         return { sent: false, reason: "Telegram chat not linked yet" };
       }
-
       await forwardToTelegram(conversation.telegramChatId, `👤 ${input.userMessage}`);
       await forwardToTelegram(conversation.telegramChatId, `🤖 ${input.aiResponse}`);
       return { sent: true };

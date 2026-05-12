@@ -1,0 +1,311 @@
+# Aston 통합 지식 RAG 매핑 (Track A 외부 NotebookLM ↔ Track B 내부 Discovery Engine)
+#
+# 작성: 2026-05-09 (Phase 1, 28개 노트북 1차 채움)
+# 베이스: index/notebooklm-mapping.yaml (Track A 28개)
+# 목적: 외부 NotebookLM 노트북을 내부 GCP Discovery Engine 데이터 스토어와 매핑
+#
+# Schema:
+#   notebook_name      : NotebookLM 화면에서 보이는 정확한 노트북 이름
+#   project            : Wiki 프로젝트 폴더명 (영문 케밥)
+#   display_name       : UI/텔레그램 노출용 한글 짧은 이름
+#   category           : real-estate / system / trading / learning / legal /
+#                        personal / research / business / health / mongolia
+#   status             : active / paused / archived
+#   data_store         : Track B Discovery Engine 데이터 스토어 ID (9개 그룹)
+#   data_store_filter  : 스토어 안에서 해당 프로젝트만 필터링하는 메타데이터 표현식
+#
+# 선택 필드:
+#   notebook_url       : NotebookLM 외부 링크 (회장님이 채움 — 채워진 카드만 외부 점프 활성)
+#   notes              : 추가 메모
+#   tags               : 검색용 태그 배열
+#   created_at         : ISO 8601 (YYYY-MM-DD)
+#
+# 데이터 스토어 그룹핑 (9개):
+#   ds-real-estate-deals      : 부동산 PF 11건
+#   ds-trading-research       : 트레이딩·시스템 자동화 2건 (system 카테고리도 여기로 흡수)
+#   ds-learning-ai            : 학습·AI 에이전트 6건
+#   ds-research-macro         : 리서치·매크로 3건
+#   ds-legal-contracts        : 법무·계약 1건
+#   ds-business-operations    : 회사·사업 운영 1건
+#   ds-mongolia-business      : 몽골 사업 1건
+#   ds-personal-strategy      : 개인 전략·여행 2건
+#   ds-personal-health        : 가족·건강 1건
+
+notebooks:
+  # ── 미매핑 회수 fallback (Extension 등에서 yaml 미등록 URL 처리) ───────────
+  - notebook_name: "(미매핑 회수 fallback)"
+    project: "_unmapped"
+    display_name: "미매핑 회수"
+    category: "research"
+    status: "active"
+    data_store: "ds-research-macro"
+    data_store_filter: "project=_unmapped"
+    notes: "Extension 또는 Drive Watcher 가 yaml notebook_url 매칭 실패 시 임시 보관. 회장님이 페이지에서 정확한 project 로 이동시키거나 yaml 에 notebook_url 추가."
+
+  # ── 부동산 PF (11건 → ds-real-estate-deals) ──────────────────
+  - notebook_name: "한남동 644 시그니처 공동주택 개발사업 투자 설명서"
+    project: "hannam-644"
+    display_name: "한남동 644 시그니처"
+    category: "real-estate"
+    status: "active"
+    data_store: "ds-real-estate-deals"
+    data_store_filter: "project=hannam-644"
+    created_at: "2026-04-13"
+
+  - notebook_name: "한남644PFV"
+    project: "hannam-644-pfv"
+    display_name: "한남644 PFV"
+    category: "real-estate"
+    status: "active"
+    data_store: "ds-real-estate-deals"
+    data_store_filter: "project=hannam-644-pfv"
+    notes: "hannam-644 sub-project (PFV 구조·후순위 리스크)"
+    created_at: "2026-03-24"
+
+  - notebook_name: "시흥시 대야동 시그니웰메디타워 신탁부동산 공매 공고 및 계약서"
+    project: "siheung-daeya-signiwell"
+    display_name: "시흥 대야동 시그니웰"
+    category: "real-estate"
+    status: "active"
+    data_store: "ds-real-estate-deals"
+    data_store_filter: "project=siheung-daeya-signiwell"
+    created_at: "2026-04-28"
+
+  - notebook_name: "퇴촌 프르디앙리버타워 오피스텔 및 도시형생활주택 신탁부동산 공매공고"
+    project: "toechon-prudie-river"
+    display_name: "퇴촌 프르디앙리버타워"
+    category: "real-estate"
+    status: "active"
+    data_store: "ds-real-estate-deals"
+    data_store_filter: "project=toechon-prudie-river"
+    created_at: "2026-04-28"
+
+  - notebook_name: "Pyeongchang 700 Wellness Leisure Development Plan"
+    project: "pyeongchang-700-wellness"
+    display_name: "평창 700 웰니스"
+    category: "real-estate"
+    status: "active"
+    data_store: "ds-real-estate-deals"
+    data_store_filter: "project=pyeongchang-700-wellness"
+    created_at: "2025-05-25"
+
+  - notebook_name: "포항_해상케이블카"
+    project: "pohang-cable-car"
+    display_name: "포항 해상케이블카"
+    category: "real-estate"
+    status: "active"
+    data_store: "ds-real-estate-deals"
+    data_store_filter: "project=pohang-cable-car"
+    created_at: "2026-04-25"
+
+  - notebook_name: "기흥구 중동 1042-7 토지매매계약서 및 합의서"
+    project: "jungdong-1042-7"
+    display_name: "기흥 중동 1042-7"
+    category: "real-estate"
+    status: "active"
+    data_store: "ds-real-estate-deals"
+    data_store_filter: "project=jungdong-1042-7"
+    tags: ["계약서", "토지매매"]
+    created_at: "2026-04-16"
+
+  - notebook_name: "행당동 역세권 장기전세주택 사업수지 및 개발 요약"
+    project: "haengdang-station"
+    display_name: "행당동 역세권 장기전세"
+    category: "real-estate"
+    status: "active"
+    data_store: "ds-real-estate-deals"
+    data_store_filter: "project=haengdang-station"
+    created_at: "2026-04-17"
+
+  - notebook_name: "에버랜드 시니어타운_임대형"
+    project: "everland-senior-town"
+    display_name: "에버랜드 시니어타운"
+    category: "real-estate"
+    status: "active"
+    data_store: "ds-real-estate-deals"
+    data_store_filter: "project=everland-senior-town"
+    created_at: "2026-03-31"
+
+  - notebook_name: "역복동 PF 용역수수료 및 자문료 지급 확약서"
+    project: "yeokbuk-pf"
+    display_name: "역북동 PF"
+    category: "real-estate"
+    status: "active"
+    data_store: "ds-real-estate-deals"
+    data_store_filter: "project=yeokbuk-pf"
+    notes: "스크린샷 표기 '역복동' → 실제는 '역북동' PF로 추정. 회장님 확인 후 정정 가능"
+    tags: ["확약서", "자문료"]
+    created_at: "2026-03-31"
+
+  - notebook_name: "기숙사형학원 신축 PF 추진 가이드"
+    project: "dormitory-academy-pf"
+    display_name: "기숙사형학원 신축 PF"
+    category: "real-estate"
+    status: "active"
+    data_store: "ds-real-estate-deals"
+    data_store_filter: "project=dormitory-academy-pf"
+    created_at: "2026-03-10"
+
+  # ── 트레이딩·시스템 자동화 (2건 → ds-trading-research) ──────
+  - notebook_name: "Aston-Quant-Guard 오토퍼스 실행 노트북"
+    project: "system-aston-quant-guard"
+    display_name: "Aston Quant Guard"
+    category: "system"
+    status: "active"
+    data_store: "ds-trading-research"
+    data_store_filter: "project=system-aston-quant-guard"
+    created_at: "2026-05-04"
+
+  - notebook_name: "트레이딩뷰 봇 및 퀀트 전략 자동화 시스템 가이드"
+    project: "system-trading-automation"
+    display_name: "트레이딩 자동화"
+    category: "trading"
+    status: "active"
+    data_store: "ds-trading-research"
+    data_store_filter: "project=system-trading-automation"
+    created_at: "2026-05-04"
+
+  # ── 학습·AI 에이전트 (6건 → ds-learning-ai) ─────────────────
+  - notebook_name: "AI 에이전트와 하네스 엔지니어링 실전 가이드"
+    project: "learning-ai-harness"
+    display_name: "AI 하네스 엔지니어링"
+    category: "learning"
+    status: "active"
+    data_store: "ds-learning-ai"
+    data_store_filter: "project=learning-ai-harness"
+    created_at: "2026-05-03"
+
+  - notebook_name: "NotebookLM 활용법과 금융 및 미디어 분석 전략"
+    project: "learning-notebooklm"
+    display_name: "NotebookLM 활용법"
+    category: "learning"
+    status: "active"
+    data_store: "ds-learning-ai"
+    data_store_filter: "project=learning-notebooklm"
+    created_at: "2026-05-03"
+
+  - notebook_name: "온톨로지 기반 AI 에이전트"
+    project: "learning-ontology-agent"
+    display_name: "온톨로지 AI 에이전트"
+    category: "learning"
+    status: "active"
+    data_store: "ds-learning-ai"
+    data_store_filter: "project=learning-ontology-agent"
+    created_at: "2026-04-19"
+
+  - notebook_name: "보안과 효율을 잡은 차세대 AI 에이전트, 맥스클로"
+    project: "learning-maxclaw"
+    display_name: "맥스클로 (차세대 AI)"
+    category: "learning"
+    status: "active"
+    data_store: "ds-learning-ai"
+    data_store_filter: "project=learning-maxclaw"
+    created_at: "2026-04-08"
+
+  - notebook_name: "실리콘밸리 엔지니어의 클로드 코드 활용법과 메타 생존기"
+    project: "learning-claude-code"
+    display_name: "클로드 코드 활용법"
+    category: "learning"
+    status: "active"
+    data_store: "ds-learning-ai"
+    data_store_filter: "project=learning-claude-code"
+    created_at: "2026-04-07"
+
+  - notebook_name: "AI 에이전트와 오케스트레이션으로 실현하는 1인 기업의 미래"
+    project: "learning-solo-founder"
+    display_name: "1인 기업 오케스트레이션"
+    category: "learning"
+    status: "active"
+    data_store: "ds-learning-ai"
+    data_store_filter: "project=learning-solo-founder"
+    created_at: "2026-04-05"
+
+  # ── 리서치·매크로 (3건 → ds-research-macro) ─────────────────
+  - notebook_name: "트럼프의 반세계화와 미국의 새로운 에너지 패권 전략+비트코인"
+    project: "research-trump-energy"
+    display_name: "트럼프·에너지·비트코인"
+    category: "research"
+    status: "active"
+    data_store: "ds-research-macro"
+    data_store_filter: "project=research-trump-energy"
+    created_at: "2026-05-02"
+
+  - notebook_name: "2026 김창익의 빅 픽처: 빛 없는 돈의 홍수"
+    project: "research-kim-changik-2026"
+    display_name: "김창익 빅픽처 2026"
+    category: "research"
+    status: "active"
+    data_store: "ds-research-macro"
+    data_store_filter: "project=research-kim-changik-2026"
+    created_at: "2026-05-02"
+
+  - notebook_name: "2026년 3월 글로벌 경제 동향과 유가 전망"
+    project: "research-march-2026-macro"
+    display_name: "2026.3 글로벌·유가"
+    category: "research"
+    status: "active"
+    data_store: "ds-research-macro"
+    data_store_filter: "project=research-march-2026-macro"
+    created_at: "2026-03-26"
+
+  # ── 법무·계약 (1건 → ds-legal-contracts) ────────────────────
+  - notebook_name: "개발행위 인허가 오류와 설계 리셋 전략 제언"
+    project: "legal-permit-reset"
+    display_name: "인허가 오류·설계 리셋"
+    category: "legal"
+    status: "active"
+    data_store: "ds-legal-contracts"
+    data_store_filter: "project=legal-permit-reset"
+    notes: "부동산 인허가 법무 일반론. 특정 사이트로 귀속 안 됨"
+    created_at: "2026-04-08"
+
+  # ── 회사·사업 (1건 → ds-business-operations) ────────────────
+  - notebook_name: "태화건설 2026년 공사 수주 세부 현황 보고서"
+    project: "company-taehwa-2026"
+    display_name: "태화건설 2026 수주"
+    category: "business"
+    status: "active"
+    data_store: "ds-business-operations"
+    data_store_filter: "project=company-taehwa-2026"
+    created_at: "2026-03-27"
+
+  # ── 몽골 사업 (1건 → ds-mongolia-business) ──────────────────
+  - notebook_name: "화이트리어 역삼·몽골 공동창업 및 총판 확장 전략"
+    project: "mongolia-whitelier"
+    display_name: "화이트리어 역삼·몽골"
+    category: "mongolia"
+    status: "active"
+    data_store: "ds-mongolia-business"
+    data_store_filter: "project=mongolia-whitelier"
+    notebook_url: "https://notebooklm.google.com/notebook/9a7481fc-45a9-4db6-981b-3c6d99d4f11c"
+    tags: ["공동창업", "총판"]
+    created_at: "2026-04-22"
+
+  # ── 개인·전략·여행 (2건 → ds-personal-strategy) ─────────────
+  - notebook_name: "2026 중국 상하이 여행 가이드: 비자부터 결제 및 코스 총정리"
+    project: "personal-shanghai-travel"
+    display_name: "상하이 여행 2026"
+    category: "personal"
+    status: "active"
+    data_store: "ds-personal-strategy"
+    data_store_filter: "project=personal-shanghai-travel"
+    created_at: "2026-05-02"
+
+  - notebook_name: "2026 정유일주 사업 운용 및 커리어 점검 전략 보고서"
+    project: "personal-jung-yu-ilju-2026"
+    display_name: "정유일주 사업·커리어 점검"
+    category: "personal"
+    status: "active"
+    data_store: "ds-personal-strategy"
+    data_store_filter: "project=personal-jung-yu-ilju-2026"
+    created_at: "2026-04-01"
+
+  # ── 가족·건강 (1건 → ds-personal-health) ────────────────────
+  - notebook_name: "만성 췌장염 관리와 수명 유지를 위한 실천 지침"
+    project: "health-pancreatitis"
+    display_name: "만성 췌장염 관리"
+    category: "health"
+    status: "active"
+    data_store: "ds-personal-health"
+    data_store_filter: "project=health-pancreatitis"
+    created_at: "2026-04-17"

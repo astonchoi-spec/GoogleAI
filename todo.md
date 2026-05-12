@@ -1,525 +1,825 @@
-# Project TODO
-
-## Bug Fixes - Session 2
-
-- [x] Fix model identity mismatch (Gemini 2.5 Flash vs 1.5 Pro)
-  - Added current date/time to system prompt
-  - Added explicit model identification in system prompt
-  - Updated both web chat and Telegram bot prompts
-  
-- [x] Fix Telegram bot webhook integration
-  - Removed `launch()` call that fails in sandbox
-  - Switched to webhook-only mode
-  - Bot now initializes successfully and awaits webhook updates
-  
-- [x] Write tests for LLM router enhancements
-  - Added 5 new tests for system prompt validation
-  - All 44 tests passing
-
-## New Features - Session 3
-
-- [x] Create API Settings management UI
-  - Settings page/modal for managing API keys
-  - Support for Gemini, OpenAI, Anthropic, Ollama
-  - User-friendly form with secure input fields
-  - Save/update/delete API keys
-  
-- [x] Implement real chat functionality
-  - Connect web chat to actual LLM responses via user API keys
-  - LLMCaller.setApiKeys() method for dynamic key injection
-  - Error handling and user feedback
-  
-- [x] API key validation
-  - Validate keys before saving
-  - Test API connectivity for each provider
-  - Show validation status to user
-  
-- [x] Database schema for API settings
-  - apiSettings table created and migrated
-  - Per-user API key storage
-  
-- [x] Backend API router
-  - getAll, save, delete, validate procedures
-  - Protected routes with user authentication
-  
-- [x] Frontend UI integration
-  - ApiSettingsModal component
-  - API settings button in chat interface
-  - Real-time validation feedback
-
-## Security & Quality Fixes - Session 3
-
-- [x] Encrypt API keys in database
-  - AES-256-GCM encryption utility created
-  - Encrypt on save, decrypt on use
-  - Per-user, per-provider storage
-  
-- [x] Fix authentication flow
-  - Changed chat to protectedProcedure
-  - Requires login to save/use API keys
-  - Per-request isolation
-  
-- [x] Fix LLM caller isolation
-  - Create per-request LLMCaller instances
-  - Prevent API key leakage across users
-  - Thread-safe operation
-  
-- [x] Add user feedback
-  - Modal has loading states and validation feedback
-  - Toast notifications ready for integration
-
-## Deployment Ready
-
-- [x] All tests passing (57/57)
-- [x] TypeScript compilation successful
-- [x] Dev server running
-- [x] Security fixes completed
-  - Database unique constraint added
-  - ENCRYPTION_KEY environment variable required
-  - Encryption tests passing
-- [x] Ready to publish to production
-
-## Telegram ↔ Web Chat Synchronization (Session 4)
-
-- [x] Database schema for unified conversations
-  - conversations table created and migrated
-  - messages table created and migrated
-  - Link Telegram chat_id to user account
-
-- [x] Backend message sync API
-  - Save messages from both sources to unified table
-  - Retrieve conversation history
-  - Real-time message polling (2-second interval)
-
-- [x] Telegram bot integration
-  - Forward user messages to database ✓
-  - Forward AI responses back to Telegram ✓
-  - Messages linked to conversations table ✓
-
-- [x] Frontend real-time updates
-  - Polling for live messages (2-second interval)
-  - Show message source indicator (Web/Telegram icons)
-  - Unified chat interface component created
-
-- [x] Testing
-  - All 57 tests passing ✓
-  - Telegram bot integration verified ✓
-  - Database sync verified ✓
-  - Message persistence confirmed ✓
-
-## UI/UX Improvements - Session 5
-
-- [x] Fix MySQL database compatibility issues
-  - Fixed .returning() method not supported in MySQL
-  - Fixed WHERE clause SQL syntax errors
-  - Fixed insertId BigInt type handling
-  - All 57 tests passing
-
-- [x] Improve chat interface layout
-  - Moved input area from bottom to top (fixed position)
-  - Input field always visible and accessible
-  - Settings panel integrated into top section
-  - Better visual hierarchy and user experience
-
-## Bug Fixes - Session 6
-
-- [x] Fix session isolation bug (web ↔ Telegram shared state)
-  - llm.ts was creating its own `new SessionManager()` instance
-  - Changed to import the singleton `sessionManager` from session.ts
-  - Web engine/model changes now apply to Telegram bot too (same in-memory store)
-
-- [x] Fix model switch not applying (UI)
-  - Added "적용" button to settings panel in UnifiedChatInterface
-  - Engine change auto-resets model to first available
-  - Success feedback shown after apply
-
-- [x] Fix system prompt hardcoded model identity
-  - Was always saying "저는 Google Gemini 2.5 Flash 모델입니다"
-  - Now uses `currentModel?.name` from actual session state
-
-- [x] Fix API settings modal not opening
-  - `isOpen` prop was missing in UnifiedChatInterface
-  - Fixed to pass `isOpen={showApiSettings}`
-
-- [x] Fix engines dropdown React render error
-  - engines data is `{name, models}[]` not `string[]`
-  - Fixed to use `engine.name` as key and value
-
-- [x] UI: input to bottom, info panels to empty state
-  - Moved message input from top to bottom
-  - Info panels (engines/services/commands) shown only in empty state
-  - Chat page changed to full-height layout (no overlap)
-
-## Bug Fixes & UX - Session 7
-
-- [x] Fix Telegram ↔ Web conversation sync (conversation ID mismatch)
-  - Telegram bot was using Telegram user ID as DB userId → separate conversations
-  - Fixed: bot now finds conversation by telegramChatId, or links to admin(userId=1) conversation
-  - Web and Telegram now share the same conversation row
-
-- [x] Fix Telegram bot system prompt hardcoding
-  - Was hardcoded to "Google Gemini 2.5 Flash"
-  - Now uses getModel(session.engine, session.modelKey) dynamically
-
-- [x] Add ENCRYPTION_KEY to .env
-  - Required for API key encryption (AES-256-GCM)
-  - Was missing, causing crash on API key save
-
-- [x] Add login notice banner to Chat page
-  - Shows amber warning when not authenticated
-  - Direct link to /login page
-  - Telegram sync requires login to work
-
-- [x] Add AI Chat link to Sidebar navigation
-  - Desktop and mobile sidebars both updated
-  - Quick access from Home page to /chat
-
-## Google Workspace Expansion - Session 9 (2026-04-23)
-
-- [x] Monthly Google Calendar view
-  - Added month grid UI with today/current selection state
-  - Merged personal events with Korean holiday calendar
-  - Added day detail panel with delete actions
-
-- [x] Drive file workflow
-  - Added folder listing and upload endpoint
-  - Added file download/export support for Telegram delivery
-  - Supports Google Docs, Sheets, and Slides exports
-
-- [x] Gmail reliability
-  - Encoded email subject headers as UTF-8 Base64
-  - Improved compatibility for non-ASCII subjects
-
-- [x] Telegram Google Workspace command bridge
-  - Added intent parsing for Gmail, Calendar, Drive, and Sheets actions
-  - Executes Workspace commands before falling back to normal chat replies
-
-- [x] Navigation and UX polish
-  - Added persistent navbar outside the home page
-  - Added toast feedback for engine switching and message send failures
-
-- [x] Runtime and callback fixes
-  - Fixed static asset path resolution for source and built server runs
-  - Changed Google OAuth callback to redirect back into the app
-
-## Critical Bug Fix - Session 8 (2026-04-22)
-
-- [x] Diagnose Telegram ↔ Web 양방향 동기화 불가 원인
-  - MySQL이 설치/실행되지 않아 DB 자체가 ECONNREFUSED 상태
-  - 텔레그램 봇은 in-memory 세션으로 작동 중이었으나 메시지가 DB에 저장 안 됨
-  - Web 폴링(getRecentMessages)이 conversationId를 얻지 못해 비활성화 상태
-
-- [x] MySQL → SQLite(libsql) 전환
-  - @libsql/client 패키지 설치
-  - drizzle/schema.ts: mysql-core → sqlite-core 전환 (mysqlTable, mysqlEnum 등 모두 교체)
-  - server/db.ts: mysql2 드라이버 → libsql 드라이버, onDuplicateKeyUpdate → onConflictDoUpdate
-  - server/db-chat.ts: insertId → .returning() 방식으로 전환 (SQLite 호환)
-  - drizzle.config.ts: dialect mysql → sqlite
-  - .env: DATABASE_URL을 file:./data/chat.db 로 변경
-  - data/chat.db: SQLite 파일 DB 자동 생성 (서버 실행 시 별도 설치 불필요)
-
-- [x] Web → Telegram 포워딩 구현 (기존 미구현 방향)
-  - server/telegram-service.ts: 봇 인스턴스 싱글턴 서비스 신규 생성
-  - server/llm/telegram-bot.ts: 생성자에서 registerTelegramBot() 호출
-  - server/routers/chat-sync.ts: forwardToTelegram tRPC mutation 추가
-    (conversationId로 telegramChatId 조회 → 유저 메시지 + AI 응답 Telegram 전송)
-  - client/UnifiedChatInterface.tsx: AI 응답 수신 후 forwardToTelegramMutation 호출
-
-- [x] 최종 양방향 동작 확인
-  - Telegram → Web: 텔레그램 메시지 → DB 저장 → 웹 2초 폴링 표시 ✅
-  - Web → Telegram: 웹 메시지 → AI 응답 → 텔레그램 양쪽 동시 표시 ✅
-
-## Remaining Features (To Do)
-
-- [x] Message search functionality
-  - Search conversations by keyword
-  - Filter by date range
-  - Filter by source (web/telegram)
-  - Search UI component
-
-- [x] Toast notifications system
-  - New message alerts
-  - API key save/delete confirmations
-  - Error notifications
-  - Success feedback
-
-- [x] Advanced chat features
-  - [x] Message editing capability
-  - [x] Message deletion
-  - [x] Conversation export (PDF/JSON)
-  - [x] Conversation pinning/favorites
-
-- [ ] User profile and settings
-  - User preference management
-  - Theme customization (dark/light mode)
-  - Notification preferences
-  - Privacy settings
-
-- [ ] Analytics and monitoring
-  - Message count statistics
-  - API usage tracking
-  - Response time metrics
-  - User activity logs
-
-- [x] Mobile responsiveness
-  - Optimize layout for mobile devices
-  - Touch-friendly buttons and inputs
-  - Mobile-specific UI adjustments
-
-- [x] Performance optimization
-  - Message pagination (load older messages on scroll)
-  - Lazy loading for images/media
-  - Database query optimization
-  - Caching strategy
-
-- [ ] Production deployment
-  - Environment configuration for production
-  - Database backup strategy
-  - Error monitoring and logging
-  - Security audit
-  - Performance testing
-  - Final QA testing
-
-## Work Log - 2026-04-24
-
-- [x] 작업 11. 알림 엔진
-  - `server/alerts/alertEngine.ts` 추가
-  - BullMQ `alerts` 큐와 10초 반복 Worker 구성
-  - Redis `active:alerts` 기반 알림 저장/조회/삭제
-  - 가격, RSI, 펀딩비, 김프 알림 조건 체크
-  - Telegram 발송 연동 및 1회 발동 후 비활성화 처리
-  - 커밋: `1be11d8 feat: add alert engine`
-
-- [x] 작업 12. 선물 리스크 계산기
-  - `server/trading/riskCalculator.ts` 추가
-  - 롱/숏 청산가, 손절가, 1R/2R/3R 목표가, 최대손실 계산
-  - AI 채팅 출력용 한국어 리스크 리포트 포맷 추가
-  - 커밋: `5e776c5 feat: add futures risk calculator`
-
-- [x] 작업 13. 사업성 분석 엔진
-  - `server/realestate/feasibilityEngine.ts` 추가
-  - PF 개발사업 수입, 비용, 사업이익, IRR, DSCR, 손익분기 분양률 계산
-  - 사업성 판정: 사업성 양호 / 보통 / 미흡
-  - AI 채팅 출력용 한국어 사업성 보고서 포맷 추가
-  - 커밋: `a33699f feat: add real estate feasibility engine`
-
-- [x] 작업 14. 공공데이터 API 연동
-  - `server/realestate/publicDataAPI.ts` 추가
-  - 토지이용규제, 건축물대장, 실거래가 조회 함수 추가
-  - `DATA_GO_KR_API_KEY` 환경변수 추가
-  - JSON/XML 응답 및 API 오류 처리
-  - 커밋: `55b0fe4 feat: add public data api client`
-
-- [x] 작업 15. PF 딜 파이프라인
-  - `server/realestate/dealPipeline.ts` 추가
-  - Google Sheets `PF딜관리` 시트 기반 딜 CRUD 일부 구현
-  - 단계 변경, 포트폴리오 요약, Calendar 마일스톤 이벤트 생성
-  - 커밋: `f29715a feat: add pf deal pipeline`
-
-- [x] 작업 16. DART 공시 API 연동
-  - `server/finance/dartAPI.ts` 추가
-  - 공시 목록, 재무제표, 회사 기본정보 조회 함수 추가
-  - `DART_API_KEY` 환경변수 추가
-  - DART `status/message` 오류 처리
-  - 커밋: `76d8505 feat: add dart api client`
-
-- [x] 검증
-  - 각 작업 후 `npm.cmd run check` 통과
-  - 각 작업 후 `npm.cmd run build` 통과
-  - 신규 모듈 import 및 API 키 누락 경로 확인
-
-## Phase 3 Workflow - 통합 연결
-
-### 목표
-
-- Phase 2에서 만든 독립 백엔드 모듈을 기존 tRPC, AI 채팅, UI에 연결한다.
-- 기존 홈 / AI 채팅 / Google Workspace 동작은 유지한다.
-- 조회성 기능과 실행성 기능을 분리해서 실사용 중 오동작 위험을 줄인다.
-
-### 작업 17. tRPC 라우터 등록
-
-- [ ] `server/trpc/routers/trading.ts` 생성
-  - 거래소 잔고 조회
-  - 포지션 조회
-  - 기술적 분석 조회
-  - 선물 리스크 계산
-  - 알림 목록/추가/삭제
-
-- [ ] `server/trpc/routers/realestate.ts` 생성
-  - PF 딜 목록/추가/단계 변경/요약
-  - 사업성 분석 실행
-  - 토지조회/건축물대장/실거래가 조회
-
-- [ ] `server/trpc/routers/finance.ts` 생성
-  - DART 공시 조회
-  - DART 재무제표 조회
-  - DART 회사 검색
-
-- [ ] `appRouter`에 신규 라우터 등록
-  - 모든 input은 zod 검증
-  - API 키 누락, Google Auth 누락, Redis 미연결 오류 메시지 정리
-
-### 작업 18. AI 의도 파싱 라우터
-
-- [ ] `server/trpc/routers/intent.ts` 또는 기존 LLM 라우터 확장
-  - Gemini로 자연어 의도 분류
-  - intent: trading / realestate / finance / google / chat
-  - action: 조회 / 분석 / 생성 / 수정 / 삭제 구분
-
-- [ ] 조회성 액션 먼저 연결
-  - 잔고 조회
-  - 포지션 확인
-  - BTC 기술적 분석
-  - 선물 리스크 계산
-  - PF 현황 요약
-  - 사업성 분석
-  - DART 공시 조회
-
-- [ ] 실행성 액션은 확인 단계 추가
-  - 알림 추가
-  - PF 딜 추가
-  - PF 단계 변경
-  - Calendar 이벤트 생성
-  - Sheets 저장
-
-- [ ] AI 응답 포맷 통일
-  - 성공: 요약 + 주요 수치 + 다음 액션
-  - 실패: 원인 + 필요한 설정값 + 재시도 방법
-
-### 작업 19. UI ↔ 백엔드 연결
-
-- [ ] 트레이딩 페이지 연결
-  - 대시보드: 잔고, 포지션, 김프, 기술적 분석
-  - 매매일지: Sheets 기반 거래내역/통계
-  - 알림설정: 알림 목록/추가/삭제
-
-- [ ] 부동산PF 페이지 연결
-  - 딜 파이프라인: Sheets 기반 딜 목록/단계 변경
-  - 사업성분석: 입력값 → tRPC → 결과 카드
-  - 토지조회: 공공데이터 API 결과 표시
-
-- [ ] 홈 위젯 연결
-  - 트레이딩 요약 실데이터
-  - PF 포트폴리오 요약 실데이터
-  - 빠른 AI 명령 → AI 채팅 자동 실행
-
-- [ ] AI 채팅 확장 연결
-  - 퀵 액션 버튼을 intent 라우터로 연결
-  - 마이크 입력 자동 전송 유지
-  - TTS는 AI 최종 응답만 읽도록 유지
-
-### Phase 3 체크포인트
-
-## 2026-04-24 Update
-
-- [x] Finance DART tRPC router added
-- [x] Finance page added and routed at `/finance`
-- [x] Home sidebar and top navigation include Finance entry
-
-- [ ] `npm.cmd run check` 통과
-- [ ] `npm.cmd run build` 통과
-- [ ] `npm.cmd run dev` 실행 확인
-- [ ] `/`, `/chat`, `/trading`, `/real-estate-pf`, `/google` 라우트 확인
-- [ ] 기존 Google Workspace 기능 회귀 확인
-- [ ] API 키가 없는 상태의 에러 UI 확인
-- [ ] Redis가 없는 상태의 에러 메시지 확인
-- [ ] Google OAuth가 없는 상태의 에러 메시지 확인
-
-## 2026-04-24 Smoke Test Update
-
-- [x] `pnpm run check`
-- [x] `pnpm run build`
-- [x] `pnpm run test`
-- [x] `/`, `/chat`, `/trading`, `/real-estate-pf`, `/google`, `/finance` routes smoke-tested
-- [ ] Google Workspace feature completeness
-- [ ] API missing-state UI review
-- [ ] Redis missing-state UI review
-- [ ] Google OAuth missing-state UI review
-
-## 2026-04-24 Master Plan Sync
-
-- reference: `docs/WORKLIST_MASTER_2026-04-24.md`
-- current focus: `Phase 2 foundation`
-- next tasks:
-  - [ ] `7` Gate.io connector (ccxt)
-  - [ ] `7-1` Kiwoom REST connector
-
-## 2026-04-24 Phase 1.5 Completion
-
-- [x] `6-1` Trading market tabs added
-- [x] TradingView advanced chart widget applied
-- [x] `6-2` Journal manual entry form UI added
-- [x] Journal CSV import UI added
-
-## 2026-04-24 Phase 2 Foundation Completion
-
-- [x] `7` Gate.io connector integrated into `exchangeConnector` (`gate` added to supported exchanges)
-- [x] Trading router/input schema updated to allow `gate`
-- [x] Trading UI default exchange switched from `binance` to `gate` for core widgets
-- [x] `7-1` Kiwoom REST connector added (`server/exchanges/kiwoomRest.ts`)
-- [x] Kiwoom tRPC procedures added:
-  - `trading.getKiwoomBalance`
-  - `trading.getKiwoomPositions`
-  - `trading.getKiwoomQuote`
-- [x] `.env.example` extended with Gate and Kiwoom variables
-- [ ] Next focus: `7-2` Kiwoom WebSocket realtime feed
-
-## 2026-04-24 Phase 2 Realtime Step 1 Completion
-
-- [x] `7-2` Kiwoom WebSocket realtime feed added (`server/exchanges/kiwoomWebSocket.ts`)
-- [x] Kiwoom realtime tRPC procedures added:
-  - `trading.startKiwoomRealtime`
-  - `trading.stopKiwoomRealtime`
-  - `trading.getKiwoomRealtimeStatus`
-  - `trading.getKiwoomRealtimePrice`
-- [x] Server startup now attempts Kiwoom WS auto-connect when env is configured
-- [x] `.env.example` extended with Kiwoom WS env variables
-- [ ] Next focus: `7-3` TradingView webhook receiver
-
-## 2026-04-24 Phase 2 Realtime Step 2 Completion
-
-- [x] `7-3` TradingView webhook receiver added (`server/webhooks/tradingview.ts`)
-- [x] Webhook endpoints added:
-  - `POST /api/webhooks/tradingview`
-  - `GET /api/webhooks/tradingview/health`
-  - `GET /api/webhooks/tradingview/recent`
-- [x] `TV_WEBHOOK_SECRET` 검증 로직 추가 (header/body 지원)
-- [x] Webhook payload Redis 저장 + pub/sub 발행 (`tradingview:webhook`)
-- [x] Telegram 자동 포워딩 연동 (`TV_WEBHOOK_TELEGRAM_CHAT_ID` 우선)
-- [x] Server router 등록 완료 (`server/_core/index.ts`)
-- [ ] Next focus: `8` Upbit WebSocket (kimchi premium monitor)
-
-## 2026-04-24 Phase 2 Realtime Step 3 Completion
-
-- [x] `8` Upbit WebSocket feed 운영화 (`server/exchanges/upbitWebSocket.ts`)
-  - 상태 조회(`isConnected`, `getStatus`)
-  - 캐시 조회(`getCachedPrice`)
-  - env 자동 연결(`connectFromEnv`)
-- [x] Upbit realtime tRPC procedures added:
-  - `trading.startUpbitRealtime`
-  - `trading.stopUpbitRealtime`
-  - `trading.getUpbitRealtimeStatus`
-  - `trading.getUpbitRealtimePrice`
-- [x] Server startup now attempts Upbit WS auto-connect via `UPBIT_WS_SYMBOLS`
-- [x] `.env.example` updated with `UPBIT_WS_SYMBOLS`
-- [ ] Next focus: Phase 2 병렬 작업(`9`, `12`, `10-1`, `13`, `14`, `15`, `16`)
-
-## 2026-04-24 Phase 2 Parallel Step 1 Completion
-
-- [x] `10-1` Manual/CSV journal backend completed
-  - `TradeJournal` manual sheet storage (`ManualTrades`) added
-  - tRPC procedures added:
-    - `trading.addManualTrades`
-    - `trading.getManualTrades`
-    - `trading.importManualCsv`
-- [x] CSV parsing + zod validation added on server side
-- [ ] Next focus: `9` Technical indicators engine production hardening
-
-## 2026-04-24 Phase 2 Parallel Step 2 Completion
-
-- [x] `10` Journal automation extended to Kiwoom fills
-  - `kiwoomRestConnector.getMyTrades` added (market별 체결 조회)
-  - `TradeJournal.syncKiwoomTrades` added (Sheets 자동 적재)
-  - `trading.syncKiwoomJournal` tRPC mutation added
-- [x] Kiwoom trade endpoint path/TR-ID env keys added to `.env.example`
-- [ ] Next focus: `9` / `12` 검증 및 마무리(analysis/risk hardening)
+﻿# TODO.md — 에스턴 워크스테이션
+> 업데이트: 2026-05-11 자료 회수 라인 재설계 (집에서 이어갈 작업) | 브랜치: codex-google-workspace-expansion
+
+---
+
+## 🏠 집에서 이어갈 작업 (2026-05-11 저녁 ~)
+
+### Step 1 — driveSync에 PDF 본문 추출 분기 추가 ✅ (2026-05-11 완료)
+- [x] `server/knowledge/driveSync.ts`:
+  - [x] `SUPPORTED_AUTO_INGEST` 에 `.pdf` 추가
+  - [x] `META_ONLY_TYPES` 에서 `.pdf` 제거
+  - [x] `.docx` 분기 옆에 `.pdf` 분기 — `await import("../llm/attachmentExtract.ts")` 의 `extractAttachmentText(filePath)` 호출 (pdf2json 재사용, 신규 의존성 0)
+- [x] 모듈 경계 검사: `knowledge → llm` 직접 import는 `llm`이 도메인 모듈 아니라 OK (위반 0건)
+- [x] 회귀 테스트: `server/__tests__/driveSyncPdf.test.ts` (5 passed) — 확장자 매핑 상수 가드. PDF 본문 추출은 기존 `server/llm/attachmentExtract.test.ts` 가 검증.
+- [x] check / build / test 통과 (전체 823 passed, 환경 의존 2건 사전 존재) → 커밋 + push 예정
+- [x] **회장님 라이브 검증** (2026-05-12): PM2 재시작 + driveSync 29폴더 감시 부팅 확인 + PDF 회수·인용 동작 확인
+
+### Step 1.5 — Aston Wiki 페이지 업로드 UI (옵션 A: project 직접 선택) ✅ (2026-05-12 구현)
+- [x] 백엔드 업로드 라우터 — `server/knowledge/wikiUpload.ts` (Express handler, base64-in-JSON, 신규 의존성 0)
+  - POST /api/wiki/upload — { project, filename, base64, contentType?, tags? }
+  - project 화이트리스트 검증 (yaml 28개 + research-inbox + _unmapped 자동 추가)
+  - 파일 저장 경로: `${ASTON_WIKI_ROOT}/notebooklm-exports/{project}/{원본파일명}`
+  - 35MB 상한 (express.json 50MB / base64 1.37x), 확장자 화이트리스트(.pdf/.docx/.md/.txt/.png/.jpg/.jpeg)
+  - 동일 파일명 충돌 시 ` (2).pdf` 자동 rename
+  - 경로 분리자/`..`/윈도 예약명 차단
+- [x] tRPC `rag.listUploadProjects` — 28개 + research-inbox + _unmapped + 한글 displayName 반환
+- [x] 클라이언트 업로드 컴포넌트 — `client/src/components/WikiUpload.tsx`
+  - drag-drop + 클릭 파일 선택
+  - 모달: project 드롭다운(displayName 우선) / 태그(쉼표 구분, 선택)
+  - XMLHttpRequest 기반 업로드 진행률 + 성공/에러 토스트
+- [x] WikiPage.tsx 헤더 우측에 업로드 버튼 통합 (다크 테마 유지, 최소 변경)
+- [x] 테스트 11건 추가 (`server/__tests__/wikiUpload.test.ts`) — 화이트리스트/저장경로/rename/path-traversal/data-URL prefix
+- [x] check ✅ / build ✅ (797.9kb → 805.4kb, +7.5kb) / wikiUpload 11 passed
+- [ ] **회장님 라이브 검증**: http://localhost:4000/wiki 우상단 [📤 Wiki 자료 업로드] → PDF 1개 → 5초 내 Drive Watcher 회수 + 텔레그램 자연 질의에 본문 인용 확인
+- [ ] (보류) 새 프로젝트 생성 흐름 — 슬러그 입력 → yaml 즉시 추가 → setAllowedProjects 갱신 (Step 1.5 마감 후 회장님 결정)
+
+### Step 2 — nlm-research 별도 폴더 + Aston 텔레그램 단추 ⏸ **보류** (2026-05-12 결정)
+
+**결정 사유** — 설치 타당성 검토 결과 보류:
+1. 현재 4채널 회수 라인이 이미 작동 (Chrome Extension / Drive Watcher / 업로드 UI / nb save) → 한계 효용 작음
+2. 비공식 NotebookLM API(`notebooklm-mcp-cli`, `nlm login`) 의존 — 보안·합법성·유지보수 리스크
+3. 회장님 NotebookLM 노트북 생성 빈도가 자동화 ROI 회수 기준 불명확
+4. Google 자동화 감지 시 계정 차단 위험
+
+**코드 골격은 보존** (재활성화 시 즉시 사용 가능):
+- [x] 사전 조사 (`claude -p` 비대화식 OK)
+- [x] 인텐트 핸들러 `server/intent/handlers/researchRun.ts` (env 가드 + spawn + 수동 안내 분기)
+- [x] 회귀 가드 테스트 10건
+- [x] `.env.example` 보강 — `NLM_RESEARCH_ENABLED=false` 기본값 (비활성 시 텔레그램 `리서치 ...` 는 수동 안내 메시지만 출력, 무해)
+
+**재활성화 조건** (이 3가지 모두 충족 시):
+- `D:\nlm-research` repo URL 출처 신뢰 가능
+- 회장님 NotebookLM 노트북 생성 빈도 ≥ 주 3개
+- NotebookLM 계정 자동화 차단 위험 감수 의사
+
+조건 충족 시 동선:
+1. `git clone <repo> D:\nlm-research` + `uv tool install notebooklm-mcp-cli yt-dlp` + `nlm login`
+2. 1회 수동 검증: `cd D:\nlm-research && claude` → `/research run "테스트" --auto`
+3. mklink: `~/research-output` → `G:\내 드라이브\Aston-Wiki\notebooklm-exports\research-inbox\`
+4. `.env` 활성화 + PM2 재시작 + 텔레그램 라이브 검증
+
+### 검증 누적 (Step 1, 1.5, 2 완료 후)
+- [ ] Aston Wiki 페이지에서 PDF 업로드 → 5초 내 Wiki 적재 확인
+- [ ] 텔레그램 "한남 PF NPV 어때?" → 업로드한 PDF 본문 인용 확인
+- [ ] (Step 2 적용 시) 텔레그램 "/리서치 몽골 광산" → 5분 내 회수 + 인용 확인
+
+---
+
+## 2026-05-11 Agent↔RAG 합성 — notebook-query 재라우팅 (Claude Code)
+
+---
+
+## 2026-05-11 Agent↔RAG 합성 — notebook-query 재라우팅 (Claude Code)
+
+### 구현 완료
+- ✅ `_core/ragProxy.ts` 추가 (모듈 경계 준수)
+- ✅ `agentExecutor.ts` notebook-query 분기 — Phase 4-A 로컬 RAG 호출
+- ✅ `agentTemplates.ts` description/instructions 갱신
+- ✅ 테스트 2건 추가, 기존 OpenClaw 검증 1건 교체
+- ✅ check / build / **820 passed** (회귀 0)
+
+### 운영 검증 잔여
+- [ ] 텔레그램 `에이전트 실행 notebook-query 한남동644 NPV 수익률은?` 직접 송신 → 회수 자료 발췌 응답 확인
+- [ ] `에이전트 실행 notebook-query 빈프로젝트 ...` → 회수 자료 없음 안내 + Chrome Extension 가이드 출력 확인
+
+### 다음 단계 후보
+- [ ] `notebookLmMcp.ts` 데드 코드 정리 (4곳 사용처 점진 제거)
+- [ ] Phase 3-A `rag-bootstrap.ts` (Vertex AI 데이터스토어 초기화)
+
+---
+
+## 2026-05-11 Phase 4-C — 텔레그램 RAG 적용 (Claude Code)
+
+### 구현 완료
+- ✅ `server/llm/telegramBot/messageRouter.ts` — confidence<0.7 가드 + `searchLocalNotes` + `formatCitationFooter`
+- ✅ 4-A 패턴 동일 (단일 파일 수정, 회귀 0건)
+- ✅ check / build (794.1kb) / **818 tests passed**
+
+### 운영 검증 잔여
+- [ ] 회장님 텔레그램에서 "한남 PF 진행상황 어때?" → NotebookLM 회수 자료 인용 응답 확인
+- [ ] 약한 매칭 다운그레이드 동작 확인 (광범위 키워드 → RAG fallthrough)
+- [ ] 회수 자료 없는 일반 질의는 인용 절 없이 정상 응답
+
+### 다음 단계 후보
+- [ ] Phase 3-A `rag-bootstrap.ts` (Vertex AI 데이터스토어 초기화)
+- [ ] Phase 4-B 클라우드 RAG 전환 (3-A/B 완료 후)
+- [ ] Agent↔RAG 합성 (`notebook-query` 템플릿을 4-A 로 재라우팅)
+
+---
+
+## 2026-05-10 Worktree 사고 정리 + 재발 방지 가드 (Claude Code) ✅
+
+### 완료
+- ✅ 잘못된 master 베이스 worktree 4개 폐기 (git worktree remove + branch -D)
+  - funny-chebyshev-3115be / cranky-sammet-48e809 / great-euclid-db7423 / relaxed-jones-1e9acb
+- ✅ blissful-rubin-98d15e (PDF 백업 베이스 5b18619) 의도 보존
+- ✅ CLAUDE.md — "🛑 브랜치 / Worktree 베이스 규칙" 섹션 + "앱 실행 규칙"에 "worktree 안에서 dev 금지" 항목 추가
+- ✅ 사용자 메모리 가드 3중 (사용자 홈 영구 저장):
+  - `feedback_worktree_baseline_check.md` — 4-step 점검 강제 규칙
+  - `project_google_telegram_ai.md` — 사고 기록 섹션 추가
+  - `MEMORY.md` 인덱스 최상단 🛑 우선순위 배치
+
+### 잔여 이슈 (낮은 우선순위, 사용자 처리)
+- [ ] 빈 디렉토리 3개 정리 (외부 프로세스 lock — 사용자 세션 종료 후 1줄로 가능)
+  ```powershell
+  cd "C:\Users\user\Desktop\구글연동AI"
+  Get-ChildItem ".claude\worktrees" -Directory -Exclude blissful-rubin-98d15e | Remove-Item -Recurse -Force
+  ```
+- [ ] (선택) worktree 자동 생성 시 codex 베이스 강제 옵션 검토 — `/superpowers:using-git-worktrees` 호출부에 base 명시
+
+---
+
+## 2026-05-10 Phase 4-A — 로컬 NotebookLM 회수 자료 → Web Chat RAG 주입 (라이브 검증 완료 ✅)
+
+### 완료 (Claude Code)
+- ✅ 설계 스펙 — `docs/superpowers/specs/2026-05-10-phase4a-local-rag-design.md`
+- ✅ 구현 계획 — `docs/superpowers/plans/2026-05-10-phase4a-local-rag.md`
+- ✅ `server/rag/localMdSearch.ts` 구현 (Public API + 토큰화 + 점수식 + mtime 캐시 + top-K + snippet 윈도)
+- ✅ `server/__tests__/localMdSearch.test.ts` — 20개 테스트 케이스
+- ✅ `server/routers/llm.ts` chat fallback 진입점에 RAG 단계 + systemPrompt 주입 + sources field
+- ✅ `formatCitationFooter()` "📚 참고 자료" 한국어 인용 절
+- ✅ **라이브 보강** — 약한 인텐트 매칭(confidence<0.7)이 RAG 우회하던 문제 수정
+  - `server/routers/intent.ts:route` — handled=false 다운그레이드 → 클라이언트 llm.chat fallback
+  - `server/routers/llm.ts:chat` — 동일 가드로 직접 진입 시도도 보호
+- ✅ `npm run check ✅` / `npm run build ✅` / `npm test ✅ 799 passed` (회귀 0건)
+
+### 라이브 검증 결과 (회장님 직접) ✅
+- ✅ 웹 채팅 http://localhost:4000 → "한남 PF 진행 상황 어때?" 자연 질의 → **NPV 15.3%, 36개월** 등 회수 자료 데이터 인용 + "📚 참고 자료" 절 + `hannam-644/2026-05-07-notebooklm--644----npv--153---3.md` 출처 파일 표시 확인 (오후 12:24)
+
+### 후속 분리 작업
+- [ ] **Phase 4-B**: Vertex AI Search 통합 — Phase 3-A/3-B (데이터 스토어 9개 + importDocument) 완료 후
+- [ ] **Phase 4-C**: 텔레그램 적용 (`messageRouter.ts`) — 4-A 라이브 검증 통과 후
+- [ ] **Phase 4-D**: chunk-level 검색 + 임베딩 (먼 후순위)
+
+---
+
+## 2026-05-09 Aston NotebookLM Bridge (Chrome Extension) + W-3 (.docx)
+
+### 완료 (회장님 지시서 — 진정한 100% 자동화)
+- ✅ **Chrome Extension 뼈대** `chrome-extension/`
+  - `manifest.json` (Manifest V3, host_permissions: notebooklm.google.com + localhost:4000)
+  - `content.js` (MutationObserver + SPA 라우팅 대응 + 우상단 [📥 Aston Wiki로 동기화] 버튼 주입 + 본문 스크래핑)
+  - `background.js` (service worker, content.js → POST /api/rag/extension-ingest)
+  - `options.html/js` (백엔드 endpoint URL 변경 UI)
+  - `README.md` (설치 가이드 + 동작 흐름)
+- ✅ **백엔드 수신 엔드포인트** `server/knowledge/extensionIngest.ts`
+  - Express POST `/api/rag/extension-ingest` + OPTIONS preflight (CORS *)
+  - **SHA-256 해시 기반 멱등성** — 기존 `*.md` 의 `raw_text_hash` frontmatter 비교 → 동일 본문 skip (200 OK), 신규 적재 (201 Created)
+  - **URL → project 자동 매칭** — yaml 의 `notebook_url` 으로 normalize 비교
+  - 매핑 실패 시 404 + yaml 보강 가이드 응답
+  - frontmatter 자동 보강: 출처/노트북 제목/URL 메타
+  - 부팅 시 `setExtensionUrlMappings()` 로 매핑 yaml 의 `notebook_url` 채워진 entry 만 등록
+- ✅ **Phase W-3: `.docx` 본문 자동 추출** — `mammoth` 의존성 추가, `driveSync.ts` 가 `.docx` 도 자동 회수 (Google Docs export 그대로 회수 가능)
+- ✅ 검증: `npm run check` ✅ / `npm run build` ✅ / **745 passed**
+
+### 회장님 직접 작업
+- [ ] Chrome 에서 `chrome-extension/` 폴더를 `chrome://extensions` → 압축해제된 확장 프로그램 로드
+- [ ] 화이트리에 노트북(URL 매핑됨) 페이지 방문 → 우상단 [📥 Aston Wiki로 동기화] 버튼 클릭 → 5초 내 페이지 회수 자료 등장 확인
+- [ ] 같은 노트 재클릭 → "✅ 이미 동일 본문 (skip)" 표시 확인 (멱등성)
+
+### 27개 노트북 URL 일괄 채우기 한계
+- ⚠️ NotebookLM URL 은 회장님 계정의 고유 UUID 라 외부에서 알 수 없음. 다음 옵션:
+  - **(a) 회장님 직접 입력**: NotebookLM 노트북 목록에서 27개 URL 복사 → 알려주시면 yaml 일괄 채움
+  - **(b) Extension 자동 캡처**: Extension 이 페이지 방문 시 URL+제목을 백엔드로 자동 전송 → yaml 자동 갱신 (별도 작업, +30분)
+  - **(c) 매칭 실패 시 매핑 UI**: Extension 이 미매핑 URL 발견 시 페이지에 "이 노트북을 X 프로젝트에 매핑" 버튼 (별도 작업)
+
+### 다음 작업 후보
+- [ ] **자동 URL 캡처** (옵션 b) — Extension 첫 페이지 방문 시 yaml 자동 갱신
+- [ ] **Phase W-4** Drive API 직접 호출 (`.gdoc` export, Drive 데스크톱 의존 제거)
+- [ ] **Phase 4** 채팅 RAG 컨텍스트 주입 (`intent/handlers/chat.ts` ↔ 회수된 `*.md`)
+
+---
+
+## 2026-05-09 Aston RAG 통합 — Phase W-2 (Drive Watcher 기반 자동 동기화)
+
+### 완료 (회장님 작업 지시서 Phase 1 "Drive Watcher 폴링 상태 표시" 충족)
+- ✅ `server/knowledge/driveSync.ts` — chokidar 기반 `notebooklm-exports/{project}/` 폴더 자동 감시 (28개 매핑 yaml project 모두), 신규 .md/.txt 파일 즉시 NotebookLmAdapter + PipelineRunner 통과 → Wiki 자동 저장
+- ✅ 멱등성 — `data/notebooklm-drive-ingested.json` (path + size + mtime hash dedupe)
+- ✅ .docx/.pdf/.gdoc — 메타만 기록 + 안내 메시지 (.md 변환 후 재업로드 권장)
+- ✅ 모듈 경계 준수 — driveSync 는 knowledge 도메인 소속, project 화이트리스트는 setAllowedProjects() 로 외부 주입
+- ✅ tRPC 신규: `rag.driveWatcherStatus` query (페이지 카드) / `rag.triggerDriveScan` mutation (즉시 동기화 버튼) / `rag.listSourceFiles` query (NotebookLM 입력 자료 목록)
+- ✅ 부팅 시 자동 시작 — `server/_core/index.ts` 에서 매핑 yaml 로드 → setAllowedProjects → startDriveSync
+- ✅ 페이지 — Drive Watcher 상태 카드(폴더 경로·누적 회수·최근 이벤트·"지금 동기화" 버튼) + 노트북 카드 클릭 시 NotebookLM 입력 자료 목록 + 회수 자료 목록 + 본문 미리보기 모달
+- ✅ 검증: `npm run check` ✅ / `npm run build` ✅ / **745 passed** (회귀 0건)
+
+### 운영 약속 (회장님 동선)
+1. **소스 자료**: `G:\내 드라이브\Aston-Wiki\notebooklm-sources\{project}\` 폴더에 PDF/Docs 업로드 → NotebookLM 에서 그 폴더 또는 파일을 소스로 추가 → 페이지에서 노트북 카드 클릭 시 자료 목록 표시
+2. **분석 회수**: NotebookLM 에서 분석 답변/노트를 .md 또는 .txt 로 저장 (Docs로 보내기 후 .md 변환) → `G:\내 드라이브\Aston-Wiki\notebooklm-exports\{project}\` 폴더에 저장 → Drive 데스크톱 동기화 → chokidar 자동 감지 → Wiki 자동 적재
+3. 회장님이 페이지에서 "지금 동기화" 버튼 클릭으로 즉시 폴링 가능
+
+### 회장님 직접 운영 검증
+- [ ] PM2 또는 `npm run dev` 재시작 (driveSync 활성화 위해 필수)
+- [ ] http://localhost:4000/notebook-lm 접속 → Drive Watcher 카드에 🟢 표시 + 28개 폴더 감시 중 확인
+- [ ] `G:\내 드라이브\Aston-Wiki\notebooklm-exports\hannam-644\test.md` 생성 (본문 임의 텍스트) → 5초 내 페이지 회수 자료 목록에 자동 등장 확인
+- [ ] 노트북 카드 클릭 → 입력 자료 목록 + 회수 자료 목록 두 영역 모두 동작 확인
+
+### 다음 작업 후보
+- [ ] **W-3** .docx 본문 자동 추출 지원 (mammoth 라이브러리 추가) — NotebookLM Docs 보내기 결과를 .md 변환 없이 직접 회수
+- [ ] **W-4** Google Drive API 직접 호출 (`.gdoc` 메타파일 export) — Drive 데스크톱 동기화 의존 제거
+- [ ] **Phase 4** 채팅 RAG 컨텍스트 주입 — 회수된 `*.md` 본문을 chat 핸들러가 자동 인용
+
+---
+
+## 2026-05-09 Aston RAG 통합 — Phase W-1 (수동 붙여넣기, 보조 경로)
+
+### 완료
+- ✅ tRPC `rag.saveAnalysis` mutation — 웹에서 분석 결과 붙여넣기 → Wiki 자동 저장 (텔레그램 `/nb save` 의 웹 버전)
+- ✅ tRPC `rag.listSavedNotes` query — `projects/{p}/notebooklm/*.md` 스캔, mtime 역순
+- ✅ tRPC `rag.readSavedNote` query — 본문 반환 (경로 traversal 차단)
+- ✅ `/notebook-lm` 페이지 보강 — 노트북 카드 선택 → 입력 폼 + 회수 자료 목록 + 본문 미리보기 모달
+- ✅ 검증: `npm run check` ✅ / `npm run build` ✅ / **745 passed** (회귀 0건)
+- ✅ 라이브: `POST /api/trpc/rag.saveAnalysis` → 응답 ok, pipeline 정상, pending 큐 graceful 폴백
+
+### 회장님 직접 확인 (운영 검증)
+- [ ] http://localhost:4000/notebook-lm 접속 → 노트북 카드 1개 클릭 → 분석 텍스트 붙여넣기 → "Wiki 저장" → `G:\내 드라이브\Aston-Wiki\projects\{project}\notebooklm\` 에 `.md` 생성 확인
+- [ ] 저장 후 페이지 하단 회수 자료 목록 즉시 갱신 + 본문 미리보기 모달 동작
+- [ ] 같은 본문 재저장 시 멱등성(was_skipped: true) 표시 확인
+
+### 다음 작업 후보 (W-2 ~ W-3, Phase 4)
+- [ ] **W-2** NotebookLM Docs export → Drive Watcher 자동 회수 (회장님 1클릭)
+  - 회장님이 NotebookLM 화면에서 "Docs로 보내기" 메뉴 존재 여부 먼저 확인 필요
+- [ ] **W-3** 회수 자료 본문 검색 + 카테고리 필터 (`/wiki` 페이지에 #notebooklm 태그 노출)
+- [ ] **Phase 4** 채팅 RAG 컨텍스트 주입 (`intent/handlers/chat.ts` ↔ 회수된 `*.md` 자동 인용)
+
+---
+
+## 2026-05-09 Aston RAG 통합 — Phase 2 (Discovery Engine 통신 코어)
+
+### 완료
+- ✅ `@google-cloud/discoveryengine ^2.7.0` 의존성 추가
+- ✅ `server/rag/gcpAuth.ts` — ADC 인증, path 빌더 (collection/dataStore/servingConfig)
+- ✅ `server/rag/discoveryEngineClient.ts` — `createDataStore` / `importDocument` / `query` 3개 핵심 메서드 + 에러 분기
+- ✅ tRPC 신규 — `rag.trackBStatus` (UI 배지) + `rag.queryDataStore` (수동 검색·향후 채팅 RAG 재사용)
+- ✅ `/knowledge-rag` 페이지 — Track B 탭 배지(🟢 ADC / ❓ 미설정) + 환경변수 안내 텍스트
+- ✅ `.env.example` 정정 — JSON 키 항목 제거, ADC 사용 명시
+- ✅ 단위 테스트 11건 추가 (734 → 745 passed, 회귀 0건)
+- ✅ 빌드: 744.9kb → 749.8kb (+4.9kb)
+- ✅ 라이브 검증: `GET /api/trpc/rag.trackBStatus` → `{configured:true, projectId:"aston-work-station", authMode:"ADC"}`
+
+### 회장님 운영 환경 확인
+- ✅ GCP 프로젝트 ID: `aston-work-station`
+- ✅ 인증 방식: ADC (`gcloud auth application-default login`)
+- ✅ 비용 커버: GenAI App Builder Trial credit 142만 원 잔여 → Vertex AI Search 100% 커버
+
+### Phase 2 진행 후 회장님 직접 확인 필요
+- [ ] `.env` 에 `VERTEX_SEARCH_PROJECT_ID=aston-work-station` 추가 후 서버 재시작
+- [ ] GCP 콘솔에서 Discovery Engine API 활성화 확인 (Vertex AI Search > APIs)
+- [ ] (Phase 3 진입 전) 첫 데이터 스토어 1개 createDataStore 트리거 시점 결정
+
+### 다음 작업 후보 (Phase 3~4)
+- [ ] **Phase 3-A** 데이터 스토어 9개 일괄 생성 스크립트 (`scripts/rag-bootstrap.ts` — createDataStore 호출, idempotent)
+- [ ] **Phase 3-B** 회수 자료 → `importDocument` 자동 트리거 (`projects/{p}/notebooklm/*.md` 저장 시 동기화)
+- [ ] **Phase 3-C** frontmatter 표준화 — `source / data_store / query / sources` 보존
+- [ ] **Phase 3-D** Track A Drive Watcher (NotebookLM Docs export 폴더 polling)
+- [ ] **Phase 4** 채팅 RAG 컨텍스트 주입 (`intent/handlers/chat.ts` ↔ `rag.queryDataStore`)
+- [ ] 28개 노트북 `notebook_url` 채우기 (회장님 직접, yaml 편집)
+- [ ] `역복동 PF` (#yeokbuk-pf) → `역북동` 정정 여부
+
+---
+
+## 2026-05-09 Aston RAG 통합 — Phase 1 (Track A 카탈로그, 완료)
+
+### 완료
+- ✅ `data/rag-mapping.yaml` — 28개 노트북 + 9개 데이터 스토어 매핑
+- ✅ `server/rag/` 모듈 (types.ts / mappingLoader.ts / README.md)
+- ✅ tRPC `rag.listMappings` + `rag.listDataStores`
+- ✅ `/knowledge-rag` 페이지 (Track A 카탈로그 + Track B 그룹 placeholder, 2개 탭)
+- ✅ 모듈 경계 등록 (`scripts/check-module-boundaries.ts` DOMAIN_MODULES + "rag")
+- ✅ 단위 테스트 7건 추가 (727 → 734 passed, 회귀 0건)
+- ✅ 빌드: 738.5kb → 744.9kb (+6.4kb)
+
+---
+
+## 2026-05-08 ~ 05-09 Intent Service 리팩토링 (Phase 0~7-B 완료)
+
+### 완료
+- ✅ **Phase 0~5** (구조 도입) — `parseIntent.ts` 분리 / 프롬프트 외부화 / `intentSchemas.ts` 도입 / `pipeline/{planIntent,dispatchIntent,formatReply}.ts` 분리
+- ✅ **Phase 6-A ~ 6-D-9** (11개 도메인 핸들러 마이그레이션) — google/trading/deals/realestate/finance/intelligence/wiki/chat/agents/approval/knowledgePipeline/notebooklm 모두 `handlerResponse: { kind, text, meta }` 추가
+- ✅ **Phase 7-A** (`kind="error"` 활성화) — 누적 8개 도메인 24개 분기 재분류
+- ✅ **Phase 7-B** (`kind="confirmation"` 활성화) — formatReply 활성 + 직교성 명시 (핸들러 재분류 보류)
+- ✅ public API 시그니처 100% 동결, 응답 문자열 byte-for-byte 100% 보존
+- ✅ 테스트 586 → **719 passed** (+133, 회귀 0건)
+- ✅ 빌드 722.5kb → 738.5kb (+16.0kb)
+
+### 다음 작업 후보 (Phase 8 cleanup, 우선순위 순)
+- [ ] **Phase 8-A** `prompts/` 프로드 번들 esbuild plugin — 현재 `FALLBACK_*` 인메모리 fallback로 동작
+- [ ] **Phase 8-B** `inferKind()` formatReply 본문 활성화 — 현재 export만 됨
+- [ ] **Phase 8-C** `analysisHandler` 본문 중복 버그 수정 (응답 변경 동의 필요)
+- [ ] **Phase 8-D** `feasibility`/`finance` 헤더 인코딩 정상화 (응답 변경 동의 필요)
+- [ ] **Phase 8-E** finance 본문 포맷팅 (`formatDartDisclosures` 추가)
+- [ ] **Phase 9** 핸들러 convention 가이드라인 (`docs/handler-conventions.md`)
+- [ ] **Phase 10** `planIntent` 멀티스텝 분해 실제 구현 (큰 작업)
+
+### 운영 검증 필요 (회장님 직접)
+- [ ] Phase 7-B 적용 후 PM2 재시작 + 텔레그램 라우팅 5종 회귀 확인 (`잔고`, `BTC 분석`, `딜 추가`, `위키 검색`, `오늘 일정`)
+- [ ] `dealRouting.test.ts:91-105` raw object 차단 운영 환경 회귀 확인
+- [ ] `requiresConfirmation: true` 헤더 (execute 인텐트 승인 게이트) 운영 동작 확인
+
+---
+
+---
+
+## 2026-05-08 전체 플로우 재정리
+
+### 완료
+- ✅ OpenClaw gateway caller 수정 (minified bundle 탐색 버그)
+- ✅ OpenClaw available=true, simulationMode=false 확인
+
+### 보류/폐기 결정
+- 🚫 B-3 GmailAdapter→Wiki **폐기** (필요 없음)
+- ⏸ B-2 VoiceAdapter **보류** (나중에)
+- ⏸ Phase 1c MTProto **보류** (나중에)
+- ⏸ Sheets 워크스페이스 스키마 **불필요** (사용 경로 없음)
+
+### 다음 작업
+- [ ] **B-5 KakaoMcpAdapter** — OpenClaw로 카카오톡 메시지 자동 수집 → Wiki 파이프라인
+  - OpenClaw 연결 완료, 설계 단계
+
+---
+
+## 2026-05-07 Phase B-1 마감 후속 (집에서 이어갈 작업 정리)
+
+### 이번 세션 추가 완료
+- ✅ TypeScript parameter property → 수동 declaration (PM2 강제 strip-types 호환)
+- ✅ 캘린더 인텐트 LLM 필드명 미스매치 수정 (`summary`/`start` 양쪽 허용 + 응답에 시간 표시)
+- ✅ `.env`에 `ASTON_WIKI_ROOT=G:\내 드라이브\Aston-Wiki` 추가 (운영용 G 드라이브 활성화)
+- ✅ `/wiki` 페이지 실데이터 연결 (검색·카테고리·최근·폴더 열기)
+
+### 회장님 운영 피드백 반영 결정
+- **`/tg` 메모 명령은 over-engineering** — 코드는 보존, 사용은 선택
+- **다음 우선순위는 `/nb` NotebookLM 회수** — 진짜 가치 있는 영역
+  - 회장님 NotebookLM 30개+ 노트북에서 가치 있는 분석 결과를 Wiki로 회수
+  - AI 채팅이 NotebookLM 분석을 컨텍스트로 활용하게 만드는 경로
+
+### 어댑터 구현 완료 (2026-05-07 이번 세션)
+- ✅ `/nb` 매핑 조회 4종 + 28개 노트북 mapping
+- ✅ `/nb save {project}` → NotebookLmAdapter → `projects/{project}/notebooklm/`
+- ✅ `/meet save {project}` → MeetingAdapter → `projects/{project}/meetings/`
+- ✅ `inbox/_suggested/{project}/` 키워드 힌트 라우팅 (confidence ≥ 0.75)
+- ✅ `scripts/reprocess.ts` pending 큐 재처리 CLI
+
+### 남은 작업
+- [ ] **VoiceAdapter** — 텔레그램 음성 → Google Cloud STT → 파이프라인 (나중에)
+- [ ] 운영 검증: 텔레그램에서 `/nb`, `/nb save`, `/meet save` 직접 테스트
+- [x] Google OAuth 재연결 (Sheets/Drive 스코프) — 2026-05-07 완료
+- [x] `딜 시트` 텔레그램 명령 → 3건 동기화 ✅ (DEALS_ROOT .env 누락 수정 포함)
+
+### 추가 미해결
+- [ ] 잘못 만들어진 "새 일정" 이벤트 캘린더에서 회장님 직접 정리
+- [ ] 텔레그램에서 새 캘린더 인텐트 동작 운영 검증 (`5월 22일 11:10 원준이 전화상담`)
+- [ ] `/wiki` 페이지에서 검색·카테고리·폴더 열기 운영 검증
+- [ ] OpenClaw gateway 1006 closure (서비스 가동 시 재진단)
+
+---
+
+## 2026-05-07 Phase B-1 — Knowledge Pipeline 완료
+
+- ✅ Knowledge Core Phase A 확정 (Wiki=본진 / NotebookLM=분석실 / Workstation=작업환경)
+- ✅ Phase B-0 인터페이스 명세 (8단계 파이프라인, 8종 어댑터)
+- ✅ Phase B-1 CURRENT_TASK 12개 합의 + 구현 완료
+- ✅ TelegramAdapter + 공통 파이프라인 7단계 + 이벤트 stub
+- ✅ Token Dispatcher (정규식 금지, prefix 핸들러 등록 구조)
+- ✅ LLM 실패 vs I/O 실패 분리 (partial 진행 / pending 큐)
+- ✅ 멱등성 Track A (`reprocess_requested` 메타)
+- ✅ 2단계 텔레그램 응답 (`📝 처리중...` + 결과)
+- ✅ 검증: check / build / 492 tests passed (+59)
+
+### 운영 검증 잔여 (회장님 직접)
+- [ ] 텔레그램에서 `/tg 메모내용` → `inbox/telegram/` 저장 확인
+- [ ] 텔레그램에서 `/tg #hannam-644 메모` → `projects/hannam-644/notes/` 저장 확인
+- [ ] 동일 메시지 재전송 → skip 확인 (멱등성)
+- [ ] `/tg` 응답 1차/2차 도착 확인 (5~15초 내 결과)
+- [ ] 기존 `저장해 ...`이 회귀 없이 동작 확인
+- [ ] `.env`에 `ASTON_WIKI_ROOT=G:\내 드라이브\Aston-Wiki` 설정 (운영 전환)
+
+### Phase B-1 후속 (별도 작업 지시서 필요)
+- [ ] `notebooklm-mapping.yaml`에 회장님 30개+ 노트북 매핑 채우기
+- [ ] inbox/_suggested 키워드 힌트 자동 생성 (Phase B-1 보완)
+- [ ] 일괄 재처리 CLI (`scripts/reprocess.ts`, Track B)
+- [ ] 기존 `WIKI_ROOT/YYYY-MM-DD/` 데이터 마이그레이션 (별도 작업)
+
+### Phase B-2 후보 (미착수)
+- [ ] VoiceAdapter (음성 → STT → 파이프라인)
+- [ ] GmailAdapter
+- [ ] MeetingAdapter
+- [ ] NotebookLmAdapter (`/nb` 회수)
+- [ ] KakaoManualAdapter
+
+---
+
+## 2026-05-07 후속 세션 결과 (운영 환경 복구)
+
+이번 세션 2개 커밋:
+- ✅ wouter Link 중첩 `<a>` hydration 오류 7개 파일 수정 (커밋 58929f2)
+- ✅ PM2 우선 실행 규칙 + SessionStart 점검 스크립트 (커밋 7de5869)
+
+운영 복구 (gitignored, 커밋 없음):
+- ✅ `.env` GOOGLE_CLIENT_ID 추가, GOOGLE_CLIENT_SECRET 변수명 정상화
+- ✅ `.env` WORKSPACE_SPREADSHEET_ID, PORT=4000 추가
+- ✅ `.claude/settings.json` 8개 권한 allowlist + 2개 훅 (PreToolUse, SessionStart)
+
+신규 알려진 이슈:
+- ⚠️ OpenClaw `loadGatewayCaller()` APPDATA 경로 조립 버그 (`openclawRuntime.ts:172`)
+
+---
+
+## 2026-05-07 일괄 정리 결과
+
+이번 세션 7개 커밋으로 P0/P1/P2 코드 작업 정리 완료:
+- ✅ 알려진 미해결 이슈 4건 (OpenClaw URL, Gate.io 가드, 웹 intent data, Telegram 라우팅 이중화)
+- ✅ 진단서 §8 잔여 (chatSyncRouter ownership, 한남 PF 파싱)
+- ✅ 홈 KPI today 의미 일치 + 활동 피드 mock 완전 제거
+- ✅ Google 재인증 인라인 액션 버튼 (UX)
+- ✅ TradingView 로딩 스켈레톤 (Perf)
+- ✅ 빌드 스모크 검사 자동화 (CI)
+- ✅ Telegram KPI mode 표시
+
+검증: check ✅ / build ✅ / test 423 passed / smoke ✅
+
+---
+
+## P0 Stabilization (즉시 해결 필요)
+
+- [x] **Yahoo Finance CORS 이슈 대응** (2026-05-06 완료)
+  - `/api/yahoo-chart` 프록시에 User-Agent 헤더 추가
+
+- [ ] **Google Workspace 운영 준비**
+  - Google Cloud 프로젝트에서 Sheets API, Drive API 활성화 확인
+  - OAuth 재연결로 신규 스코프 및 refresh token 확보
+  - Gmail · Calendar · Drive · Sheets 연결 진단 패널 추가
+  - **참고**: 채팅에서 "Google 재인증" 메시지 시 인라인 버튼 추가됨 (2026-05-07)
+
+- [ ] **웹 채팅 end-to-end QA** (운영, 회장님 직접 확인 필요)
+  - 단일 전송 검증: Enter · 전송버튼 · 빠른명령 · 음성입력
+  - 대화 초기화 · 수정 · 삭제 · 검색 · 내보내기 · Telegram 동기화 후 회귀
+  - 중복 메시지 억제 및 인텐트 폴백 회귀 테스트
+
+- [x] **Upbit 잔고 Telegram 응답 검증** (2026-05-06 완료)
+  - 서버 수정 완료, 텔레그램 응답 포맷 정상
+
+---
+
+## P1 Core Modules (이번 주 처리)
+
+- [x] **intentService.ts 도메인별 분리** (CLAUDE.md §9) — 완료 2026-05-01
+  - 1511줄 → 192줄 (intentService.ts), 6개 도메인 핸들러 + types/registry/fallback 분리
+  - `server/intent/handlers/{trading,realestate,finance,google,intelligence,wiki}.ts`
+  - 모든 신규 파일 500줄 이하, 160 tests passed
+
+- [x] **Gemini Grounding 소스/인용 UI** (2026-05-06 완료, 커밋 e9f62a0)
+  - `caller.ts`에서 sources 분리, UnifiedChatInterface 칩 렌더링
+
+- [x] **대시보드 실시간 데이터 정확도** (2026-05-07 완료)
+  - 홈 KPI 'today' 의미 일치 (calendar.getTodayEvents 신규)
+  - 활동 피드 mock 6개 완전 제거 → 실데이터 동적 구성
+  - Telegram KPI에 webhook/polling mode 표시
+
+- [ ] **Telegram 운영 검증** (코드 완료, 운영 QA 대기)
+  - [x] Telegram 상태 엔드포인트(`telegram.getStatus`) — mode/webhookUrl/botUsername 반환
+  - [x] UI 뱃지 — 홈 KPI에 webhook/polling 모드 표시
+  - [ ] 회장님 직접 텔레그램에서 라우팅 5종 + 회귀 시나리오 확인
+
+- [ ] **Google Sheets 워크스페이스 스키마**
+  - 필수 워크시트 정의: PF 딜, 트레이딩 알림, 워크스페이스 노트, 감사 로그
+  - 누락 탭 자동 생성 후 로컬 워크스페이스 config에 탭명 저장
+  - 모든 Sheets 읽기/쓰기를 저장된 탭명(quoted) 기준으로 정규화
+
+- [x] **TradingView 위젯 로딩 속도 개선** (2026-05-07 완료)
+  - 심볼 전환 시 즉시 로딩 스켈레톤 (cyan 펄스 도트), MutationObserver로 iframe 등장 감지 → 자동 페이드아웃
+
+---
+
+## P2 Practical Automation (P0·P1 완료 후)
+
+- [ ] **에러/복구 UX 개선** (부분 완료)
+  - [x] Google 재인증 메시지에 인라인 액션 버튼 (2026-05-07)
+  - [ ] OAuth refresh · API 활성화 지연 · 네트워크 실패에 대한 재시도 액션 추가
+  - [ ] 전역 토스트 중복 제거 규칙 검토
+
+- [ ] **테스트 및 CI 강화** (부분 완료)
+  - [x] 외부 Telegram 토큰 테스트는 이미 `describe.skip`으로 분리됨 (확인 완료)
+  - [ ] Gemini grounding request payload 검증을 위한 mock 테스트 추가
+  - [x] 빌드 스모크 체크 (2026-05-07, `scripts/smoke-routes.ts` + `npm run smoke:routes`)
+
+- [x] **코인 탭 프리셋 확장** (이미 완료됨, 확인 결과)
+  - BTC/ETH/SOL/BNB/XRP/DOGE 6종 모두 ChartArea.tsx에 등록됨
+
+---
+
+## P2 Intelligence System (Phase별 진행)
+
+- [x] **Phase 1a — Aston Wiki 수동 저장·검색** (2026-04-30 완료)
+  - `서버/wiki/wikiStore.ts`, `server/intent/wiki.ts`, 테스트 25개
+  - 인텐트: `위키 저장 <내용> #태그`, `위키 검색 <키워드>`
+  - 저장 경로: `WIKI_ROOT` 환경변수 (Google Drive 등 외부 경로)
+- [ ] **Phase 1b — 모닝 브리핑** (다음)
+  - `node-cron` + `briefing.ts` (기존 Bot API 활용, 07:00 자동 발송)
+- [ ] **Phase 1c — Gemini 자동 분류**
+  - `compiler.ts` (채널 메시지 → AI 요약 + 카테고리 분류)
+- [ ] **Phase 1d — MTProto 채널 수집**
+  - `collector.ts` (User API, 주의: 인터랙티브 인증 필요)
+
+## Backlog (우선순위 낮음 / 향후)
+
+- OpenClaw 자동화 레이어 (예약 포지션 요약, 주간 PF 리포트, 마켓 브리핑)
+- NotebookLM 내부 모듈 연동
+- 멀티모달 음성 입력 개선
+- 모바일 앱 래퍼 (PWA or Capacitor)
+
+## P1 완료 항목
+
+- ✅ Aston Wiki Phase 1a (2026-04-30, 커밋 225acb0)
+- ✅ 운영 체계 구축 (CURRENT_TASK.md, 자율 결정 원칙)
+- ✅ PROJECT_BRIEFING.md 생성
+
+## P1 진행 예정
+
+- ⬜ Phase 1b: 모닝 브리핑 (범위 결정 대기)
+- ⬜ Phase 1c: MTProto 텔레그램 수집기
+
+---
+
+## 완료 이력 (최근 → 오래된 순)
+
+| 날짜 | 작업 | 도구 |
+|------|------|------|
+| 2026-04-29 | preCheckEngine 시장 데이터 N/A 수정 (Binance/Upbit 공개 API 직접 fetch, 에러 메시지 한국어화) | Claude Code |
+| 2026-04-29 | trading_pre_check 라우팅 버그 수정 (손절 키워드 충돌 해소 + 한글 티커 매핑 + confidence 0.98) | Claude Code |
+| 2026-04-29 | AI 진입 전 점검 어시스턴트 trading_pre_check (preCheckEngine + intentService) | Claude Code |
+| 2026-04-29 | Portfolio Summary Loading... 무한 표시 수정 (PortfolioSummary + PositionTable) | Claude Code |
+| 2026-04-29 | CLAUDE.md "커밋" 명령어 push 포함으로 수정 | Claude Code |
+| 2026-04-29 | 텔레그램 Google 계정 미연결 근본 원인 수정 (session.ts + telegram-bot.ts) | Claude Code |
+| 2026-04-28 | CLAUDE.md 자동 명령어 섹션 추가 (작업준비/작업정리/커밋) | Claude Code |
+| 2026-04-28 | 텔레그램 trading_ 인텐트 Google 인증 우회 버그 수정 (telegram-bot.ts) | Claude Code |
+| 2026-04-28 | Trading Risk Guard Phase 1 (riskGuard, riskStore, RiskGuardCard, 테스트 11개) | Claude Code |
+| 2026-04-28 | Upbit 잔고 API 에러 처리 강화 (exchangeConnector + intentService) | Claude Code |
+| 2026-04-28 | 4-탭 멀티 마켓 차트 (TradingView + Yahoo Finance, 한국/미국주식/선물) | Codex |
+| 2026-04-28 | TradingView Advanced Chart 위젯 교체 | Codex |
+| 2026-04-26 | 라이브 안정화 (Google OAuth 로그인, 채팅 중복 방지, Gemini Grounding) | Codex |
+| 2026-04-26 | 모바일 QA 패스 및 레이아웃 수정 | Codex |
+| 2026-04-25 | Aston UI 쉘 polish (Login, UnifiedChat) | Codex |
+| 2026-04-25 | Phase 3 UI-백엔드 배선 완료 (Trading/PF 위젯) | Codex |
+| 2026-04-24 | Execute-intent confirmation 플로우, LLM Adapter 도입 | Codex |
+| 2026-04-24 | tRPC 라우터 통합 (trading/realestate/finance/intent) | Codex |
+| 2026-04-24 | 알림 엔진, 리스크 계산기, PF 파이프라인, DART API 추가 | Codex |
+| 2026-04-23 | Google Workspace 확장 (Calendar 월뷰, Drive 파일, Gmail UTF-8) | Codex |
+| 2026-04-22 | MySQL → SQLite 전환, Web↔Telegram 동기화 복구 | Codex |
+## 2026-04-30 Phase 1b 업데이트
+
+### P1 버그 수정 완료
+- ✅ Phase 1b 브리핑 인텐트 라우팅 충돌 수정 (`브리핑`, `브리핑 테스트`)
+
+### P1 완료 항목
+- ✅ Aston Wiki Phase 1a (2026-04-30, 커밋 225acb0)
+- ✅ 운영 체계 구축 (CURRENT_TASK.md, 자율 결정 원칙)
+- ✅ PROJECT_BRIEFING.md 생성
+
+### P1 진행 예정
+- ⬜ Phase 1b: 모닝 브리핑 (07:00 KST 자동 발송)
+- ⬜ Phase 1c: MTProto 텔레그램 수집기
+## 2026-05-01 Phase 1b 업데이트
+
+### P1 버그 수정 완료
+- [x] Phase 1b 브리핑 출력 품질 개선
+  - `daily/` 하위 브리핑 파일 검색 가능
+  - 위키 메모 섹션 다중 카테고리 중복 출력 제거
+  - 이전 브리핑의 `#briefing` 항목 재노출 방지
+  - 신규 브리핑 저장 frontmatter `categories: [briefing]` 보장
+
+### P1 진행 예정
+- [ ] 텔레그램 수동 QA: `위키 검색 briefing`, `브리핑 테스트`
+- [ ] Phase 1c: MTProto 텔레그램 수집기
+## 2026-05-01 마감 후 TODO
+
+### 내일 즉시 확인
+- [ ] `npm run dev`로 서버 기동
+- [ ] 텔레그램 `위키 검색 briefing` → daily 브리핑 2건 반환 확인
+- [ ] 텔레그램 `브리핑 테스트` → 시장/DART/위키/RiskGuard 섹션 1건 메시지 발송 확인
+- [ ] 위키 메모 섹션에서 다중 카테고리 메모가 1번만 표시되는지 확인
+- [ ] 이전 브리핑 본문이 위키 메모 섹션에 재노출되지 않는지 확인
+- [ ] 07:00 KST cron 자동 발송 확인
+
+### 다음 작업 후보
+- [ ] Phase 1b 운영 QA에서 발견되는 오류 수정
+- [ ] Phase 1c MTProto 텔레그램 수집기 작업 지시서 작성
+- [x] `server/intent/intentService.ts` 도메인별 분리 (2026-05-01 완료)
+- [x] Telegram 승인 모드 + Upbit 1탭 자동 체결 (2026-05-01 완료)
+- [x] Telegram 승인 모드 → 검토 모드 전환 (2026-05-01 완료)
+  - `ENABLE_REAL_ORDERS=false` 기본값으로 실주문 잠금
+  - `검토 BTC`, `롱 검토 BTC 15배`, `매수 적합?`, `매수 시뮬 BTC 5만원` 리포트 지원
+  - 멀티 타임프레임 수치 리포트 + 체크리스트 추가
+- [ ] `server/llm/telegram-bot.ts` 도메인별 분리 (568줄, P1)
+- [ ] preCheckEngine 자동 신호 → 승인 큐 연결
+- [ ] Upbit 지정가 주문 지원
+- [ ] Telegram 검토 모드 수동 QA (회장)
+  - `검토 BTC`
+  - `롱 검토 BTC 15배`
+  - `매수 시뮬 BTC 5만원`
+  - `매수 적합?`
+  - 기존 승인 버튼 클릭 시 검토 모드 차단 메시지 확인
+# 2026-05-01 Deal Folder Phase A 업데이트
+
+- [x] 텔레그램 파일 기반 딜 자료 자동 정리 Phase A 완료
+  - `DEALS_ROOT` 기반 딜 폴더 생성 및 `_deal.json` 메타 관리
+  - `딜 추가/목록/상세/노트북/상태/저장` 명령 지원
+  - 텔레그램 document/photo 저장 핸들러 분리
+  - 테스트 38개 추가, `npm run check`, `npm run build`, `npm test` 통과
+- [ ] Phase B 후보: Gmail 자동 분류, Downloads 감시, Wiki 판단 기록 연계는 별도 CURRENT_TASK로 진행
+
+# 2026-05-01 Modular Monolith 업데이트
+
+- [x] 모듈 독립성 원칙 문서화 완료
+  - `AGENTS.md`, `CLAUDE.md`에 "모듈 독립성 원칙 (Modular Monolith)" 추가
+  - `server/wiki`, `server/deals`, `server/trading`, `server/intelligence`, `server/google`, `server/finance`, `server/realestate`, `server/intent`, `server/_core` README 추가
+  - `scripts/check-module-boundaries.ts` 추가 및 `npm run check` 통합
+  - 실제 모듈 경계 위반 0건, 자동 수정 0건, 후속 분리 위반 0건
+- [ ] 신규 도메인 모듈 추가 시 README와 `scripts/check-module-boundaries.ts` 도메인 목록을 함께 갱신
+
+# 2026-05-01 Deal Routing 업데이트
+
+- [x] 딜 인텐트 우선순위 수정 완료
+  - `딜 ...` 명령을 `deals.deals_command`로 최우선 라우팅
+  - `realestate.deals.*` / `realestate_deals_*` 잔존 제거
+  - raw object JSON 응답 노출 차단
+  - 신규 회귀 테스트 8개 추가, 전체 `npm test` 235 passed
+- [ ] Telegram 실사용 화면에서 `딜 추가/목록/상세/노트북/저장` 5개 명령 최종 수동 확인
+
+# 2026-05-01 Kakao Folder Watcher 업데이트
+
+- [x] 카카오톡 받은 파일 폴더 감시 및 딜 자동/수동 분류 Phase B-1 완료
+  - `KAKAO_DOWNLOAD_PATH` 감시, 무시 패턴, exact 자동 분류, partial/none 인라인 버튼 분류 추가
+  - 카테고리 자동 추정: 계약/사업수지/법률/시장/공시/기타
+  - 원본은 카톡 폴더에 유지하고 딜 폴더에는 복사 저장
+  - 신규 테스트 18개, 전체 `npm test` 253 passed
+- [ ] Telegram 실제 화면에서 카톡 인라인 버튼 2단계(딜 선택 → 카테고리 선택) 최종 확인
+- [ ] 딜 목록이 8개를 넘을 때 검색/페이지네이션 UX 개선 검토
+
+# 2026-05-01 Gmail/Download Watcher 업데이트
+
+- [x] Gmail 자동 분류 + 다운로드 폴더 감시 Phase B-2/B-3 완료
+  - `fileClassifier.ts` 공통 분류 엔진으로 카톡/Gmail/다운로드 중복 제거
+  - Gmail `Aston-Deals` 라벨 + unread + attachment 폴링, 첨부 다운로드 후 분류
+  - 다운로드 폴더 감시, `.crdownload`/이미지/1MB 미만 파일 무시
+  - `kakao:`, `gmail:`, `dl:` 인라인 callback 통합
+  - 신규 테스트 16개, 전체 `npm test` 269 passed
+- [ ] 실제 Gmail inbox에서 `Aston-Deals` 라벨 메일 1건으로 운영 QA
+- [ ] 실제 Telegram 화면에서 Gmail/다운로드 인라인 버튼 분류 최종 확인
+- [ ] 딜 목록 8개 초과 시 검색/페이지네이션 UX 개선 검토
+
+# 2026-05-01 Agent Control 골격 (Phase 2)
+
+- [x] `server/agents/` 모듈 + 5개 템플릿 + 시뮬레이션 모드 완성
+  - 큐(max 50, 30분 timeout, 동시 1), 텔레그램 5명령, HTTP API 4개, /agents UI
+  - 검증: `npm run check`, `npm run build`, `npm test` 313 passed
+- [ ] 텔레그램 수동 QA: 5개 명령 + 작업 시작/완료 알림
+- [ ] `/agents` UI 수동 QA: 카드 → 모달 → 진행 표시
+- [x] OpenClaw 자동 탐지 + 실제 API 연동 fallback (Phase 3, 2026-05-01)
+- [x] 권한 단계 2 구현 (텔레그램 실행 승인, 5분 타임아웃)
+- [ ] 권한 3단계 완전 자동 실행 운영 검증
+- [x] 모닝브리핑에 어제 에이전트 결과 통합 (Phase 4, 2026-05-01)
+  - 완료/실패 작업과 wiki fallback 스캔 통합
+  - 신규/보강 테스트 10개, 전체 `npm test` 340 passed
+  - 서버 재시작 후에도 `AGENT_WIKI_PATH` 파일명 기반으로 전일 결과 표시
+
+# 2026-05-01 OpenClaw 자동 탐지 및 연동 (Phase 3)
+
+- [x] `scripts/detect-openclaw.ts` 추가 및 `data/openclaw-discovery.json` 저장
+- [x] `server/agents/openclawClient.ts` 추가: 인증/엔드포인트/payload/응답 포맷 자동 fallback
+- [x] OpenClaw 미탐지 또는 호출 실패 시 시뮬레이션 결과 성공 fallback
+- [x] `AGENT_PERMISSION_LEVEL=2` 기본값 + Telegram 승인/거부 callback 추가
+- [x] `/api/agents/health` 및 `/agents` 상태 배지 추가
+- [x] 테스트 17개 신규/보강, 전체 `npm test` 330 passed
+- [ ] 실제 OpenClaw 실행 상태에서 재탐지 및 smoke test
+- [x] 모닝브리핑에 전일 에이전트 결과 통합
+
+# 2026-05-01 딜 마감일/이정표 관리 (Phase B-4)
+
+- [x] DealMeta deadline/milestones 필드 + 자연어 날짜 파싱 + 모닝브리핑 D-day 표시
+  - `server/deals/dateParser.ts` 76줄, 텔레그램 5개 명령 추가, 모닝브리핑 진행 중 딜 섹션 D-day 강조
+  - 검증: `npm run check`, `npm run build`, `npm test` 292 passed
+- [ ] 텔레그램 수동 QA: `딜 마감`, `딜 이정표 추가/완료/삭제`, 모닝브리핑 D-day 출력
+- [ ] D-3/D-7 임박 자동 푸시 알림 (별 작업)
+- [ ] 카톡/Gmail 첨부에서 마감일 자동 추출 (LLM)
+
+# 2026-05-01 딜 브리핑 + Telegram Bot 분할 업데이트
+
+- [x] 모닝브리핑에 `📁 진행 중 딜` 섹션 추가
+  - 자료 0건, completed/rejected 딜 제외
+  - KST 기준 어제 추가된 파일 수를 카테고리 폴더 mtime으로 계산
+  - NotebookLM 연결 여부 표시
+- [x] `server/llm/telegram-bot.ts` 분할
+  - legacy 파일은 2줄 re-export로 유지
+  - `telegramBot/index.ts`, `commands.ts`, `messageRouter.ts`, `callbackRouter.ts`, `workspaceCommands.ts`, `utils.ts` 추가
+- [x] 검증 완료: `npm run check`, `npm run build`, `npm test` (276 passed)
+- [ ] 실제 Telegram에서 `브리핑 테스트` 입력 후 딜 섹션 운영 화면 확인
+- [ ] 실제 Telegram에서 딜/카톡/Gmail/다운로드 콜백/승인 콜백 각 1회 수동 QA
+# 2026-05-02 PF Google Sheets Sync
+
+- [x] 진행 중 PF 딜 Google Sheets 대시보드 동기화 구현 완료
+  - `server/_core/googleSheets.ts` 추가
+  - `server/deals/dealSheetSync.ts` 추가
+  - 06:30 KST 스케줄러 등록
+  - 딜 변경 시 fire-and-forget 동기화 트리거 연결
+  - `딜 시트` 텔레그램 명령 추가
+  - 실제 Google Sheets API 동기화 성공 확인
+- [ ] 텔레그램 실사용 화면에서 `딜 시트` 응답 확인
+- [ ] 시트 조건부 서식(D-day 색상) 필요 시 후속 Phase에서 추가
+- [ ] 완료/거절 딜 분리 아카이브 시트는 다음 Phase로 보류
+
+# 2026-05-02 Phase 6 D-day Conditional Format
+
+- [x] Aston-Deals-Dashboard D-day 조건부 서식 자동 적용 완료
+- [x] 헤더 회색 배경/흰 글씨/굵게, 컬럼 너비 자동 조정 적용
+- [x] `data/google-sheets.json`에 `formatAppliedAt` 저장
+- [x] `딜 시트 서식` 텔레그램 명령 추가
+- [x] 실제 Google Sheets API 호출로 규칙 3개 + 헤더 서식 적용 확인
+- [ ] 텔레그램 실사용 화면에서 `딜 시트 서식` 응답 QA
+- [ ] 다음 Phase 후보 결정
+  - 완료/거절 딜 아카이브 시트 분리
+  - D-day 조건부 서식 색상 미세조정
+  - 시트 역방향 동기화
+# 2026-05-02 OpenClaw 실제 연동 활성화 (Phase 7)
+
+- [x] OpenClaw 자동 재탐지 및 `data/openclaw-discovery.json` 갱신
+- [x] `~/.openclaw/openclaw.json`에서 gateway token 자동 발견
+- [x] `.env`에 `OPENCLAW_API_URL`, `OPENCLAW_API_KEY`, `OPENCLAW_REQUEST_TIMEOUT_MS=60000`, `AGENT_PERMISSION_LEVEL=2` 반영
+- [x] `gateway-rpc` 기반 실제 연동 경로 구현 (`sessions.create -> sessions.send -> agent.wait -> chat.history`)
+- [x] `/api/agents/health`에서 실연동 상태 노출 확인
+- [x] 앱 재기동 후 live `/api/agents/health`가 `available=true`, `simulationMode=false` 응답
+- [ ] OpenClaw 모델 응답 timeout 원인 추가 확인
+- [ ] 실제 텔레그램 에이전트 요청 1건으로 60초 내 응답 완료 재검증
+
+# 2026-05-02 OpenClaw 재탐지 + Gemini 재사용 보강
+
+- [x] OpenClaw 재탐지/설정 파일 스캔/Smoke 결과 저장 구조 보강 완료
+  - `data/openclaw-discovery.json`, `data/openclaw-smoke.json` 저장 구조 확장
+  - `.openclaw/openclaw.json`, `.openclaw/config.json` 존재 여부와 모델 힌트 기록
+  - 수동 URL 실패 시 자동 재탐지 재시도
+- [x] Aston `GEMINI_API_KEY` 재사용 경로 보강 완료
+  - OpenClaw HTTP payload에만 메모리 전달, 로그/텔레그램/UI/결과 파일 노출 금지
+  - `GOOGLE_API_KEY`는 예비 fallback로만 확인
+- [x] Agent Health / Telegram / Agent UI 상태 표시 보강 완료
+- [x] NotebookLM `notebook-query` 템플릿 지시문 보강 완료
+- [ ] OpenClaw 실제 실행 환경에서 인증 방식 정리
+  - 현재 `.env`의 `OPENCLAW_API_URL=http://openclaw.local` 기준 `health 인증 확인 실패`
+  - 실제 Gateway/HTTP auth 방식과 유효 URL 재확인 필요
+- [ ] OpenClaw 실제 응답 성공 후 smoke 재실행
+  - 1차 `1+1은?`
+  - 2차 `한남동 부동산 시세를 한 줄로 요약해줘`
+
+# 2026-05-02 문서화
+
+- [x] `docs/ARCHITECTURE.md` 추가
+  - 현재 코드 기준 전체 구조, Mermaid 5개, 요청서 대비 실제 구현 차이 반영
+- [x] `README.md` 재정비
+  - Aston Workstation 정체성, Quick Start, 명령어, 문서 링크, 제약 요약 반영
+- [x] `Aston Workstation` 3계층 구조 문서 반영
+  - `Command Channel` / `Knowledge Core` / `Execution Modules` 정의를 `docs/ARCHITECTURE.md`, `README.md`, `AGENTS.md`, `CLAUDE.md`에 동기화
+- [x] `AI 채팅` 라우팅 점검
+  - `docs/diagnostics/ai-chat-routing.md`에 웹/Telegram/빠른 명령 실제 코드 경로 진단 기록
+- [ ] `Wiki` 검색 명령 연결
+- [ ] `NotebookLM` 질의 명령 연결
+- [ ] PF 분석 직원 1호 JD 작성
+  - 대상 파일: `docs/employees/pf-analyst.md`
+- [ ] 진단서 결과 기반 보완 작업 선정
+  - `docs/diagnostics/ai-chat-routing.md`의 8절, 10절 기준으로 우선 보완 작업 확정
+
+
+## 2026-05-02 Home ?? ?? ?? ??
+
+- [x] ?? ?? ?? ???
+  - `Home`? ?? ?? 5?? `prefill`? ?? ?? `/chat`?? ?? ????? ??
+- [ ] `NotebookLM` ??? ??? ??
+- [ ] `Sheets` ??? ??? ??
+- [ ] `?? ?? ???` ??? ??
+- [ ] `fallbackIntent` ?? ?? ??
+- [ ] `Monitoring` ??? ??
+
+## 2026-05-03 운영 문서 정리
+
+- [x] 작업일지 / TODO / 인수인계 최신화
+  - `Home` 빠른 명령 5개 즉시 실행화 작업을 기준으로 오늘 상태 재정리
+- [x] `NotebookLM` 자연어 라우팅 연결 (2026-05-06)
+- [x] `Sheets` 자연어 라우팅 연결 (2026-05-06, 읽기 액션 추가)
+- [x] `오늘 일정 브리핑` 라우팅 수정 (2026-05-06, `google_today_events` 신규)
+- [x] `fallbackIntent` 명시 규칙 정리 (2026-05-06, 메일 요약·Telegram 최근 메시지 명시 규칙 추가)
+- [x] `Monitoring` 라우팅 연결 (2026-05-06, `monitoring_status` 신규)
+
+## 2026-05-06 AI 채팅 라우팅 5종 보완 잔여
+
+- [ ] 텔레그램 실사용 QA — 6개 명령 응답 확인
+  - `노트북 한남동644 사업성 요약`
+  - `시트 읽기` (또는 `시트 조회`)
+  - `오늘 일정 브리핑`
+  - `오늘 메일 요약`
+  - `Telegram 최근 메시지` (웹 채팅)
+  - `모니터링`
+- [ ] `WORKSPACE_SPREADSHEET_ID` 환경변수 누락 시 사용자 안내 메시지 운영 확인
+- [ ] NotebookLM MCP 서버 미가동 시 `노트북 ...` 응답 메시지 운영 확인
+- [ ] 진단서 §8 잔여 이슈
+  - `한남 PF 진행상황`에서 `한남` 개별 딜 파싱
+  - 웹 `trpc.intent.route` 응답에서 `data` 포맷 누락(파일/메일/이벤트 목록) 보완
+  - 웹/Telegram 라우팅 경로 통합 (`handleWorkspaceCommand` ↔ `routeIntentMessage` 이중화)
+  - `chatSyncRouter.getMessages` ownership check TODO 처리
+

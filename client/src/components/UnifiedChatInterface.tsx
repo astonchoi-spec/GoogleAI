@@ -6,30 +6,11 @@
 import { useState, useRef, useEffect } from "react";
 import { toast } from "sonner";
 import { motion, AnimatePresence } from "framer-motion";
-import {
-  Send,
-  Loader2,
-  Settings2,
-  MessageCircle,
-  Sliders,
-  Smartphone,
-  Globe,
-  Check,
-  LogIn,
-  Search,
-  Clock3,
-  MessageSquareText,
-  Filter,
-  Download,
-  Pencil,
-  Trash2,
-  Star,
-  Mic,
-  Volume2,
-} from "lucide-react";
+import { Send, Loader2, Settings2, MessageCircle, Sliders, Smartphone, Globe, Check, LogIn, Mic, Volume2, Download, Trash2, Pencil } from "lucide-react"; // ADDED: voice input and TTS toggle icons.
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
+import { useLocation } from "wouter"; // MODIFIED: handle chat deep links from dashboard/status-bar buttons.
 import {
   Select,
   SelectContent,
@@ -37,42 +18,64 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
 import { trpc } from "@/lib/trpc";
+import {
+  readChatCommandParams,
+  resolveAssistantResponse,
+} from "@/chat/quickCommand";
 import { useAuth } from "@/_core/hooks/useAuth";
 import ApiSettingsModal from "./ApiSettingsModal";
-import QuickActions from "./QuickActions";
-import { useSpeechRecognition, useTextToSpeech } from "@/hooks/useSpeech";
+import ConversationPinToggle from "./ConversationPinToggle"; // MODIFIED: add favorite toggle for the active conversation.
+import MessageEditBar from "./MessageEditBar";
+import QuickActions from "./QuickActions"; // ADDED: quick command row above the input area.
+import { useSpeechRecognition, useTextToSpeech } from "@/hooks/useSpeech"; // ADDED: browser speech recognition and TTS logic.
+import MessageSearchControls from "./MessageSearchControls"; // MODIFIED: add dedicated search UI component for message search filters.
+import { useAppPreferences } from "@/hooks/useAppPreferences";
+
+interface GroundingSource {
+  title: string;
+  uri: string;
+}
 
 interface UnifiedMessage {
   id: string;
-  dbId?: number;
   role: "user" | "assistant";
   content: string;
   source: "web" | "telegram";
   timestamp: Date;
+  sources?: GroundingSource[];
 }
 
-interface SearchResult {
-  conversationId: number;
-  conversationTitle: string | null;
-  messageId: number;
-  role: "user" | "assistant";
-  content: string;
-  source: "web" | "telegram";
-  telegramMessageId: number | null;
-  metadata: unknown;
-  createdAt: Date;
+interface MessageSearchFilters { // MODIFIED: keep search state typed and aligned with backend filters.
+  query: string;
+  source: "all" | "web" | "telegram";
+  dateFrom: string;
+  dateTo: string;
+}
+
+function normalizeSyncedMessage(msg: any): UnifiedMessage {
+  return {
+    id: `${msg.id}`,
+    role: msg.role as "user" | "assistant",
+    content: msg.content,
+    source: msg.source as "web" | "telegram",
+    timestamp: new Date(msg.createdAt),
+  };
+}
+
+function isDuplicateMessage(candidate: UnifiedMessage, existing: UnifiedMessage) {
+  if (candidate.id === existing.id) return true;
+  if (candidate.role !== existing.role) return false;
+  if (candidate.source !== existing.source) return false;
+  if (candidate.content !== existing.content) return false;
+
+  return Math.abs(candidate.timestamp.getTime() - existing.timestamp.getTime()) < 15_000;
 }
 
 export default function UnifiedChatInterface() {
+  const [location, setLocation] = useLocation(); // MODIFIED: react to /chat query changes; setLocation enables re-auth CTA navigation.
   const { isAuthenticated } = useAuth();
+  const { preferences } = useAppPreferences();
   const [messages, setMessages] = useState<UnifiedMessage[]>([]);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -80,84 +83,77 @@ export default function UnifiedChatInterface() {
   const [selectedModel, setSelectedModel] = useState("flash");
   const [showSettings, setShowSettings] = useState(false);
   const [showApiSettings, setShowApiSettings] = useState(false);
-  const [showSearch, setShowSearch] = useState(false);
   const [conversationId, setConversationId] = useState<number | null>(null);
-  const [isPinned, setIsPinned] = useState(false);
   const [lastSyncTime, setLastSyncTime] = useState<Date>(new Date());
-  const [olderCursor, setOlderCursor] = useState<Date | null>(null);
-  const [hasMoreMessages, setHasMoreMessages] = useState(false);
-  const [loadingOlderMessages, setLoadingOlderMessages] = useState(false);
-  const [searchKeyword, setSearchKeyword] = useState("");
-  const [searchSource, setSearchSource] = useState<"all" | "web" | "telegram">("all");
-  const [searchFrom, setSearchFrom] = useState("");
-  const [searchTo, setSearchTo] = useState("");
-  const [submittedSearch, setSubmittedSearch] = useState<{
-    keyword: string;
-    source: "all" | "web" | "telegram";
-    from?: Date;
-    to?: Date;
-  } | null>(null);
+  const [searchFilters, setSearchFilters] = useState<MessageSearchFilters>({ // MODIFIED: track keyword/date/source filters for server-side message search.
+    query: "",
+    source: "all",
+    dateFrom: "",
+    dateTo: "",
+  });
+  const [searchParams, setSearchParams] = useState<MessageSearchFilters | null>(null); // MODIFIED: separate applied filters from in-progress input values.
+  const [deletingMessageId, setDeletingMessageId] = useState<string | null>(null); // MODIFIED: give per-message delete feedback in the unified timeline.
+  const [isExporting, setIsExporting] = useState(false); // MODIFIED: show loading state while exporting conversation JSON.
+  const [editingMessageId, setEditingMessageId] = useState<string | null>(null); // MODIFIED: keep one inline edit target at a time.
+  const [editingContent, setEditingContent] = useState(""); // MODIFIED: store edited message content before saving.
+  const [isEditing, setIsEditing] = useState(false); // MODIFIED: show edit-in-flight state in the edit bar.
+  const [isClearingConversation, setIsClearingConversation] = useState(false); // MODIFIED: show progress while clearing the current chat history.
+  const [isPinned, setIsPinned] = useState(false); // MODIFIED: track favorite state for the active conversation.
+  const [isTogglingPin, setIsTogglingPin] = useState(false); // MODIFIED: show favorite toggle progress.
+  const [messageLimit, setMessageLimit] = useState(50); // MODIFIED: paginate older messages in fixed-size batches for better chat performance.
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const sendInFlightRef = useRef(false); // MODIFIED: block duplicate sends from overlapping form/button/keyboard events.
+  const lastAutoSubmitRef = useRef<string | null>(null); // MODIFIED: prevent duplicate query-driven auto submits for the same quick-command request.
+  const utils = trpc.useUtils(); // MODIFIED: reuse tRPC cache helpers after mutation-driven timeline changes.
 
+  // tRPC queries and mutations
   const { data: engines } = trpc.llm.getEngines.useQuery();
   const { data: models } = trpc.llm.getModels.useQuery(
     { engine: selectedEngine },
     { enabled: !!selectedEngine }
   );
+  const { data: status } = trpc.llm.getStatus.useQuery();
+
+  // Chat sync queries — 로그인 상태일 때만 실행
   const conversationQuery = trpc.chatSync.getConversation.useQuery(undefined, {
     enabled: isAuthenticated,
   });
-  const initialMessagesQuery = trpc.chatSync.getMessages.useQuery(
-    { conversationId: conversationId || 0, limit: 30 },
+  const messagesQuery = trpc.chatSync.getMessages.useQuery(
+    { conversationId: conversationId || 0, limit: messageLimit },
     { enabled: isAuthenticated && !!conversationId }
-  );
-  const olderMessagesQuery = trpc.chatSync.getMessages.useQuery(
-    { conversationId: conversationId || 0, limit: 30, before: olderCursor || undefined },
-    { enabled: isAuthenticated && !!conversationId && !!olderCursor }
   );
   const recentMessagesQuery = trpc.chatSync.getRecentMessages.useQuery(
     { conversationId: conversationId || 0, since: lastSyncTime },
     { enabled: isAuthenticated && !!conversationId, refetchInterval: 2000 }
   );
+  const searchMessagesQuery = trpc.chatSync.searchMessages.useQuery( // MODIFIED: fetch filtered messages only when user explicitly activates search mode.
+    {
+      conversationId: conversationId || 0,
+      query: searchParams?.query || undefined,
+      source: searchParams?.source ?? "all",
+      dateFrom: searchParams?.dateFrom ? new Date(`${searchParams.dateFrom}T00:00:00`) : undefined,
+      dateTo: searchParams?.dateTo ? new Date(`${searchParams.dateTo}T23:59:59`) : undefined,
+      limit: 100,
+    },
+    { enabled: isAuthenticated && !!conversationId && !!searchParams }
+  );
 
+  // Mutations
   const chatMutation = trpc.llm.chat.useMutation();
+  const intentRouteMutation = trpc.intent.route.useMutation(); // MODIFIED: run intent-based domain routing before generic chat fallback.
   const saveWebMessageMutation = trpc.chatSync.saveWebMessage.useMutation();
   const forwardToTelegramMutation = trpc.chatSync.forwardToTelegram.useMutation();
   const editMessageMutation = trpc.chatSync.editMessage.useMutation();
   const deleteMessageMutation = trpc.chatSync.deleteMessage.useMutation();
-  const togglePinMutation = trpc.chatSync.togglePin.useMutation();
+  const clearConversationMutation = trpc.chatSync.clearConversation.useMutation();
+  const togglePinnedMutation = trpc.chatSync.togglePinned.useMutation();
   const switchEngineMutation = trpc.llm.switchEngineAndModel.useMutation();
-  const searchMessagesQuery = trpc.chatSync.searchMessages.useQuery(
-    submittedSearch
-      ? {
-          keyword: submittedSearch.keyword,
-          source: submittedSearch.source,
-          from: submittedSearch.from,
-          to: submittedSearch.to,
-          limit: 25,
-        }
-      : {
-          keyword: "placeholder",
-          source: "all",
-          limit: 25,
-        },
-    { enabled: !!submittedSearch && showSearch }
-  );
   const [switchSuccess, setSwitchSuccess] = useState(false);
-  const tts = useTextToSpeech();
-
-  const normalizeMessages = (items: any[]): UnifiedMessage[] =>
-    items.map((msg: any) => ({
-      id: `${msg.id}`,
-      dbId: Number(msg.id),
-      role: msg.role as "user" | "assistant",
-      content: msg.content,
-      source: msg.source as "web" | "telegram",
-      timestamp: new Date(msg.createdAt),
-    }));
+  const tts = useTextToSpeech(); // ADDED: TTS state and playback helpers.
 
   const handleEngineChange = (engine: string) => {
     setSelectedEngine(engine);
+    // 엔진 변경 시 해당 엔진의 첫 번째 모델로 초기화
     const engineData = engines?.find((e: any) => e.name === engine);
     if (engineData?.models?.length > 0) {
       setSelectedModel(engineData.models[0].key);
@@ -170,257 +166,375 @@ export default function UnifiedChatInterface() {
       setSwitchSuccess(true);
       toast.success("엔진이 변경되었습니다.");
       setTimeout(() => setSwitchSuccess(false), 2000);
-    } catch {
+    } catch (error) {
       toast.error("엔진 변경에 실패했습니다.");
     }
   };
 
+  // Initialize conversation
   useEffect(() => {
     if (conversationQuery.data) {
       setConversationId(conversationQuery.data.id);
-      setIsPinned(Boolean((conversationQuery.data as any).pinned));
+      setIsPinned(!!conversationQuery.data.pinned); // MODIFIED: hydrate pin state from the current conversation record.
     }
   }, [conversationQuery.data]);
 
+  // Load initial messages
   useEffect(() => {
-    if (initialMessagesQuery.data) {
-      const page = initialMessagesQuery.data;
-      setMessages(normalizeMessages(page.messages).reverse());
-      setHasMoreMessages(page.hasMore);
-      setOlderCursor(null);
-      setLoadingOlderMessages(false);
+    if (messagesQuery.data && !searchParams) { // MODIFIED: keep live message list intact while search mode is active.
+      const loadedMessages: UnifiedMessage[] = messagesQuery.data
+        .map(normalizeSyncedMessage)
+        .reverse();
+      setMessages(loadedMessages);
     }
-  }, [initialMessagesQuery.data]);
+  }, [messagesQuery.data]);
 
+  // Sync recent messages
   useEffect(() => {
-    if (!olderMessagesQuery.data || !olderCursor) return;
+    if (!searchParams && recentMessagesQuery.data && recentMessagesQuery.data.length > 0) { // MODIFIED: pause polling merge while showing fixed search results.
+      const newMessages: UnifiedMessage[] = recentMessagesQuery.data
+        .map(normalizeSyncedMessage)
+        .reverse();
 
-    const page = olderMessagesQuery.data;
-    const olderMessages = normalizeMessages(page.messages).reverse();
-    setMessages((prev) => {
-      const existingIds = new Set(prev.map((m) => m.id));
-      return [...olderMessages.filter((m) => !existingIds.has(m.id)), ...prev];
-    });
-    setHasMoreMessages(page.hasMore);
-    setOlderCursor(null);
-    setLoadingOlderMessages(false);
-  }, [olderMessagesQuery.data, olderCursor]);
-
-  useEffect(() => {
-    if (recentMessagesQuery.data && recentMessagesQuery.data.length > 0) {
-      const newMessages = normalizeMessages(recentMessagesQuery.data).reverse();
       setMessages((prev) => {
-        const existingIds = new Set(prev.map((m) => m.id));
-        return [...prev, ...newMessages.filter((m) => !existingIds.has(m.id))];
+        const uniqueNewMessages = newMessages.filter((message) =>
+          !prev.some((existing) => isDuplicateMessage(message, existing))
+        );
+        const telegramIncoming = uniqueNewMessages.filter((m) => m.source === "telegram" && m.role === "user"); // MODIFIED: detect newly synced Telegram user messages for toast alerting.
+        if (preferences.notifyNewMessages && telegramIncoming.length > 0) {
+          const latest = telegramIncoming[telegramIncoming.length - 1];
+          const preview = latest.content.length > 40 ? `${latest.content.slice(0, 40)}...` : latest.content;
+          toast.info(`텔레그램 새 메시지: ${preview}`); // MODIFIED: provide real-time new-message toast notification requested in todo.
+        }
+        return [...prev, ...uniqueNewMessages];
       });
+
       setLastSyncTime(new Date());
     }
-  }, [recentMessagesQuery.data]);
+  }, [preferences.notifyNewMessages, recentMessagesQuery.data, searchParams]);
+
+  const searchedMessages: UnifiedMessage[] = (searchMessagesQuery.data ?? []) // MODIFIED: normalize tRPC search results into unified render shape.
+    .map(normalizeSyncedMessage)
+    .reverse();
+
+  const renderedMessages = searchParams ? searchedMessages : messages; // MODIFIED: toggle between live timeline and search result list.
+  const canLoadOlderMessages = !!conversationId && !searchParams && messagesQuery.data?.length === messageLimit; // MODIFIED: show pagination only when there may be older history.
+
+  const executeSearch = () => { // MODIFIED: apply current filters and trigger server-side query.
+    setSearchParams({ ...searchFilters });
+  };
+
+  const clearSearch = () => { // MODIFIED: reset search mode and resume real-time timeline.
+    setSearchFilters({ query: "", source: "all", dateFrom: "", dateTo: "" });
+    setSearchParams(null);
+  };
+
+  const loadOlderMessages = () => { // MODIFIED: expand the history window instead of rendering an unbounded message list.
+    setMessageLimit((current) => current + 50);
+  };
+
+  const toggleConversationPin = async () => { // MODIFIED: persist favorite state for the current conversation.
+    if (!conversationId) return;
+    const nextPinned = !isPinned;
+    setIsTogglingPin(true);
+    try {
+      await togglePinnedMutation.mutateAsync({
+        conversationId,
+        pinned: nextPinned,
+      });
+      setIsPinned(nextPinned);
+      toast.success(nextPinned ? "대화를 즐겨찾기에 추가했습니다." : "즐겨찾기를 해제했습니다.");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "즐겨찾기 변경에 실패했습니다.");
+    } finally {
+      setIsTogglingPin(false);
+    }
+  };
 
   useEffect(() => {
-    if (!submittedSearch || searchMessagesQuery.isFetching) return;
-    toast.info(`검색 결과 ${searchMessagesQuery.data?.length ?? 0}개`);
-  }, [searchMessagesQuery.data, searchMessagesQuery.isFetching, submittedSearch]);
+    if (!status) return;
+    setSelectedEngine(status.engine);
+    setSelectedModel(status.modelKey);
+  }, [status]);
 
+  const startEditingMessage = (message: UnifiedMessage) => { // MODIFIED: preload selected message into the edit bar.
+    setEditingMessageId(message.id);
+    setEditingContent(message.content);
+  };
+
+  const cancelEditing = () => { // MODIFIED: clear edit state without mutating the message list.
+    setEditingMessageId(null);
+    setEditingContent("");
+    setIsEditing(false);
+  };
+
+  const saveEditedMessage = async () => { // MODIFIED: persist edited content and refresh all relevant caches.
+    if (!conversationId || !editingMessageId) return;
+    const trimmed = editingContent.trim();
+    if (!trimmed) return;
+
+    setIsEditing(true);
+    try {
+      await editMessageMutation.mutateAsync({
+        conversationId,
+        messageId: Number(editingMessageId),
+        content: trimmed,
+      });
+      setMessages((prev) =>
+        prev.map((msg) => (msg.id === editingMessageId ? { ...msg, content: trimmed } : msg))
+      );
+      await Promise.all([
+        utils.chatSync.getMessages.invalidate({ conversationId, limit: 50 }),
+        utils.chatSync.getRecentMessages.invalidate({ conversationId, since: lastSyncTime }),
+        utils.chatSync.searchMessages.invalidate(),
+        utils.chatSync.exportConversation.invalidate({ conversationId }),
+      ]);
+      toast.success("메시지를 수정했습니다.");
+      cancelEditing();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "메시지 수정에 실패했습니다.");
+    } finally {
+      setIsEditing(false);
+    }
+  };
+
+  const exportConversation = async () => { // MODIFIED: export full conversation history as JSON download.
+    if (!conversationId) return;
+    setIsExporting(true);
+    try {
+      const payload = await utils.chatSync.exportConversation.fetch({ conversationId });
+      const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `conversation-${conversationId}.json`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+      toast.success("대화 기록을 JSON으로 내보냈습니다.");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "대화 내보내기에 실패했습니다.");
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
+  const handleDeleteMessage = async (messageId: string) => { // MODIFIED: remove a single message from the unified timeline.
+    if (!conversationId) return;
+    setDeletingMessageId(messageId);
+    try {
+      await deleteMessageMutation.mutateAsync({
+        conversationId,
+        messageId: Number(messageId),
+      });
+      setMessages((prev) => prev.filter((msg) => msg.id !== messageId));
+      await Promise.all([
+        utils.chatSync.getMessages.invalidate({ conversationId, limit: 50 }),
+        utils.chatSync.getRecentMessages.invalidate({ conversationId, since: lastSyncTime }),
+        utils.chatSync.searchMessages.invalidate(),
+      ]);
+      toast.success("메시지를 삭제했습니다.");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "메시지 삭제에 실패했습니다.");
+    } finally {
+      setDeletingMessageId(null);
+    }
+  };
+
+  const clearConversation = async () => {
+    if (renderedMessages.length === 0 || isClearingConversation) return;
+
+    const confirmed = window.confirm("현재 대화 기록을 모두 삭제할까요? 이 작업은 되돌릴 수 없습니다.");
+    if (!confirmed) return;
+
+    setIsClearingConversation(true);
+    try {
+      if (conversationId) {
+        await clearConversationMutation.mutateAsync({ conversationId });
+        await Promise.all([
+          utils.chatSync.getMessages.invalidate({ conversationId, limit: messageLimit }),
+          utils.chatSync.getRecentMessages.invalidate(),
+          utils.chatSync.searchMessages.invalidate(),
+          utils.chatSync.exportConversation.invalidate({ conversationId }),
+        ]);
+      }
+      setMessages([]);
+      setSearchParams(null);
+      setSearchFilters({ query: "", source: "all", dateFrom: "", dateTo: "" });
+      setLastSyncTime(new Date());
+      toast.success("대화 기록을 초기화했습니다.");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "대화 초기화에 실패했습니다.");
+    } finally {
+      setIsClearingConversation(false);
+    }
+  };
+
+  // Auto-scroll to bottom
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, isLoading]);
 
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const command = params.get("command");
-    if (!command) return;
-    setInput(command);
-    window.history.replaceState({}, "", "/chat");
-  }, []);
-
-  const sendMessageText = async (text: string) => {
-    if (!text.trim() || isLoading) return;
+  const sendMessageText = async (text: string) => { // ADDED: shared sender for typed, voice, and quick action messages.
+    if (!text.trim() || isLoading || sendInFlightRef.current) return;
+    sendInFlightRef.current = true;
 
     const userMessage = text.trim();
     setInput("");
     setIsLoading(true);
-    setMessages((prev) => [
-      ...prev,
-      {
-        id: Date.now().toString(),
-        role: "user",
-        content: userMessage,
-        source: "web",
-        timestamp: new Date(),
-      },
-    ]);
+
+    // Optimistically add user message to UI
+    const userMsg: UnifiedMessage = {
+      id: Date.now().toString(),
+      role: "user",
+      content: userMessage,
+      source: "web",
+      timestamp: new Date(),
+    };
+    setMessages((prev) => [...prev, userMsg]);
 
     try {
+      // Save user message to DB only if logged in (conversationId exists)
       if (conversationId) {
-        await saveWebMessageMutation.mutateAsync({
+        const savedUserMessage = await saveWebMessageMutation.mutateAsync({
           conversationId,
           role: "user",
           content: userMessage,
         });
+        const normalizedUserMessage = normalizeSyncedMessage(savedUserMessage);
+        setMessages((prev) =>
+          prev.map((message) => (message.id === userMsg.id ? normalizedUserMessage : message))
+        );
       }
 
-      const result = await chatMutation.mutateAsync({ message: userMessage });
+      const assistantResult = await resolveAssistantResponse({
+        userMessage,
+        isAuthenticated,
+        intentRoute: (payload) => intentRouteMutation.mutateAsync(payload),
+        llmChat: (payload) => chatMutation.mutateAsync(payload),
+      });
+      const aiResponseText = assistantResult.text;
+      const aiSources = assistantResult.sources;
+
+      // Save AI response to DB only if logged in
+      const aiMsg: UnifiedMessage = {
+        id: `temp-assistant-${Date.now()}`,
+        role: "assistant",
+        content: aiResponseText,
+        source: "web",
+        timestamp: new Date(),
+        sources: aiSources,
+      };
 
       if (conversationId) {
-        await saveWebMessageMutation.mutateAsync({
+        setMessages((prev) => [...prev, aiMsg]);
+        const savedAssistantMessage = await saveWebMessageMutation.mutateAsync({
           conversationId,
           role: "assistant",
-          content: result.response,
+          content: aiResponseText, // MODIFIED: persist routed or fallback response uniformly.
         });
+        const normalizedAssistantMessage = normalizeSyncedMessage(savedAssistantMessage);
+        setMessages((prev) =>
+          prev.map((message) => (message.id === aiMsg.id ? normalizedAssistantMessage : message))
+        );
+        // Forward both messages to Telegram (양방향 sync)
         forwardToTelegramMutation.mutate({
           conversationId,
           userMessage,
-          aiResponse: result.response,
+          aiResponse: aiResponseText, // MODIFIED: forward unified response payload.
         });
+      } else {
+        setMessages((prev) => [...prev, aiMsg]);
       }
 
-      setMessages((prev) => [
-        ...prev,
-        {
-          id: (Date.now() + 1).toString(),
-          role: "assistant",
-          content: result.response,
-          source: "web",
-          timestamp: new Date(),
-        },
-      ]);
-      toast.success("메시지가 전송되었습니다.");
-      tts.speak(result.response);
+      setLastSyncTime(new Date());
+      if (assistantResult.failed) {
+        toast.error(aiResponseText);
+      }
+      tts.speak(aiResponseText); // MODIFIED: speak intent-routed response or LLM fallback response.
     } catch (error) {
-      toast.error("메시지 전송에 실패했습니다.");
+      const errorText = "요청을 처리하지 못했습니다. 잠시 후 다시 시도해주세요.";
+      const errorMsg: UnifiedMessage = {
+        id: `temp-error-${Date.now()}`,
+        role: "assistant",
+        content: errorText,
+        source: "web",
+        timestamp: new Date(),
+      };
+      setMessages((prev) => [...prev, errorMsg]);
+      toast.error(errorText);
       console.error("Error sending message:", error);
     } finally {
+      sendInFlightRef.current = false;
       setIsLoading(false);
     }
   };
 
-  const handleSendMessage = async (e: React.FormEvent) => {
+  const handleSendMessage = async (e: React.FormEvent) => { // ADDED: keep existing form submit behavior through shared sender.
     e.preventDefault();
     await sendMessageText(input);
   };
 
-  const speech = useSpeechRecognition((text) => {
+  const speech = useSpeechRecognition((text) => { // ADDED: voice result feeds the existing chat send flow.
     setInput(text);
     void sendMessageText(text);
   });
 
-  const parseSearchDate = (value: string, endOfDay = false) => {
-    if (!value) return undefined;
-    const suffix = endOfDay ? "T23:59:59.999" : "T00:00:00.000";
-    const date = new Date(`${value}${suffix}`);
-    return Number.isNaN(date.getTime()) ? undefined : date;
-  };
+  useEffect(() => { // ADDED: accept quick commands and status-bar actions via /chat query params.
+    const {
+      command,
+      source,
+      openApiSettings,
+      autoSubmit,
+      requestId,
+    } = readChatCommandParams(window.location.search);
 
-  const handleSearchMessages = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const keyword = searchKeyword.trim();
-    if (!keyword) {
-      toast.error("검색어를 입력하세요.");
-      return;
-    }
-    setSubmittedSearch({
-      keyword,
-      source: searchSource,
-      from: parseSearchDate(searchFrom, false),
-      to: parseSearchDate(searchTo, true),
-    });
-  };
-
-  const handleLoadOlderMessages = () => {
-    if (loadingOlderMessages || !hasMoreMessages || messages.length === 0) return;
-    setLoadingOlderMessages(true);
-    setOlderCursor(new Date(messages[0].timestamp.getTime() - 1));
-  };
-
-  const handleExportConversation = () => {
-    const payload = {
-      exportedAt: new Date().toISOString(),
-      conversationId,
-      messages: messages.map((msg) => ({
-        id: msg.dbId ?? msg.id,
-        role: msg.role,
-        content: msg.content,
-        source: msg.source,
-        timestamp: msg.timestamp.toISOString(),
-      })),
-    };
-
-    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = `conversation-${conversationId ?? "draft"}-${new Date().toISOString().slice(0, 10)}.json`;
-    link.click();
-    URL.revokeObjectURL(url);
-    toast.success("대화가 JSON으로 내보내졌습니다.");
-  };
-
-  const handleEditMessage = async (message: UnifiedMessage) => {
-    if (!conversationId || !message.dbId) return;
-    const nextContent = window.prompt("메시지 내용을 수정하세요.", message.content);
-    if (nextContent === null) return;
-
-    const content = nextContent.trim();
-    if (!content) {
-      toast.error("수정할 내용을 입력해주세요.");
-      return;
+    if (command) {
+      setInput(command);
     }
 
-    try {
-      const updated = await editMessageMutation.mutateAsync({
-        conversationId,
-        messageId: message.dbId,
-        content,
-      });
-      setMessages((prev) =>
-        prev.map((item) => (item.dbId === message.dbId ? { ...item, content: updated.content } : item))
-      );
-      toast.success("메시지를 수정했습니다.");
-    } catch {
-      toast.error("메시지 수정에 실패했습니다.");
+    if (!autoSubmit) {
+      lastAutoSubmitRef.current = null;
     }
-  };
 
-  const handleDeleteMessage = async (message: UnifiedMessage) => {
-    if (!conversationId || !message.dbId) return;
-    if (!window.confirm("이 메시지를 삭제할까요?")) return;
-
-    try {
-      await deleteMessageMutation.mutateAsync({
-        conversationId,
-        messageId: message.dbId,
-      });
-      setMessages((prev) => prev.filter((item) => item.dbId !== message.dbId));
-      toast.success("메시지를 삭제했습니다.");
-    } catch {
-      toast.error("메시지 삭제에 실패했습니다.");
+    const autoSubmitCommand = autoSubmit ? command : null;
+    const autoSubmitKey = autoSubmitCommand ? requestId || autoSubmitCommand : null;
+    if (autoSubmitCommand && autoSubmitKey && lastAutoSubmitRef.current !== autoSubmitKey) {
+      lastAutoSubmitRef.current = autoSubmitKey;
+      void sendMessageText(autoSubmitCommand);
     }
-  };
 
-  const handleTogglePin = async () => {
-    if (!conversationId) return;
-
-    try {
-      const updated = await togglePinMutation.mutateAsync({
-        conversationId,
-        pinned: !isPinned,
-      });
-      setIsPinned(Boolean(updated.pinned));
-      toast.success(updated.pinned ? "대화를 즐겨찾기에 추가했습니다." : "대화를 즐겨찾기에서 해제했습니다.");
-    } catch {
-      toast.error("대화 즐겨찾기 처리에 실패했습니다.");
+    if (source === "telegram") {
+      setSearchFilters((current) => ({ ...current, source: "telegram" })); // MODIFIED: Telegram shortcuts prime the source filter instead of doing nothing.
     }
-  };
 
-  const getSourceIcon = (source: "web" | "telegram") =>
-    source === "telegram" ? <Smartphone className="w-3 h-3" /> : <Globe className="w-3 h-3" />;
+    if (openApiSettings) {
+      setShowApiSettings(true); // MODIFIED: API shortcuts open the existing API settings modal directly.
+    }
+
+    if (command || source || openApiSettings || autoSubmit) {
+      window.history.replaceState({}, "", "/chat");
+    }
+  }, [location]);
+
+  const getSourceIcon = (source: "web" | "telegram") => {
+    return source === "telegram" ? (
+      <Smartphone className="w-3 h-3" />
+    ) : (
+      <Globe className="w-3 h-3" />
+    );
+  };
 
   return (
-    <div className="flex flex-col h-full bg-background">
+    // MODIFIED: align the chat surface with the Aston command-center shell tokens.
+    <div className={`flex h-[calc(100vh-48px)] min-h-0 flex-col overflow-hidden bg-[var(--aston-bg)] text-[var(--aston-text)] ${preferences.compactChat ? "text-[0.95rem]" : ""}`}> {/* MODIFIED: keep the messenger surface fixed inside the app viewport. */}
+      {/* Login notice banner - shown when not authenticated */}
       {!isAuthenticated && (
-        <div className="flex items-center justify-between gap-2 px-4 py-2 bg-amber-500/10 border-b border-amber-500/20 flex-shrink-0">
-          <p className="text-xs text-amber-400">텔레그램 동기화는 로그인 후 사용 가능합니다</p>
+        <div className="flex flex-shrink-0 items-center justify-between gap-2 border-b border-[var(--aston-border)] bg-[var(--aston-panel)] px-4 py-2">
+          <p className="text-xs text-amber-400">
+            텔레그램 동기화는 로그인 후 사용 가능합니다
+          </p>
           <a
             href="/login?from=/chat"
             className="flex items-center gap-1 text-xs text-amber-300 hover:text-amber-200 font-medium underline underline-offset-2"
@@ -431,13 +545,20 @@ export default function UnifiedChatInterface() {
         </div>
       )}
 
-      <div className="border-b border-border bg-card px-4 py-3 flex-shrink-0 flex items-center justify-between">
+      {/* Header - Top (Fixed) */}
+      {/* MODIFIED: use the Aston panel style for the chat header and action row. */}
+      <div className={`flex flex-shrink-0 items-center justify-between border-b border-[var(--aston-border)] bg-[var(--aston-panel)] ${preferences.compactChat ? "px-3 py-2" : "px-4 py-3"}`}>
         <div className="flex items-center gap-2 text-sm font-semibold">
           <MessageCircle className="w-4 h-4 text-primary" />
           <span>통합 채팅</span>
           <span className="text-xs text-muted-foreground font-normal">(웹 + Telegram)</span>
         </div>
         <div className="flex items-center gap-2">
+          <ConversationPinToggle
+            pinned={isPinned}
+            onToggle={toggleConversationPin}
+            isSaving={isTogglingPin || togglePinnedMutation.isPending}
+          />
           <Button
             variant="ghost"
             size="sm"
@@ -460,50 +581,94 @@ export default function UnifiedChatInterface() {
           <Button
             variant="ghost"
             size="sm"
-            onClick={() => setShowSearch(true)}
-            className="text-muted-foreground hover:text-foreground"
-          >
-            <Search className="w-4 h-4 mr-1.5" />
-            검색
-          </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={handleExportConversation}
-            className="text-muted-foreground hover:text-foreground"
-          >
-            <Download className="w-4 h-4 mr-1.5" />
-            내보내기
-          </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={handleTogglePin}
-            disabled={togglePinMutation.isPending}
-            className={isPinned ? "text-amber-400 hover:text-amber-300" : "text-muted-foreground hover:text-foreground"}
-          >
-            <Star className={`w-4 h-4 mr-1.5 ${isPinned ? "fill-current" : ""}`} />
-            {isPinned ? "핀 해제" : "핀"}
-          </Button>
-          <Button
-            variant="ghost"
-            size="sm"
             onClick={() => setShowApiSettings(true)}
             className="text-muted-foreground hover:text-foreground"
           >
             <Settings2 className="w-4 h-4 mr-1.5" />
-            API
+            API 키
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={clearConversation}
+            disabled={isClearingConversation || renderedMessages.length === 0}
+            className="text-muted-foreground hover:text-red-300"
+          >
+            {isClearingConversation ? (
+              <Loader2 className="w-4 h-4 mr-1.5 animate-spin" />
+            ) : (
+              <Trash2 className="w-4 h-4 mr-1.5" />
+            )}
+            클리어
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={exportConversation}
+            disabled={isExporting || !conversationId}
+            className="text-muted-foreground hover:text-foreground"
+          >
+            <Download className="w-4 h-4 mr-1.5" />
+            {isExporting ? "내보내는 중" : "Export"}
           </Button>
         </div>
       </div>
 
+      <div className="flex flex-shrink-0 flex-wrap items-center gap-2 border-b border-[var(--aston-border)] bg-[var(--aston-panel-soft)] px-4 py-2">
+        <span className="text-xs font-medium text-[var(--aston-muted)]">AI 모델</span>
+        <Select value={selectedEngine} onValueChange={handleEngineChange}>
+          <SelectTrigger className="h-8 w-[150px] border-white/10 bg-black/20 text-xs">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {engines?.map((engine: any) => (
+              <SelectItem key={engine.name} value={engine.name}>
+                {engine.name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <Select value={selectedModel} onValueChange={setSelectedModel}>
+          <SelectTrigger className="h-8 w-[220px] border-white/10 bg-black/20 text-xs">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {models?.map((model: any) => (
+              <SelectItem key={model.key} value={model.key}>
+                {model.name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <Button
+          onClick={handleApplyEngine}
+          disabled={switchEngineMutation.isPending}
+          size="sm"
+          className="h-8 bg-cyan-600 px-3 text-xs text-white hover:bg-cyan-700"
+        >
+          {switchEngineMutation.isPending ? (
+            <><Loader2 className="mr-1.5 h-3 w-3 animate-spin" />전환 중</>
+          ) : switchSuccess ? (
+            <><Check className="mr-1.5 h-3 w-3" />적용됨</>
+          ) : (
+            "모델 적용"
+          )}
+        </Button>
+        {status?.modelName ? (
+          <span className="text-xs text-[var(--aston-muted)]">
+            현재: {status.modelName}
+          </span>
+        ) : null}
+      </div>
+
+      {/* Settings Panel (collapsible) */}
       <AnimatePresence>
         {showSettings && (
           <motion.div
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: "auto" }}
             exit={{ opacity: 0, height: 0 }}
-            className="overflow-hidden border-b border-border bg-card/50 flex-shrink-0"
+            className="flex-shrink-0 overflow-hidden border-b border-[var(--aston-border)] bg-[var(--aston-panel-soft)]"
           >
             <div className="p-4 space-y-3">
               <div className="grid grid-cols-2 gap-3">
@@ -545,15 +710,9 @@ export default function UnifiedChatInterface() {
                 className="w-full bg-cyan-600 hover:bg-cyan-700 text-white"
               >
                 {switchEngineMutation.isPending ? (
-                  <>
-                    <Loader2 className="w-3 h-3 mr-1.5 animate-spin" />
-                    전환 중...
-                  </>
+                  <><Loader2 className="w-3 h-3 mr-1.5 animate-spin" />전환 중...</>
                 ) : switchSuccess ? (
-                  <>
-                    <Check className="w-3 h-3 mr-1.5" />
-                    적용 완료
-                  </>
+                  <><Check className="w-3 h-3 mr-1.5" />적용 완료</>
                 ) : (
                   "적용"
                 )}
@@ -563,33 +722,47 @@ export default function UnifiedChatInterface() {
         )}
       </AnimatePresence>
 
-      <div className="flex-1 overflow-y-auto p-4 space-y-3">
-        <div className="flex justify-center">
-          {hasMoreMessages ? (
+      <MessageSearchControls // MODIFIED: expose message search controls directly in unified chat screen.
+        filters={searchFilters}
+        onChange={setSearchFilters}
+        onSearch={executeSearch}
+        onClear={clearSearch}
+        isSearching={searchMessagesQuery.isFetching}
+        isActive={!!searchParams}
+        resultCount={searchedMessages.length}
+      />
+
+      {editingMessageId && (
+        <div className="px-4 pt-4">
+          <MessageEditBar
+            content={editingContent}
+            onChange={setEditingContent}
+            onSave={saveEditedMessage}
+            onCancel={cancelEditing}
+            isSaving={isEditing}
+          />
+        </div>
+      )}
+
+      {/* Messages Area - Middle (Scrollable) */}
+      {/* MODIFIED: make the timeline area read as a framed executive panel. */}
+      <div className={`min-h-0 flex-1 space-y-3 overflow-y-auto overscroll-contain bg-[var(--aston-bg)] ${preferences.compactChat ? "p-3" : "p-4"}`}> {/* MODIFIED: message history owns the scrollbar; header and composer stay fixed. */}
+        {canLoadOlderMessages && (
+          <div className="flex justify-center pb-2">
             <Button
               type="button"
               variant="outline"
               size="sm"
-              disabled={loadingOlderMessages}
-              onClick={handleLoadOlderMessages}
-              className="border-slate-700 bg-slate-900/70 text-slate-300 hover:bg-slate-800"
+              onClick={loadOlderMessages}
+              disabled={messagesQuery.isFetching}
+              className="border-border bg-card text-muted-foreground hover:text-white"
             >
-              {loadingOlderMessages ? (
-                <>
-                  <Loader2 className="w-3 h-3 mr-1.5 animate-spin" />
-                  이전 메시지 불러오는 중
-                </>
-              ) : (
-                "이전 메시지 불러오기"
-              )}
+              {messagesQuery.isFetching ? "Loading older messages..." : "Load older messages"}
             </Button>
-          ) : (
-            <p className="text-xs text-slate-500">최신 메시지를 보고 있습니다.</p>
-          )}
-        </div>
-
+          </div>
+        )}
         <AnimatePresence>
-          {messages.length === 0 ? (
+          {renderedMessages.length === 0 ? ( // MODIFIED: respect either live messages or search results.
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
@@ -599,38 +772,40 @@ export default function UnifiedChatInterface() {
                 <MessageCircle className="w-12 h-12 mx-auto mb-3 opacity-20" />
                 <p className="text-sm">메시지를 입력하여 시작하세요</p>
               </div>
+
+              {/* Info cards - empty state only */}
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 w-full max-w-xl">
                 <div className="bg-slate-800/50 border border-slate-700 rounded-lg p-3">
                   <h3 className="font-semibold text-cyan-400 text-xs mb-2">지원 엔진</h3>
                   <ul className="text-xs text-slate-400 space-y-1">
-                    <li>Gemma4 (로컬)</li>
-                    <li>Gemini (구글)</li>
-                    <li>Claude (Anthropic)</li>
-                    <li>GPT (OpenAI)</li>
+                    <li>• Gemma4 (로컬)</li>
+                    <li>• Gemini (구글)</li>
+                    <li>• Claude (Anthropic)</li>
+                    <li>• GPT (OpenAI)</li>
                   </ul>
                 </div>
                 <div className="bg-slate-800/50 border border-slate-700 rounded-lg p-3">
                   <h3 className="font-semibold text-cyan-400 text-xs mb-2">Google 서비스</h3>
                   <ul className="text-xs text-slate-400 space-y-1">
-                    <li>Gmail</li>
-                    <li>Calendar</li>
-                    <li>Drive</li>
-                    <li>Sheets</li>
+                    <li>• Gmail</li>
+                    <li>• Calendar</li>
+                    <li>• Drive</li>
+                    <li>• Sheets</li>
                   </ul>
                 </div>
                 <div className="bg-slate-800/50 border border-slate-700 rounded-lg p-3">
                   <h3 className="font-semibold text-cyan-400 text-xs mb-2">명령어</h3>
                   <ul className="text-xs text-slate-400 space-y-1">
-                    <li>/engine - 엔진 전환</li>
-                    <li>/model - 모델 전환</li>
-                    <li>/status - 상태 확인</li>
-                    <li>/clear - 기록 초기화</li>
+                    <li>• /engine - 엔진 전환</li>
+                    <li>• /model - 모델 전환</li>
+                    <li>• /status - 상태 확인</li>
+                    <li>• /clear - 기록 초기화</li>
                   </ul>
                 </div>
               </div>
             </motion.div>
           ) : (
-            messages.map((msg) => (
+            renderedMessages.map((msg) => ( // MODIFIED: render filtered result set while search is active.
               <motion.div
                 key={msg.id}
                 initial={{ opacity: 0, y: 10 }}
@@ -639,39 +814,76 @@ export default function UnifiedChatInterface() {
                 className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}
               >
                 <Card
-                  className={`max-w-[75%] px-4 py-2 ${
-                    msg.role === "user" ? "bg-primary text-primary-foreground" : "bg-muted text-white"
+                className={`group relative max-w-[75%] rounded-xl border border-[var(--aston-border)] px-4 py-2 ${
+                    msg.role === "user"
+                      ? "bg-[var(--aston-accent)] text-white"
+                      : "bg-[var(--aston-panel)] text-[var(--aston-text)]"
                   }`}
                 >
+                  {conversationId && (
+                    <div className="absolute -top-2 -right-2 flex gap-1 opacity-0 transition group-hover:opacity-100">
+                      <button
+                        type="button"
+                        onClick={() => startEditingMessage(msg)}
+                        className="rounded-full border border-[var(--aston-border)] bg-[var(--aston-panel)] p-1 text-muted-foreground shadow-md transition hover:text-cyan-300"
+                        aria-label="메시지 편집"
+                      >
+                        <Pencil className="h-3 w-3" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => void handleDeleteMessage(msg.id)}
+                        disabled={deletingMessageId === msg.id}
+                        className="rounded-full border border-[var(--aston-border)] bg-[var(--aston-panel)] p-1 text-muted-foreground shadow-md transition hover:text-red-400"
+                        aria-label="메시지 삭제"
+                      >
+                        {deletingMessageId === msg.id ? (
+                          <Loader2 className="h-3 w-3 animate-spin" />
+                        ) : (
+                          <Trash2 className="h-3 w-3" />
+                        )}
+                      </button>
+                    </div>
+                  )}
                   <div className="space-y-1">
                     <p className="text-sm whitespace-pre-wrap">{msg.content}</p>
-                    <div className="flex items-center justify-between gap-2 text-xs opacity-70">
-                      <span>{msg.timestamp.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</span>
-                      <div className="flex items-center gap-2">
-                        <span>{getSourceIcon(msg.source)}</span>
-                        {conversationId && msg.dbId && (
-                          <div className="flex items-center gap-1">
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="icon"
-                              className="h-6 w-6 text-inherit hover:bg-white/10"
-                              onClick={() => handleEditMessage(msg)}
-                            >
-                              <Pencil className="w-3 h-3" />
-                            </Button>
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="icon"
-                              className="h-6 w-6 text-inherit hover:bg-white/10"
-                              onClick={() => handleDeleteMessage(msg)}
-                            >
-                              <Trash2 className="w-3 h-3" />
-                            </Button>
-                          </div>
-                        )}
+                    {msg.role === "assistant" && msg.content.includes("Google 재인증") && (
+                      <div className="pt-2">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="h-7 border-amber-500/40 bg-amber-500/10 text-amber-300 hover:bg-amber-500/20 hover:text-amber-200"
+                          onClick={() => setLocation("/google")}
+                        >
+                          <LogIn className="mr-1 h-3 w-3" />
+                          Google 다시 연결
+                        </Button>
                       </div>
+                    )}
+                    {msg.sources && msg.sources.length > 0 && (
+                      <div className="flex flex-wrap gap-1 pt-1">
+                        {msg.sources.map((src, i) => (
+                          <a
+                            key={i}
+                            href={src.uri}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-1 rounded-full border border-cyan-500/30 bg-cyan-500/10 px-2 py-0.5 text-[10px] text-cyan-300 hover:bg-cyan-500/20 transition-colors"
+                          >
+                            <span className="opacity-60">🔗</span>
+                            <span className="max-w-[160px] truncate">{src.title}</span>
+                          </a>
+                        ))}
+                      </div>
+                    )}
+                    <div className="flex items-center justify-between gap-2 text-xs opacity-70">
+                      <span>
+                        {msg.timestamp.toLocaleTimeString([], {
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        })}
+                      </span>
+                      <span>{getSourceIcon(msg.source)}</span>
                     </div>
                   </div>
                 </Card>
@@ -681,8 +893,12 @@ export default function UnifiedChatInterface() {
         </AnimatePresence>
 
         {isLoading && (
-          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="flex justify-start">
-            <Card className="bg-muted px-4 py-2">
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="flex justify-start"
+          >
+            <Card className="border border-[var(--aston-border)] bg-[var(--aston-panel)] px-4 py-2">
               <div className="flex items-center gap-2">
                 <Loader2 className="w-4 h-4 animate-spin" />
                 <span className="text-sm">응답 중...</span>
@@ -694,8 +910,10 @@ export default function UnifiedChatInterface() {
         <div ref={messagesEndRef} />
       </div>
 
-      <div className="border-t border-border bg-card p-4 flex-shrink-0">
-        <QuickActions onSelect={(text) => void sendMessageText(text)} disabled={isLoading} />
+      {/* Input Area - Bottom (Fixed) */}
+      {/* MODIFIED: align the composer with the same premium panel treatment. */}
+      <div className={`flex-shrink-0 border-t border-[var(--aston-border)] bg-[var(--aston-panel)] ${preferences.compactChat ? "p-3" : "p-4"}`}>
+        <QuickActions onSelect={(text) => void sendMessageText(text)} disabled={isLoading} /> {/* ADDED: quick command buttons. */}
         <form onSubmit={handleSendMessage} className="flex gap-2">
           <Input
             value={input}
@@ -703,12 +921,6 @@ export default function UnifiedChatInterface() {
             placeholder="메시지를 입력하세요..."
             disabled={isLoading}
             className="flex-1"
-            onKeyDown={(e) => {
-              if (e.key === "Enter" && !e.shiftKey) {
-                e.preventDefault();
-                handleSendMessage(e as any);
-              }
-            }}
           />
           {speech.isSupported && (
             <Button
@@ -722,132 +934,21 @@ export default function UnifiedChatInterface() {
               <Mic className="w-4 h-4" />
             </Button>
           )}
-          <Button type="submit" disabled={isLoading || !input.trim()} size="icon">
-            {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+          <Button
+            type="submit"
+            disabled={isLoading || !input.trim()}
+            size="icon"
+          >
+            {isLoading ? (
+              <Loader2 className="w-4 h-4 animate-spin" />
+            ) : (
+              <Send className="w-4 h-4" />
+            )}
           </Button>
         </form>
       </div>
 
-      <Dialog open={showSearch} onOpenChange={setShowSearch}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden bg-slate-950 border-slate-800 text-white">
-          <DialogHeader>
-            <DialogTitle className="text-white flex items-center gap-2">
-              <MessageSquareText className="w-5 h-5 text-cyan-400" />
-              메시지 검색
-            </DialogTitle>
-            <DialogDescription className="text-slate-400">
-              대화 제목, 메시지 내용, 출처, 날짜 범위로 검색합니다.
-            </DialogDescription>
-          </DialogHeader>
-
-          <form onSubmit={handleSearchMessages} className="space-y-4">
-            <div className="grid gap-3 md:grid-cols-[1.5fr_0.8fr]">
-              <Input
-                value={searchKeyword}
-                onChange={(e) => setSearchKeyword(e.target.value)}
-                placeholder="키워드 입력"
-                className="bg-slate-900 border-slate-700 text-white placeholder:text-slate-500"
-              />
-              <div className="grid grid-cols-2 gap-2">
-                <Input
-                  type="date"
-                  value={searchFrom}
-                  onChange={(e) => setSearchFrom(e.target.value)}
-                  className="bg-slate-900 border-slate-700 text-white"
-                />
-                <Input
-                  type="date"
-                  value={searchTo}
-                  onChange={(e) => setSearchTo(e.target.value)}
-                  className="bg-slate-900 border-slate-700 text-white"
-                />
-              </div>
-            </div>
-
-            <div className="grid gap-3 md:grid-cols-[0.9fr_1fr_auto] items-end">
-              <div className="space-y-2">
-                <label className="text-xs text-slate-400 flex items-center gap-1.5">
-                  <Filter className="w-3 h-3" />
-                  출처
-                </label>
-                <Select value={searchSource} onValueChange={(value) => setSearchSource(value as "all" | "web" | "telegram")}>
-                  <SelectTrigger className="w-full bg-slate-900 border-slate-700 text-white">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">전체</SelectItem>
-                    <SelectItem value="web">웹</SelectItem>
-                    <SelectItem value="telegram">Telegram</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="flex items-center gap-2 text-xs text-slate-400">
-                <Clock3 className="w-3 h-3" />
-                최근 검색 조건으로 필터링
-              </div>
-
-              <Button type="submit" className="bg-cyan-600 hover:bg-cyan-700 text-white">
-                <Search className="w-4 h-4 mr-2" />
-                검색
-              </Button>
-            </div>
-          </form>
-
-          <div className="flex items-center justify-between text-xs text-slate-400">
-            <span>
-              {searchMessagesQuery.isFetching
-                ? "검색 중..."
-                : submittedSearch
-                  ? `검색 결과: ${searchMessagesQuery.data?.length ?? 0}개`
-                  : "검색어를 입력하고 검색하세요."}
-            </span>
-            {submittedSearch && (
-              <button type="button" onClick={() => setSubmittedSearch(null)} className="text-cyan-400 hover:text-cyan-300">
-                검색 초기화
-              </button>
-            )}
-          </div>
-
-          <div className="max-h-[48vh] overflow-y-auto pr-1 space-y-3">
-            {submittedSearch && (searchMessagesQuery.data?.length ?? 0) === 0 && !searchMessagesQuery.isFetching ? (
-              <div className="rounded-lg border border-slate-800 bg-slate-900/60 p-6 text-center text-sm text-slate-400">
-                일치하는 메시지가 없습니다.
-              </div>
-            ) : (
-              (searchMessagesQuery.data as SearchResult[] | undefined)?.map((item) => (
-                <Card key={`${item.conversationId}-${item.messageId}`} className="bg-slate-900 border-slate-800 p-4 space-y-3">
-                  <div className="flex flex-wrap items-center gap-2 text-xs text-slate-400">
-                    <span className="font-medium text-white">{item.conversationTitle || `Conversation ${item.conversationId}`}</span>
-                    <span className="px-2 py-0.5 rounded-full bg-slate-800 text-slate-300">{item.source}</span>
-                    <span>{new Date(item.createdAt).toLocaleString("ko-KR")}</span>
-                    <span>{item.role === "user" ? "사용자" : "AI"}</span>
-                  </div>
-                  <p className="text-sm text-slate-200 whitespace-pre-wrap leading-relaxed">{item.content}</p>
-                  <div className="flex items-center justify-between gap-2">
-                    <p className="text-xs text-slate-500">메시지 ID #{item.messageId}</p>
-                    {conversationId === item.conversationId && (
-                      <Button
-                        type="button"
-                        size="sm"
-                        variant="ghost"
-                        className="text-cyan-400 hover:text-cyan-300 hover:bg-cyan-500/10"
-                        onClick={() => {
-                          setInput(item.content);
-                          setShowSearch(false);
-                        }}
-                      >
-                        채팅에 넣기
-                      </Button>
-                    )}
-                  </div>
-                </Card>
-              ))
-            )}
-          </div>
-        </DialogContent>
-      </Dialog>
-
+      {/* API Settings Modal */}
       <ApiSettingsModal isOpen={showApiSettings} onClose={() => setShowApiSettings(false)} />
     </div>
   );

@@ -1,7 +1,8 @@
 import { describe, it, expect, beforeAll, afterAll, vi } from "vitest";
 import { SessionManager } from "./session";
 import LLMCaller from "./caller";
-import TelegramBot from "./telegram-bot";
+import TelegramBot, { TelegramBot as CompatTelegramBot } from "./telegram-bot";
+import DirectTelegramBot from "./telegramBot/index";
 import { getModel, getDefaultModel } from "./models";
 
 describe("Telegram Bot Commands", () => {
@@ -27,9 +28,9 @@ describe("Telegram Bot Commands", () => {
       const model = getModel(session.engine, session.modelKey);
 
       expect(session.engine).toBe("gemini");
-      expect(session.modelKey).toBe("flash");
+      expect(session.modelKey).toBe("pro");
       expect(model).toBeDefined();
-      expect(model?.name).toBe("Gemini 2.5 Flash");
+      expect(model?.name).toBe("Gemini 2.5 Pro");
     });
 
     it("should show conversation history count", async () => {
@@ -139,7 +140,7 @@ describe("Telegram Bot Commands", () => {
 
       expect(session.userId).toBe(newUserId);
       expect(session.engine).toBe("gemini");
-      expect(session.modelKey).toBe("flash");
+      expect(session.modelKey).toBe("pro");
       expect(session.conversationHistory.length).toBe(0);
     });
 
@@ -238,14 +239,21 @@ describe("Telegram Bot Commands", () => {
       expect(defaultModel.engine).toBe("gemini");
     });
 
-    it("should have Flash as default model", () => {
+    it("should have Pro as default model", () => {
       const defaultModel = getDefaultModel();
-      expect(defaultModel.modelKey || defaultModel.key).toBe("flash");
+      expect(defaultModel.modelKey || defaultModel.key).toBe("pro");
     });
 
     it("should have correct default model name", () => {
       const defaultModel = getDefaultModel();
-      expect(defaultModel.name).toContain("Flash");
+      expect(defaultModel.name).toContain("Pro");
+    });
+  });
+
+  describe("Split module compatibility", () => {
+    it("should keep the legacy telegram-bot import path compatible", () => {
+      expect(TelegramBot).toBe(DirectTelegramBot);
+      expect(CompatTelegramBot).toBe(DirectTelegramBot);
     });
   });
 });

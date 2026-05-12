@@ -272,10 +272,73 @@ ollama pull gemma4:e4b
 
 ---
 
-**마지막 업데이트**: 2026-04-21
-**상태**: 기능 구현 완료, 구동 환경 설정 진행 중
+**마지막 업데이트**: 2026-04-27
+**상태**: Phase 1 완료 (1-A~1-D), Phase 2 대기 중
+
+<!-- MODIFIED: 2026-04-24 status refresh after Phase 3 integration work -->
+## Status Update - April 24, 2026
+
+- Phase 3 integration is now in active implementation.
+- Completed today:
+  - Domain routers: `trading`, `realestate`, `finance`
+  - Intent router and shared intent service (`classify`, `route`)
+  - Web chat intent-first routing with safe fallback to generic LLM
+  - Telegram intent-first routing with safe fallback to generic LLM
+  - Trading page live data wiring (`getBalance`, `getPositions`)
+  - Real estate page live data wiring (`getDeals`, `getPortfolioSummary`, `runFeasibility`)
+- Validation:
+  - `pnpm run check` passed
+  - `pnpm run build` passed
+
+## Architecture Decision - April 24, 2026
+
+- Real-time app core remains in the existing app server:
+  - Web/Telegram -> tRPC -> intent/domain routers -> LLM adapter
+- OpenClaw is not part of the Phase 3 real-time request path.
+- OpenClaw is reserved for a later automation layer after Phase 3, focused on cron/skill routines such as daily position summaries, weekly PF reports, and scheduled market briefings.
+- `LLMAdapter` is the immediate abstraction point for model/provider switching.
+- Current implementation keeps the `direct` adapter over existing `LLMCaller`, preserving current behavior while removing hardcoded Gemini Flash calls from intent and Telegram Workspace parsing.
+
+<!-- MODIFIED: 2026-04-24 late-night runtime stabilization -->
+## Status Update - April 24, 2026 (Late Night)
+
+- Dev runtime bootstrap is stabilized when Redis is not running locally.
+- `server/alerts/alertEngine.ts` now creates BullMQ queue/worker lazily only when alert scheduling is requested.
+- `server/_core/redis.ts` now normalizes connection failures into actionable error messages.
+- Verification completed:
+  - `pnpm run check` passed
+  - `pnpm run build` passed
+  - `pnpm run dev` booted successfully
+  - Route probes returned `200`: `/`, `/chat`, `/trading`, `/real-estate-pf`, `/google`
+- Added centralized tRPC error normalization for OAuth/API-key/env/Redis failures in `server/_core/trpc.ts`.
+- This ensures user-facing errors are actionable and consistent across trading/real-estate/finance/google routes.
+- Standardized intent-route response formatting for both web chat and Telegram.
+- Added server-side formatter and exposed `formattedMessage` in intent route responses for consistent rendering.
+- Intent query fallback mapping was stabilized and string-literal corruption in fallback keyword detection was repaired.
+- Execute-intent confirmation response now carries structured payload (`confirmation.action/domain/params`) and formatted preview for approval UX.
+- Execute-intent routing now supports real operations with confirmation gate:
+  - trading alert creation
+  - PF deal create/stage update
+  - Google Calendar event creation
+  - Google Sheets write
+- Confirmation-first flow remains default (`allowExecute=false`), with explicit run on approval (`allowExecute=true`).
+- Phase 3 Task 19 UI wiring closed:
+  - Trading dashboard quick actions now open AI chat with command prefill.
+  - Home PF/quick-command widgets are fully aligned with live backend+intent flows.
+  - Task 19 checklist was completed in TODO.
+
+## Final Wrap-up - April 25, 2026
+
+- Phase 3 integration and routing pipeline completed across web + Telegram.
+- Query-intent and execute-intent flows are now separated with confirmation-first execution control.
+- LLM adapter abstraction introduced for provider/model swap readiness.
+- Dev runtime stability improved (Redis dependency behavior and actionable error normalization).
+- Home/Trading/Real-estate UI wiring now reflects live backend results and command routing.
+- Final validations in this session: `pnpm run check` passed, `pnpm run build` passed.
 
 ---
+
+## Additional Updates from origin/main
 
 **Update**: 2026-04-24
 **Status**: Finance DART router and UI page added; navigation updated.
@@ -329,3 +392,71 @@ ollama pull gemma4:e4b
 
 **Update**: 2026-04-24 EOD Handoff
 **Status**: Worklist and handoff docs finalized. Safe restart checklist documented for home environment with current progress at `16/27`.
+
+---
+
+## 작업일지 - 2026-04-27 (귀가 세션 — 준비 완료)
+
+### 회사컴 완료 항목 (git pull로 확인)
+
+- ✅ **2-A 기술적 분석 엔진** (커밋: 8e026d7)
+  - `server/trading/technicalAnalysis.ts` — RSI / MACD / Bollinger / EMA / ATR
+  - `server/routers/analysis.ts` — tRPC 프로시저 6종
+  - `gateioConnector.fetchOHLCV` 추가
+  - 인텐트 라우터 분석 액션 등록
+  - 테스트 4개 추가 (전체 92개 통과)
+
+- ✅ **2-B 대시보드 라이브 데이터** (커밋: 0a1ee9a)
+  - `client/src/pages/Home.tsx` KPI 카드를 tRPC 실시간 호출로 교체
+  - Trading / Alert / Telegram / Gmail / Calendar / PF 카드 연결
+  - 로딩 / 에러 / 미연결 상태 처리
+
+- ✅ **allowExecute true** (커밋: c1311de)
+  - `server/routers/llm.ts` — 인텐트 실행 즉시 처리
+
+### 현재 상태
+
+- 브랜치: `codex-google-workspace-expansion` (리모트 동기 완료)
+- 워킹트리: 클린 (TASKS.md / dashboard.html / PROJECT_STATUS.md만 로컬 신규)
+- 다음 목표: **2-C 선물 리스크 계산기**
+- Codex가 회사컴에서 작업 중인 파일(server/finance/, server/realestate/ 등)은 다음 출근 후 통합
+
+## Session Update - 2026-04-27
+
+### ✅ 1-C. TradingView 웹훅 서버 완료 (커밋: 82cea91)
+
+**구현 파일:**
+- `server/alerts/tvWebhookServer.ts` — POST `/api/tv-webhook` Express 라우트
+  - Secret 헤더 검증 (없음/불일치 → 401)
+  - TvAlert 파싱 → Telegram 전달 (formatAlertMessage)
+  - Redis에 최대 100건 영속화 (`tv-alerts` 키)
+- `server/routers/alerts.ts` — `alerts.tvWebhookHistory` tRPC 프로시저
+- `server/routers.ts` — alertsRouter 등록
+- `server/_core/intentRouter.ts` — `alerts.tvWebhookHistory` 인텐트 추가
+- `server/__tests__/tvWebhook.test.ts` — 3개 테스트 (정상/잘못된 secret/missing secret), 전체 통과
+
+### ✅ 1-D. 자동 매매일지 (Google Sheets 연동) 완료 (커밋: 7f0b7d2)
+
+**구현 파일:**
+- `server/trading/tradeJournal.ts` — `TradeRecord` 인터페이스 + `TradeJournalKorean` 클래스
+  - `appendTrade` / `appendTrades`: Redis hget/hset 중복 방지 후 Sheets append
+  - `getTradeHistory`: Sheets values.get으로 최근 N건 조회
+  - `importCSV`: 헤더 자동 감지 후 일괄 append
+  - `syncGateioTrades`: gateioConnector → 신규 건만 Sheets 기록
+  - `syncKiwoomTrades`: kiwoomConnector → 신규 건만 Sheets 기록
+  - 시트명: `매매일지` / 컬럼: 날짜·시간·거래소·종목·매수매도·수량·가격·수수료·손익·메모
+- `server/routers/journal.ts` — list / addManual / importCSV / syncGateio / syncKiwoom 5개 프로시저
+- `server/routers.ts` — journalRouter 등록
+- `server/_core/intentRouter.ts` — journal.* 인텐트 3종 + `requiredTradeSide` 헬퍼 추가
+- `server/__tests__/tradeJournal.test.ts` — vi.hoisted 패턴 4개 테스트 전체 통과
+
+### 검증 결과
+- `npm run check` ✅ (TS 오류 0건)
+- `npm run build` ✅
+- 신규 테스트 7개 ✅ (tradeJournal 4개 + tvWebhook 3개)
+- 기존 테스트 영향 없음 (pre-existing 9개 실패 유지, 이번 작업과 무관)
+
+### 다음 작업 (Phase 2)
+- **2-A**: 기술적 분석 엔진 (RSI, MACD, Bollinger Bands)
+- **2-B**: 대시보드 라이브 데이터 연결
+- **2-C**: 선물 리스크 계산기

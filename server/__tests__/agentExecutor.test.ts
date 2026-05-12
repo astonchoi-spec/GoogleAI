@@ -1,0 +1,168 @@
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import fs from "node:fs/promises";
+import path from "node:path";
+import os from "node:os";
+import { makeAgentRunner, makeSimulationRunner, isSimulationMode } from "../agents/agentExecutor.ts";
+import { OpenClawClient, resetOpenClawClientForTesting } from "../agents/openclawClient.ts";
+import type { AgentTask } from "../agents/agentTypes.ts";
+
+let tmpDir: string;
+const ORIG_URL = process.env.OPENCLAW_API_URL;
+const ORIG_KEY = process.env.OPENCLAW_API_KEY;
+const ORIG_PATH = process.env.AGENT_WIKI_PATH;
+
+beforeEach(async () => {
+  tmpDir = path.join(os.tmpdir(), `agent-exec-${Date.now()}-${Math.random().toString(36).slice(2)}`);
+  await fs.mkdir(tmpDir, { recursive: true });
+  process.env.AGENT_WIKI_PATH = tmpDir;
+  delete process.env.OPENCLAW_API_URL;
+});
+
+afterEach(async () => {
+  if (ORIG_URL === undefined) delete process.env.OPENCLAW_API_URL;
+  else process.env.OPENCLAW_API_URL = ORIG_URL;
+  if (ORIG_KEY === undefined) delete process.env.OPENCLAW_API_KEY;
+  else process.env.OPENCLAW_API_KEY = ORIG_KEY;
+  if (ORIG_PATH === undefined) delete process.env.AGENT_WIKI_PATH;
+  else process.env.AGENT_WIKI_PATH = ORIG_PATH;
+  resetOpenClawClientForTesting(null);
+  await fs.rm(tmpDir, { recursive: true, force: true });
+});
+
+function makeTask(overrides: Partial<AgentTask> = {}): AgentTask {
+  return {
+    id: "abc12",
+    templateId: "pf-comprehensive",
+    templateLabel: "PF 종합 분석",
+    target: "한남동644",
+    inputs: {},
+    status: "running",
+    createdAt: new Date().toISOString(),
+    ...overrides,
+  };
+}
+
+describe("agentExecutor", () => {
+  it("isSimulationMode true when OPENCLAW_API_URL is empty", () => {
+    expect(isSimulationMode()).toBe(true);
+  });
+
+  it("isSimulationMode false when URL is set", () => {
+    process.env.OPENCLAW_API_URL = "http://localhost:9999";
+    expect(isSimulationMode()).toBe(true);
+  });
+
+  it("simulation runner produces markdown and writes file", async () => {
+    const runner = makeSimulationRunner({ sleepMs: 10 });
+    const controller = new AbortController();
+    const out = await runner(makeTask(), controller.signal);
+    expect(out.markdown).toContain("PF 종합 분석");
+    expect(out.markdown).toContain("한남동644");
+    expect(out.wikiPath).toBeTruthy();
+    expect(out.wikiPath?.endsWith(".md")).toBe(true);
+    const written = await fs.readFile(out.wikiPath!, "utf-8");
+    expect(written).toContain("PF 종합 분석");
+  });
+
+  it("aborting before completion rejects the runner", async () => {
+    const runner = makeSimulationRunner({ sleepMs: 1000 });
+    const controller = new AbortController();
+    const promise = runner(makeTask(), controller.signal);
+    controller.abort();
+    await expect(promise).rejects.toThrow();
+  });
+
+  it("returns null wikiPath when AGENT_WIKI_PATH is unset", async () => {
+    delete process.env.AGENT_WIKI_PATH;
+    const runner = makeSimulationRunner({ sleepMs: 10 });
+    const out = await runner(makeTask(), new AbortController().signal);
+    expect(out.wikiPath).toBeNull();
+  });
+
+  it("renders different markdown per template", async () => {
+    const runner = makeSimulationRunner({ sleepMs: 10 });
+    const trading = await runner(makeTask({ templateId: "trading-decision", templateLabel: "트레이딩", target: "BTC", inputs: { side: "long" } }), new AbortController().signal);
+    expect(trading.markdown).toMatch(/롱/);
+    const legal = await runner(makeTask({ templateId: "pf-legal-risk", templateLabel: "법무", target: "한남동644" }), new AbortController().signal);
+    expect(legal.markdown).toMatch(/리스크/);
+  });
+
+  it("notebook-query template bypasses OpenClaw and reports no-hits guidance when ASTON_WIKI_ROOT is unset", async () => {
+    const prevWikiRoot = process.env.ASTON_WIKI_ROOT;
+    delete process.env.ASTON_WIKI_ROOT;
+    try {
+      const runner = makeSimulationRunner({ sleepMs: 10 });
+      const out = await runner(
+        makeTask({
+          templateId: "notebook-query",
+          templateLabel: "NotebookLM 회수 자료 검색",
+          target: "한남동644",
+          inputs: { question: "주요 매입 일정은?" },
+        }),
+        new AbortController().signal,
+      );
+      expect(out.markdown).toContain("NotebookLM 질의 결과");
+      expect(out.markdown).toContain("주요 매입 일정은?");
+      expect(out.markdown).toContain("회수 자료 없음");
+      expect(out.markdown).toContain("Chrome Extension");
+      expect(out.wikiPath?.endsWith(".md")).toBe(true);
+    } finally {
+      if (prevWikiRoot === undefined) delete process.env.ASTON_WIKI_ROOT;
+      else process.env.ASTON_WIKI_ROOT = prevWikiRoot;
+    }
+  });
+
+  it("notebook-query template returns RAG hits when matching local notes exist", async () => {
+    const wikiRoot = path.join(tmpDir, "wiki");
+    const noteDir = path.join(wikiRoot, "projects", "hannam-644", "notebooklm");
+    await fs.mkdir(noteDir, { recursive: true });
+    await fs.writeFile(
+      path.join(noteDir, "2026-05-07-test.md"),
+      `---\ntitle: 한남동 644 NPV 분석\ntags: [pf, npv]\n---\n\n한남동 644 사업성 분석 결과 NPV 수익률은 15.3%, 사업 기간은 36개월로 추정됩니다.\n`,
+      "utf-8",
+    );
+    const prevWikiRoot = process.env.ASTON_WIKI_ROOT;
+    process.env.ASTON_WIKI_ROOT = wikiRoot;
+    try {
+      const runner = makeSimulationRunner({ sleepMs: 10 });
+      const out = await runner(
+        makeTask({
+          templateId: "notebook-query",
+          templateLabel: "NotebookLM 회수 자료 검색",
+          target: "한남동644",
+          inputs: { question: "NPV 수익률은?" },
+        }),
+        new AbortController().signal,
+      );
+      expect(out.markdown).toContain("회수 자료");
+      expect(out.markdown).toContain("hannam-644");
+      expect(out.markdown).toMatch(/15\.3/);
+    } finally {
+      if (prevWikiRoot === undefined) delete process.env.ASTON_WIKI_ROOT;
+      else process.env.ASTON_WIKI_ROOT = prevWikiRoot;
+    }
+  });
+
+  it("agent runner falls back to simulation when OpenClaw task call fails", async () => {
+    process.env.OPENCLAW_API_URL = "http://openclaw.local";
+    process.env.OPENCLAW_API_KEY = "secret";
+    const client = new OpenClawClient({
+      fetchImpl: (async (input: string | URL | Request) => {
+        const url = String(input);
+        if (url.endsWith("/health")) return new Response("ok", { status: 200 });
+        return new Response("", { status: 500 });
+      }) as typeof fetch,
+      gatewayCall: (async ({ method }) => {
+        if (method === "health") return { ok: true };
+        if (method === "agent.wait") return { status: "timeout" };
+        return { ok: true };
+      }) as Parameters<typeof OpenClawClient>[0]["gatewayCall"],
+      requestTimeoutMs: 50,
+    });
+    resetOpenClawClientForTesting(client);
+    const runner = makeAgentRunner({ sleepMs: 10 });
+    const out = await runner(makeTask(), new AbortController().signal);
+    expect(out.markdown).toContain("⚠️ OpenClaw 호출 실패");
+    expect(out.markdown).toContain("시뮬레이션");
+  });
+});

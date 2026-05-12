@@ -1,0 +1,59 @@
+
+> google-tg-app-design@1.0.0 test
+> vitest run
+
+
+[1m[7m[36m RUN [39m[27m[22m [36mv2.1.9 [39m[90mC:/Users/user/OneDrive/Desktop/구글연동AI[39m
+
+(node:8908) [DEP0182] DeprecationWarning: Using AES-GCM authentication tags of less than 128 bits without specifying the authTagLength option when initializing decryption is deprecated.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+[90mstderr[2m | server/_core/encryption.test.ts[2m > [22m[2mEncryption Utility[2m > [22m[2mshould throw error on invalid encrypted data
+[22m[39m[Encryption] Failed to decrypt: Error: Unsupported state or unable to authenticate data
+[90m    at Decipheriv.final (node:internal/crypto/cipher:170:29)[39m
+    at Module.decrypt [90m(C:\Users\user\OneDrive\Desktop\구글연동AI\[39mserver\_core\encryption.ts:70:27[90m)[39m
+    at [90mC:\Users\user\OneDrive\Desktop\구글연동AI\[39mserver\_core\encryption.test.ts:59:7
+    at Proxy.assertThrows [90m(file:///C:/Users/user/OneDrive/Desktop/%EA%B5%AC%EA%B8%80%EC%97%B0%EB%8F%99AI/[39mnode_modules/[4m.pnpm[24m/chai@5.3.3/node_modules/[4mchai[24m/index.js:2767:5[90m)[39m
+    at Proxy.methodWrapper [90m(file:///C:/Users/user/OneDrive/Desktop/%EA%B5%AC%EA%B8%80%EC%97%B0%EB%8F%99AI/[39mnode_modules/[4m.pnpm[24m/chai@5.3.3/node_modules/[4mchai[24m/index.js:1686:25[90m)[39m
+    at Proxy.<anonymous> [90m(file:///C:/Users/user/OneDrive/Desktop/%EA%B5%AC%EA%B8%80%EC%97%B0%EB%8F%99AI/[39mnode_modules/[4m.pnpm[24m/@vitest+expect@2.1.9/node_modules/[4m@vitest/expect[24m/dist/index.js:1029:16[90m)[39m
+    at Proxy.overwritingMethodWrapper [90m(file:///C:/Users/user/OneDrive/Desktop/%EA%B5%AC%EA%B8%80%EC%97%B0%EB%8F%99AI/[39mnode_modules/[4m.pnpm[24m/chai@5.3.3/node_modules/[4mchai[24m/index.js:1735:33[90m)[39m
+    at Proxy.<anonymous> [90m(file:///C:/Users/user/OneDrive/Desktop/%EA%B5%AC%EA%B8%80%EC%97%B0%EB%8F%99AI/[39mnode_modules/[4m.pnpm[24m/@vitest+expect@2.1.9/node_modules/[4m@vitest/expect[24m/dist/index.js:1509:21[90m)[39m
+    at Proxy.<anonymous> [90m(file:///C:/Users/user/OneDrive/Desktop/%EA%B5%AC%EA%B8%80%EC%97%B0%EB%8F%99AI/[39mnode_modules/[4m.pnpm[24m/@vitest+expect@2.1.9/node_modules/[4m@vitest/expect[24m/dist/index.js:972:17[90m)[39m
+    at Proxy.methodWrapper [90m(file:///C:/Users/user/OneDrive/Desktop/%EA%B5%AC%EA%B8%80%EC%97%B0%EB%8F%99AI/[39mnode_modules/[4m.pnpm[24m/chai@5.3.3/node_modules/[4mchai[24m/index.js:1686:25[90m)[39m
+
+ [32m✓[39m server/_core/encryption.test.ts [2m([22m[2m6 tests[22m[2m)[22m[90m 9[2mms[22m[39m
+ [32m✓[39m server/routers/chat-dedup.test.ts [2m([22m[2m9 tests[22m[2m | [22m[33m2 skipped[39m[2m)[22m[90m 22[2mms[22m[39m
+ [32m✓[39m server/llm/telegram-command-utils.test.ts [2m([22m[2m5 tests[22m[2m)[22m[90m 3[2mms[22m[39m
+ [32m✓[39m server/routers/api-settings.test.ts [2m([22m[2m7 tests[22m[2m)[22m[90m 4[2mms[22m[39m
+ [32m✓[39m server/llm/caller.test.ts [2m([22m[2m14 tests[22m[2m)[22m[90m 8[2mms[22m[39m
+ [32m✓[39m server/llm/telegram-bot.test.ts [2m([22m[2m19 tests[22m[2m)[22m[90m 19[2mms[22m[39m
+ [32m✓[39m server/routers/llm.test.ts [2m([22m[2m5 tests[22m[2m)[22m[90m 21[2mms[22m[39m
+[90mstderr[2m | server/llm/gemini.test.ts[2m > [22m[2mGemini API Integration[2m > [22m[2mshould successfully call Gemini API
+[22m[39m[Redis] Client error: connect ECONNREFUSED ::1:6379 | connect ECONNREFUSED 127.0.0.1:6379
+[Redis] Falling back to in-memory store: connect ECONNREFUSED ::1:6379 | connect ECONNREFUSED 127.0.0.1:6379
+
+ [32m✓[39m server/auth.logout.test.ts [2m([22m[2m1 test[22m[2m)[22m[90m 3[2mms[22m[39m
+ [31m❯[39m server/llm/telegram-token.test.ts [2m([22m[2m2 tests[22m[2m | [22m[31m1 failed[39m[2m)[22m[33m 5069[2mms[22m[39m
+[31m   [31m×[31m Telegram Bot Token Validation[2m > [22mshould be able to call Telegram Bot API with token[33m 5066[2mms[22m[31m[39m
+[31m     → Test timed out in 5000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".[39m
+ [32m✓[39m server/llm/gemini.test.ts [2m([22m[2m3 tests[22m[2m)[22m[33m 5415[2mms[22m[39m
+   [33m[2m✓[22m[39m Gemini API Integration[2m > [22mshould successfully call Gemini API [33m1718[2mms[22m[39m
+   [33m[2m✓[22m[39m Gemini API Integration[2m > [22mshould handle Gemini model switching [33m3693[2mms[22m[39m
+
+[31m⎯⎯⎯⎯⎯⎯⎯[1m[7m Failed Tests 1 [27m[22m⎯⎯⎯⎯⎯⎯⎯[39m
+
+[31m[1m[7m FAIL [27m[22m[39m server/llm/telegram-token.test.ts[2m > [22mTelegram Bot Token Validation[2m > [22mshould be able to call Telegram Bot API with token
+[31m[1mError[22m: Test timed out in 5000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".[39m
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯[22m[39m
+
+[2m Test Files [22m [1m[31m1 failed[39m[22m[2m | [22m[1m[32m9 passed[39m[22m[90m (10)[39m
+[2m      Tests [22m [1m[31m1 failed[39m[22m[2m | [22m[1m[32m68 passed[39m[22m[2m | [22m[90m2 todo[39m[90m (71)[39m
+[2m   Start at [22m 23:05:41
+[2m   Duration [22m 6.84s[2m (transform 634ms, setup 187ms, collect 8.30s, tests 10.57s, environment 2ms, prepare 1.97s)[22m
+
+npm notice
+npm notice New minor version of npm available! 11.11.0 -> 11.13.0
+npm notice Changelog: https://github.com/npm/cli/releases/tag/v11.13.0
+npm notice To update run: npm install -g npm@11.13.0
+npm notice

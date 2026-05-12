@@ -9,9 +9,19 @@ import { llmRouter } from "./routers/llm.ts";
 import { googleWorkspaceRouter } from "./routers/google-workspace.ts";
 import { apiSettingsRouter } from "./routers/api-settings.ts";
 import { chatSyncRouter } from "./routers/chat-sync.ts";
-import { tradingRouter } from "./trpc/routers/trading.ts";
-import { realestateRouter } from "./trpc/routers/realestate.ts";
-import { financeRouter } from "./trpc/routers/finance.ts";
+import { tradingRouter } from "./routers/trading.ts"; // MODIFIED: Phase 3 trading domain router registration
+import { realestateRouter } from "./routers/realestate.ts"; // MODIFIED: Phase 3 real estate PF router registration
+import { financeRouter } from "./routers/finance.ts"; // MODIFIED: Phase 3 finance router registration
+import { intentRouter } from "./routers/intent.ts"; // MODIFIED: Phase 3 intent routing entrypoint registration
+import { analyticsRouter } from "./routers/analytics.ts"; // MODIFIED: expose analytics dashboard data via appRouter.
+import { telegramRouter } from "./routers/telegram.ts"; // MODIFIED: register Telegram status endpoint in appRouter.
+import { homeRouter } from "./routers/home.ts"; // MODIFIED: register Home dashboard KPI endpoint in appRouter.
+import { alertsRouter } from "./routers/alerts.ts"; // MODIFIED: register alerts (TV webhook history) router.
+import { journalRouter } from "./routers/journal.ts"; // MODIFIED: 1-D 매매일지 라우터 등록.
+import { analysisRouter } from "./routers/analysis.ts"; // MODIFIED: register technical analysis router.
+import { notebooklmRouter } from "./routers/notebooklm.ts"; // MODIFIED: register NotebookLM MCP router.
+import { wikiRouter } from "./routers/wiki.ts"; // MODIFIED: expose Wiki search/category/recent procedures for /wiki page.
+import { ragRouter } from "./routers/rag.ts"; // MODIFIED: expose Aston RAG (Track A NotebookLM catalog + Track B Discovery Engine) router.
 
 const ADMIN_USERNAME = "admin";
 const ADMIN_PASSWORD = "admin123";
@@ -60,9 +70,19 @@ export const appRouter = router({
   googleWorkspace: googleWorkspaceRouter,
   apiSettings: apiSettingsRouter,
   chatSync: chatSyncRouter,
-  trading: tradingRouter,
-  realestate: realestateRouter,
-  finance: financeRouter,
+  trading: tradingRouter, // MODIFIED: expose trading procedures via appRouter
+  realestate: realestateRouter, // MODIFIED: expose real estate PF procedures via appRouter
+  finance: financeRouter, // MODIFIED: expose finance(DART) procedures via appRouter
+  intent: intentRouter, // MODIFIED: expose intent classify/route procedures for AI action routing
+  analytics: analyticsRouter, // MODIFIED: expose monitoring metrics for the dashboard page.
+  telegram: telegramRouter, // MODIFIED: expose Telegram status endpoint in appRouter.
+  home: homeRouter, // MODIFIED: expose Home dashboard KPI endpoint in appRouter.
+  alerts: alertsRouter, // MODIFIED: expose TV webhook history procedure.
+  journal: journalRouter, // MODIFIED: 1-D 매매일지 프로시저 노출.
+  analysis: analysisRouter, // MODIFIED: expose technical analysis procedures via appRouter.
+  notebooklm: notebooklmRouter, // MODIFIED: expose NotebookLM MCP query/status procedures via appRouter.
+  wiki: wikiRouter, // MODIFIED: expose Wiki page data (search/byCategory/recent/status).
+  rag: ragRouter, // MODIFIED: expose Aston RAG mappings (Track A NotebookLM catalog) + Track B Discovery Engine groups.
 });
 
 export type AppRouter = typeof appRouter;

@@ -13,6 +13,17 @@ export interface GoogleAuthConfig {
   redirectUri: string;
 }
 
+export interface GoogleAuthExchangeResult {
+  accessToken: string;
+  refreshToken: string;
+  expiresIn: number;
+  profile: {
+    id: string;
+    email: string | null;
+    name: string | null;
+  };
+}
+
 export class GoogleAuthManager {
   private oauth2Client: OAuth2Client;
   private sessionManager: SessionManager;
@@ -31,15 +42,16 @@ export class GoogleAuthManager {
   getAuthUrl(userId: string, scopes: string[] = this.getDefaultScopes()): string {
     return this.oauth2Client.generateAuthUrl({
       access_type: "offline",
+      prompt: "consent", // Force consent screen so Google always returns a refresh_token
       scope: scopes,
-      state: userId, // Pass userId in state for verification
+      state: userId,
     });
   }
 
   /**
    * Exchange authorization code for tokens
    */
-  async exchangeCodeForTokens(code: string, userId: string): Promise<void> {
+  async exchangeCodeForTokens(code: string, userId: string): Promise<GoogleAuthExchangeResult> {
     const params = new URLSearchParams({
       code,
       client_id: this.config.clientId,
@@ -67,6 +79,8 @@ export class GoogleAuthManager {
       throw new Error("No access token received");
     }
 
+    const profile = await this.getUserProfile(data.access_token);
+
     await this.sessionManager.setGoogleTokens(
       userId,
       data.access_token,
@@ -78,6 +92,39 @@ export class GoogleAuthManager {
       access_token: data.access_token,
       refresh_token: data.refresh_token,
     });
+
+    return {
+      accessToken: data.access_token,
+      refreshToken: data.refresh_token || "",
+      expiresIn: data.expires_in || 3600,
+      profile,
+    };
+  }
+
+  async storeTokensForUser(
+    userId: string,
+    accessToken: string,
+    refreshToken: string,
+    expiresIn: number
+  ): Promise<void> {
+    await this.sessionManager.setGoogleTokens(userId, accessToken, refreshToken, expiresIn);
+  }
+
+  private async getUserProfile(accessToken: string): Promise<GoogleAuthExchangeResult["profile"]> {
+    const response = await fetch("https://www.googleapis.com/oauth2/v2/userinfo", {
+      headers: { Authorization: `Bearer ${accessToken}` },
+    });
+    const data = await response.json() as any;
+
+    if (!response.ok) {
+      throw new Error(data.error_description || data.error || "Failed to fetch Google profile");
+    }
+
+    return {
+      id: String(data.id || data.email || "google-user"),
+      email: typeof data.email === "string" ? data.email : null,
+      name: typeof data.name === "string" ? data.name : null,
+    };
   }
 
   /**
@@ -180,7 +227,11 @@ export class GoogleAuthManager {
   async isAuthenticated(userId: string): Promise<boolean> {
     try {
       const tokens = await this.sessionManager.getGoogleTokens(userId);
-      return !!tokens?.accessToken;
+      if (!tokens?.accessToken) return false;
+      // Token is valid if not expired, or if we have a refresh token to renew it
+      const isExpired = tokens.expiresAt < Date.now();
+      if (!isExpired) return true;
+      return !!tokens.refreshToken;
     } catch {
       return false;
     }
@@ -191,6 +242,9 @@ export class GoogleAuthManager {
    */
   private getDefaultScopes(): string[] {
     return [
+      "openid",
+      "email",
+      "profile",
       // Gmail
       "https://www.googleapis.com/auth/gmail.modify",
       // Calendar

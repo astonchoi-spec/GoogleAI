@@ -4,34 +4,91 @@
  */
 
 import { Anthropic } from "@anthropic-ai/sdk";
-import { GoogleGenerativeAI } from "@google/generative-ai";
 import OpenAI from "openai";
 import axios from "axios";
 import type { LLMEngine } from "./models.ts";
 import { getModel } from "./models.ts";
+import { recordApiUsage } from "../_core/apiUsage.ts"; // MODIFIED: capture lightweight API telemetry for the monitoring dashboard.
 
 export interface LLMMessage {
   role: "user" | "assistant" | "system";
   content: string;
 }
 
+export type GroundingSource = { title: string; uri: string };
+
 export interface LLMResponse {
   content: string;
   model: string;
   engine: LLMEngine;
   tokensUsed?: number;
+  sources?: GroundingSource[];
 }
 
-export interface LLMCallOptions {
-  responseMimeType?: string;
-  temperature?: number;
-  maxOutputTokens?: number;
+type GeminiGroundingChunk = {
+  web?: {
+    uri?: string;
+    title?: string;
+  };
+};
+
+type GeminiGroundingMetadata = {
+  groundingChunks?: GeminiGroundingChunk[];
+  webSearchQueries?: string[];
+};
+
+type GeminiGenerateContentResponse = {
+  candidates?: Array<{
+    content?: {
+      parts?: Array<{
+        text?: string;
+      }>;
+    };
+    groundingMetadata?: GeminiGroundingMetadata;
+  }>;
+  usageMetadata?: {
+    totalTokenCount?: number;
+  };
+};
+
+function shouldEnableGeminiGrounding(modelId: string): boolean {
+  if (process.env.GEMINI_GROUNDING_ENABLED === "false") return false; // MODIFIED: allow disabling search grounding without code changes.
+  return modelId.startsWith("gemini-2.") || modelId.startsWith("gemini-3."); // MODIFIED: current Gemini models support google_search grounding.
+}
+
+function extractGroundingSources(chunks: GeminiGroundingChunk[] | undefined): GroundingSource[] {
+  return (chunks ?? [])
+    .map((chunk) => chunk.web)
+    .filter((web): web is { uri: string; title?: string } => !!web?.uri)
+    .filter((web, index, array) => array.findIndex((item) => item.uri === web.uri) === index)
+    .slice(0, 5)
+    .map((web, index) => ({ title: web.title?.trim() || `출처 ${index + 1}`, uri: web.uri }));
+}
+
+function logGeminiGroundingMetadata(modelId: string, metadata?: GeminiGroundingMetadata): void {
+  const queries = metadata?.webSearchQueries ?? [];
+  const sources = (metadata?.groundingChunks ?? [])
+    .map((chunk) => chunk.web)
+    .filter((web): web is { uri: string; title?: string } => !!web?.uri)
+    .filter((web, index, array) => array.findIndex((item) => item.uri === web.uri) === index);
+
+  if (queries.length === 0 && sources.length === 0) return;
+
+  console.info("[Gemini Grounding]", {
+    model: modelId,
+    queries,
+    sources: sources.map((source) => ({
+      title: source.title ?? "",
+      uri: source.uri,
+    })),
+  }); // MODIFIED: log grounding queries and source URLs for server-side verification.
 }
 
 export class LLMCaller {
   private ollamaHost: string;
   private geminiApiKey: string;
   private openaiApiKey: string;
+  private openaiBaseUrl?: string;
   private anthropicApiKey: string;
   private axiosInstance = axios.create({
     timeout: 30000, // 30 second timeout
@@ -41,11 +98,13 @@ export class LLMCaller {
     ollamaHost: string = process.env.OLLAMA_HOST || "http://localhost:11434",
     geminiApiKey: string = process.env.GEMINI_API_KEY || "",
     openaiApiKey: string = process.env.OPENAI_API_KEY || "",
+    openaiBaseUrl: string = process.env.OPENAI_BASE_URL || "",
     anthropicApiKey: string = process.env.ANTHROPIC_API_KEY || ""
   ) {
     this.ollamaHost = ollamaHost;
     this.geminiApiKey = geminiApiKey;
     this.openaiApiKey = openaiApiKey;
+    this.openaiBaseUrl = openaiBaseUrl || undefined;
     this.anthropicApiKey = anthropicApiKey;
   }
 
@@ -57,11 +116,13 @@ export class LLMCaller {
     openai?: string;
     anthropic?: string;
     ollama?: string;
+    openaiBaseUrl?: string;
   }): void {
     if (keys.gemini) this.geminiApiKey = keys.gemini;
     if (keys.openai) this.openaiApiKey = keys.openai;
     if (keys.anthropic) this.anthropicApiKey = keys.anthropic;
     if (keys.ollama) this.ollamaHost = keys.ollama;
+    if (keys.openaiBaseUrl) this.openaiBaseUrl = keys.openaiBaseUrl;
   }
 
   /**
@@ -71,25 +132,48 @@ export class LLMCaller {
     engine: LLMEngine,
     modelKey: string,
     messages: LLMMessage[],
-    systemPrompt?: string,
-    options?: LLMCallOptions
+    systemPrompt?: string
   ): Promise<LLMResponse> {
     const model = getModel(engine, modelKey);
     if (!model) {
       throw new Error(`Model not found: ${engine}:${modelKey}`);
     }
 
-    switch (engine) {
-      case "gemma4":
-        return this.callGemma4(model.modelId, messages, systemPrompt);
-      case "gemini":
-        return this.callGemini(model.modelId, messages, systemPrompt, options);
-      case "codex":
-        return this.callCodex(model.modelId, messages, systemPrompt);
-      case "claude":
-        return this.callClaude(model.modelId, messages, systemPrompt);
-      default:
-        throw new Error(`Unknown engine: ${engine}`);
+    const startedAt = Date.now(); // MODIFIED: measure end-to-end provider latency for monitoring.
+
+    try {
+      const response = await (async () => {
+        switch (engine) {
+          case "gemma4":
+            return this.callGemma4(model.modelId, messages, systemPrompt);
+          case "gemini":
+            return this.callGemini(model.modelId, messages, systemPrompt);
+          case "codex":
+            return this.callCodex(model.modelId, messages, systemPrompt);
+          case "claude":
+            return this.callClaude(model.modelId, messages, systemPrompt);
+          default:
+            throw new Error(`Unknown engine: ${engine}`);
+        }
+      })();
+
+      await recordApiUsage({
+        engine: response.engine,
+        model: response.model,
+        success: true,
+        latencyMs: Date.now() - startedAt,
+        tokensUsed: response.tokensUsed,
+      });
+
+      return response;
+    } catch (error) {
+      await recordApiUsage({
+        engine,
+        model: model.modelId,
+        success: false,
+        latencyMs: Date.now() - startedAt,
+      });
+      throw error;
     }
   }
 
@@ -142,24 +226,13 @@ export class LLMCaller {
   private async callGemini(
     modelId: string,
     messages: LLMMessage[],
-    systemPrompt?: string,
-    options?: LLMCallOptions
+    systemPrompt?: string
   ): Promise<LLMResponse> {
     try {
       const apiKey = this.geminiApiKey;
       if (!apiKey) {
         throw new Error("Gemini API key not configured");
       }
-      const genAI = new GoogleGenerativeAI(apiKey);
-      const model = genAI.getGenerativeModel({
-        model: modelId,
-        systemInstruction: systemPrompt,
-        generationConfig: {
-          temperature: options?.temperature,
-          maxOutputTokens: options?.maxOutputTokens,
-          responseMimeType: options?.responseMimeType,
-        },
-      });
 
       const history = messages.slice(0, -1).map((msg) => ({
         role: msg.role === "user" ? "user" : "model",
@@ -171,22 +244,46 @@ export class LLMCaller {
         throw new Error("No messages provided");
       }
 
-      const result = await model.generateContent({
-        contents: [
-          ...history,
-          {
-            role: lastMessage.role === "user" ? "user" : "model",
-            parts: [{ text: lastMessage.content }],
+      const response = await this.axiosInstance.post<GeminiGenerateContentResponse>( // MODIFIED: use REST so current google_search grounding is supported by this older SDK project.
+        `https://generativelanguage.googleapis.com/v1beta/models/${modelId}:generateContent`,
+        {
+          ...(systemPrompt ? { systemInstruction: { parts: [{ text: systemPrompt }] } } : {}),
+          contents: [
+            ...history,
+            {
+              role: lastMessage.role === "user" ? "user" : "model",
+              parts: [{ text: lastMessage.content }],
+            },
+          ],
+          ...(shouldEnableGeminiGrounding(modelId) ? { tools: [{ google_search: {} }] } : {}),
+        },
+        {
+          headers: {
+            "Content-Type": "application/json",
+            "x-goog-api-key": apiKey,
           },
-        ],
-      });
+        }
+      );
 
-      const textContent = result.response.text();
+      const candidate = response.data.candidates?.[0];
+      const textContent = candidate?.content?.parts
+        ?.map((part) => part.text ?? "")
+        .join("")
+        .trim();
+
+      if (!textContent) {
+        throw new Error("Gemini returned an empty response");
+      }
+
+      const sources = extractGroundingSources(candidate?.groundingMetadata?.groundingChunks);
+      logGeminiGroundingMetadata(modelId, candidate?.groundingMetadata);
 
       return {
         content: textContent,
         model: modelId,
         engine: "gemini",
+        tokensUsed: response.data.usageMetadata?.totalTokenCount,
+        sources: sources.length > 0 ? sources : undefined,
       };
     } catch (error) {
       throw new Error(`Gemini API error: ${error instanceof Error ? error.message : String(error)}`);
@@ -202,7 +299,10 @@ export class LLMCaller {
     systemPrompt?: string
   ): Promise<LLMResponse> {
     try {
-      const client = new OpenAI({ apiKey: this.openaiApiKey });
+      const client = new OpenAI({
+        apiKey: this.openaiApiKey,
+        baseURL: this.openaiBaseUrl,
+      });
 
       const apiMessages = messages.map((msg) => ({
         role: msg.role as "user" | "assistant" | "system",

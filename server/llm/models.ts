@@ -129,9 +129,6 @@ export const LLM_MODELS: Record<LLMEngine, Record<string, ModelConfig>> = {
   },
 };
 
-export const DEFAULT_ENGINE: LLMEngine = "gemini";
-export const DEFAULT_MODEL_KEY = "flash";
-
 export function getModel(engine: LLMEngine, modelKey: string): ModelConfig | null {
   return LLM_MODELS[engine]?.[modelKey] || null;
 }
@@ -143,6 +140,34 @@ export function getModelsByEngine(engine: LLMEngine): ModelConfig[] {
 export function getAllEngines(): LLMEngine[] {
   return Object.keys(LLM_MODELS) as LLMEngine[];
 }
+
+function isLLMEngine(value: string | undefined): value is LLMEngine {
+  return !!value && value in LLM_MODELS;
+}
+
+function resolveDefaultEngine(): LLMEngine {
+  const configuredEngine = process.env.LLM_PROVIDER; // MODIFIED: let deployment config pick the default chat engine.
+  if (isLLMEngine(configuredEngine)) return configuredEngine;
+  if (configuredEngine) {
+    console.warn(`[LLM] Unsupported LLM_PROVIDER "${configuredEngine}", falling back to gemini.`);
+  }
+  return "gemini";
+}
+
+function resolveDefaultModelKey(engine: LLMEngine): string {
+  const configuredModelKey = process.env.LLM_MODEL_KEY; // MODIFIED: keep model default aligned with the selected engine.
+  if (configuredModelKey && getModel(engine, configuredModelKey)) return configuredModelKey;
+  if (configuredModelKey) {
+    console.warn(`[LLM] Unsupported LLM_MODEL_KEY "${configuredModelKey}" for ${engine}, falling back to ${engine}'s first model.`);
+  }
+  if (engine === "gemini" && getModel(engine, "pro")) {
+    return "pro"; // MODIFIED: prefer the higher quality Gemini model for workstation chat defaults.
+  }
+  return getModelsByEngine(engine)[0]?.key ?? "flash";
+}
+
+export const DEFAULT_ENGINE: LLMEngine = resolveDefaultEngine();
+export const DEFAULT_MODEL_KEY = resolveDefaultModelKey(DEFAULT_ENGINE);
 
 export function getDefaultModel(): ModelConfig {
   const model = getModel(DEFAULT_ENGINE, DEFAULT_MODEL_KEY);

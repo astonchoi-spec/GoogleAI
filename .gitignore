@@ -105,7 +105,8 @@ temp/
 *.db
 *.sqlite
 *.sqlite3
-data/
+data/*
+!data/rag-mapping.yaml
 
 # Claude Code internal
 .claude/
@@ -119,3 +120,8 @@ data/
 
 # Manus version file (auto-generated, not part of source)
 client/public/__manus__/version.json
+
+# PM2 ecosystem (.env에서 시크릿 로드 — 로컬 환경 전용)
+ecosystem.config.cjs
+
+.claude/audit-*.txt

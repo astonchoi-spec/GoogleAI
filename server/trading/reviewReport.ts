@@ -84,14 +84,27 @@ function normalizeSymbol(raw: string | undefined): string {
   return upper || DEFAULT_SYMBOL;
 }
 
-function findSymbol(message: string): string {
+// 거래 분석 대상으로 인식할 명시적 crypto ticker 화이트리스트.
+// 메이저 + 회장님이 자주 쓰는 알트만 등록. 부동산/회사 약어(PFV/SPC/REIT/SI)와 충돌하지 않음.
+const KNOWN_CRYPTO_TICKERS = new Set([
+  "BTC", "ETH", "SOL", "XRP", "DOGE", "ADA", "BNB", "USDT", "USDC",
+  "TRX", "MATIC", "POL", "LINK", "AVAX", "DOT", "TON", "SHIB", "LTC",
+  "BCH", "NEAR", "ATOM", "ARB", "OP", "APT", "SUI", "INJ", "TIA",
+]);
+
+// P0 (2026-05-12): 명시적 crypto ticker (영문 화이트리스트 또는 한글 매핑) 가 없으면 null 반환.
+// "파일 검토", "PF 검토" 등 도메인 무관 "검토" 문장이 BTC fallback 으로 폭주하던 버그 차단.
+function findExplicitCryptoSymbol(message: string): string | null {
   const upper = message.toUpperCase();
-  const ticker = upper.match(/\b([A-Z]{2,10})\b/);
-  if (ticker && !["RSI", "MACD", "USD", "KRW", "PF", "AI"].includes(ticker[1])) return ticker[1];
+  const re = /\b([A-Z]{2,10})\b/g;
+  let match: RegExpExecArray | null;
+  while ((match = re.exec(upper)) !== null) {
+    if (KNOWN_CRYPTO_TICKERS.has(match[1])) return match[1];
+  }
   for (const [kor, eng] of Object.entries(KOREAN_TICKER_MAP)) {
     if (message.includes(kor)) return eng;
   }
-  return DEFAULT_SYMBOL;
+  return null;
 }
 
 function parseLeverage(message: string): number | undefined {
@@ -150,11 +163,15 @@ export function parseReviewMessage(message: string): ReviewIntentInput | null {
     /^매[수도]\s*시뮬/i.test(message);
   if (!isReview) return null;
 
+  // P0 가드 (2026-05-12): 명시적 crypto ticker 없으면 review 아님 — chat fallback 으로 위임.
+  const explicitSymbol = findExplicitCryptoSymbol(message);
+  if (!explicitSymbol) return null;
+
   const side: ReviewSide =
     /(숏|매도|short|sell)/i.test(message) ? "short" :
       /(롱|매수|long|buy)/i.test(message) ? "long" :
         "neutral";
-  const symbol = normalizeSymbol(findSymbol(message));
+  const symbol = normalizeSymbol(explicitSymbol);
   const leverage = parseLeverage(message);
   const parsed = parseMoneyAndQuantity(message, symbol);
   return { symbol, side, leverage, money: parsed.money, quantity: parsed.quantity, notes: parsed.notes };

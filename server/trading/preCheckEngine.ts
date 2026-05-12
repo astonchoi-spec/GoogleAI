@@ -462,7 +462,13 @@ export function parsePreCheckMessage(message: string): ParsedPreCheck {
   const upper = message.toUpperCase();
   let ticker: string | null = null;
   const tickerMatch = upper.match(TICKER_RE);
-  if (tickerMatch && !["RSI", "MACD", "BB", "ATR", "PF", "TA", "LG", "SK"].includes(tickerMatch[1])) {
+  // P3 (2026-05-12): 부동산/회사 약어 추가 — PFV/SPC/REIT 등이 trading_pre_check 로 오라우팅되던 잠재 위험 차단.
+  const EXCLUDE_TICKERS = [
+    "RSI", "MACD", "BB", "ATR", "PF", "TA", "LG", "SK",
+    "PFV", "SPC", "REIT", "REITS", "VE", "DSCR", "NPV", "IRR",
+    "API", "URL", "PDF", "MD", "TXT", "PNG", "JPG",
+  ];
+  if (tickerMatch && !EXCLUDE_TICKERS.includes(tickerMatch[1])) {
     ticker = tickerMatch[1];
   }
   if (!ticker) {

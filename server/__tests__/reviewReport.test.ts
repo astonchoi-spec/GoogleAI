@@ -30,6 +30,26 @@ describe("parseReviewMessage", () => {
     expect(quantity?.quantity).toEqual({ value: 0.01, symbol: "BTC" });
     expect(usd?.money).toEqual({ value: 500, currency: "USD" });
   });
+
+  // P0 (2026-05-12) 회귀 가드 — "검토" 단독이 BTC fallback 으로 폭주하던 버그 차단.
+  it("명시적 crypto ticker 없는 '검토' 문장은 null 반환 (chat fallback)", () => {
+    expect(parseReviewMessage("한남644PFV사업구조 및 일정 (25.12.16) / 파일 내용 읽고 검토해")).toBeNull();
+    expect(parseReviewMessage("이 PDF 내용 검토해줘")).toBeNull();
+    expect(parseReviewMessage("계약서 검토 부탁")).toBeNull();
+    expect(parseReviewMessage("PF 사업성 검토")).toBeNull();
+    expect(parseReviewMessage("검토해")).toBeNull();
+  });
+
+  it("부동산/회사 약어(PFV/SPC/REIT)는 ticker 로 인식하지 않는다", () => {
+    expect(parseReviewMessage("PFV 검토")).toBeNull();
+    expect(parseReviewMessage("SPC 매수 적합?")).toBeNull();
+    expect(parseReviewMessage("REIT 들어가도 되?")).toBeNull();
+  });
+
+  it("한글 코인명(비트코인/이더 등)은 여전히 인식한다", () => {
+    expect(parseReviewMessage("비트코인 검토해")?.symbol).toBe("BTC");
+    expect(parseReviewMessage("이더 매수 적합?")?.symbol).toBe("ETH");
+  });
 });
 
 describe("formatReviewReport", () => {

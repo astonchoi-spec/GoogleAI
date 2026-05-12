@@ -3,6 +3,92 @@
 
 ---
 
+## 2026-05-12 chat 라우팅 안정화 — P0~P3 (Claude Code)
+
+### 배경
+회장님 라이브 검증 중 `한남644PFV사업구조 및 일정 (25.12.16) / 파일 내용 읽고 검토해` 메시지가 **BTC trading_pre_check 리포트로 오라우팅**되는 버그 발견. 추가로 `내위키` → 외부 newiki.com 설명 환각, `…파일 올려줘` → 가짜 Drive 링크 환각도 확인. Step 1.5 업로드 자체는 정상이었으나, 채팅 답변 품질 저하의 원인을 4건으로 분리해 동시 수정.
+
+### P0 — parseReviewMessage 명시적 ticker 가드
+- `server/trading/reviewReport.ts` — 메시지에 "검토" 가 있어도 명시적 crypto ticker (영문 화이트리스트 28종 또는 한글 매핑 11종) 없으면 `null` 반환
+- `findExplicitCryptoSymbol()` 신규 함수 — `KNOWN_CRYPTO_TICKERS` 화이트리스트 (BTC/ETH/SOL/XRP/DOGE/ADA/BNB/USDT/USDC/TRX/MATIC/POL/LINK/AVAX/DOT/TON/SHIB/LTC/BCH/NEAR/ATOM/ARB/OP/APT/SUI/INJ/TIA)
+- `DEFAULT_SYMBOL = "BTC"` fallback 경로 제거 — 명시 ticker 없으면 chat fallback 으로 위임
+- 회귀 가드 테스트 4건 추가 (`server/__tests__/reviewReport.test.ts`): 회장님 사고 케이스 직접 + PDF 검토 / 계약서 검토 / PF 사업성 / 검토해 단독 → 모두 null. 한글 코인명(비트코인/이더) 회귀 0건.
+
+### P1 — Drive 링크 환각 차단
+- `server/routers/llm.ts` / `server/llm/telegramBot/messageRouter.ts` baseSystemPrompt — "Google Drive 링크/공유 URL/file ID 절대 임의 생성 금지" 가드 추가
+- 실제 조회 결과 없으면 "직접 첨부는 불가능합니다 — /wiki 페이지에서 확인하시거나 '드라이브 검색 <키워드>' 로 조회해주세요" 문구만 허용
+
+### P2 — Aston Wiki 정체성 컨텍스트
+- 양쪽 systemPrompt 에 "내위키/위키/회수 자료/노트북 = 회장님의 Aston Wiki (개인 지식 저장소)" 한 줄 추가
+- 외부 newiki.com / 나무위키 / 위키피디아 설명으로 빠지지 말 것 명시
+
+### P3 — preCheckEngine TICKER_RE 제외 목록 보강
+- `server/trading/preCheckEngine.ts` — `EXCLUDE_TICKERS` 에 PFV/SPC/REIT/REITS/VE/DSCR/NPV/IRR/API/URL/PDF/MD/TXT/PNG/JPG 추가 (기존 RSI/MACD/BB/ATR/PF/TA/LG/SK 위에 누적)
+- 부동산·회사 약어가 trading_pre_check 로 오라우팅되던 잠재 위험 차단
+
+### 수정 파일
+- `server/trading/reviewReport.ts`
+- `server/__tests__/reviewReport.test.ts`
+- `server/trading/preCheckEngine.ts`
+- `server/routers/llm.ts`
+- `server/llm/telegramBot/messageRouter.ts`
+
+### 검증
+- `npm run check` ✅ / `npm run build` ✅ (805.4kb → 809.4kb, +4kb)
+- `npx vitest run reviewReport wikiUpload` ✅ **19 passed** (reviewReport 5→8건 신규, wikiUpload 11건 회귀 0)
+- PM2 재시작 완료
+
+### 회장님 라이브 검증 필요
+- [ ] 텔레그램에서 `한남644PFV사업구조 ... 검토해` 재전송 → BTC 리포트 대신 RAG 인용 답변 확인
+- [ ] `내위키` 단독 → 외부 newiki.com 대신 "Aston Wiki" 한 줄 답변 확인
+- [ ] `…파일 올려줘` → 가짜 Drive 링크 대신 안내 메시지 확인
+
+---
+
+## 2026-05-12 Step 1.5 — Aston Wiki 페이지 업로드 UI (Claude Code)
+
+### 작업 내용
+- `server/knowledge/wikiUpload.ts` 신규 — Express handler (base64-in-JSON, 신규 의존성 0)
+  - POST `/api/wiki/upload` { project, filename, base64, contentType?, tags? }
+  - project 화이트리스트(yaml 28 + research-inbox + _unmapped 자동 추가) / 확장자 7종(.pdf/.docx/.md/.txt/.png/.jpg/.jpeg)
+  - 35MB decoded 상한(express.json 50MB / base64 1.37x) / 경로 분리자·`..`·윈도 예약명 차단 / 동일 파일명 충돌 시 `(2)` 자동 rename
+  - data URL prefix(`data:application/pdf;base64,...`) 자동 제거
+  - 이미지(.png/.jpg/.jpeg) 는 `willAutoIngest=false` (Drive Watcher 본문 추출 미지원 안내)
+- `server/routers/rag.ts` — `listUploadProjects` query 추가 (드롭다운용, displayName + isSpecial 플래그)
+- `server/_core/index.ts` — `setUploadAllowedProjects(projectList)` 부팅 시 매핑 yaml 로드 분기에 주입 + 라우트 등록 (`POST/GET/OPTIONS /api/wiki/upload`)
+- `client/src/components/WikiUpload.tsx` 신규 — drag-drop + 모달 + XMLHttpRequest 진행률 + 다크 테마
+- `client/src/pages/WikiPage.tsx` — 헤더 우측 [📤 Wiki 자료 업로드] 버튼 통합 (최소 변경, 기존 카테고리 카드 UX 보존)
+
+### 효과
+- 회장님이 NotebookLM Docs export·다운로드한 PDF/DOCX 등을 `/wiki` 페이지에서 1클릭 업로드 → 자동으로 `${ASTON_WIKI_ROOT}/notebooklm-exports/{project}/{원본}` 저장
+- Step 1 효과(driveSync `.pdf` 본문 추출)와 연결돼 5초 내 회수 → RAG 인용까지 자동 연결
+- 텔레그램·웹 채팅 자연 질의에서 업로드한 PDF 본문 직접 인용 가능
+
+### 수정 파일
+- `server/knowledge/wikiUpload.ts` (신규)
+- `server/_core/index.ts`
+- `server/routers/rag.ts`
+- `client/src/components/WikiUpload.tsx` (신규)
+- `client/src/pages/WikiPage.tsx`
+- `server/__tests__/wikiUpload.test.ts` (신규, 11건)
+
+### 검증
+- `npm run check` ✅ (모듈 경계 0건 / tsc 통과)
+- `npm run build` ✅ (797.9kb → 805.4kb, +7.5kb)
+- `npx vitest run server/__tests__/wikiUpload.test.ts` ✅ **11 passed**
+- 전체 `npx vitest run`: 832 passed / 4 failed — 실패 4건(dealMatcher / downloadWatcher / fileClassifier / kakaoFileHandler)은 격리 실행 시 27/27 통과. 전체 suite 동시 실행 시 5s 타임아웃 초과하는 사전 존재 flaky 테스트 (파일시스템·타이머 의존). 내 변경 회귀 0건
+
+### 회장님 라이브 검증 필요
+- [ ] PM2 재시작 후 부팅 로그에 `[wiki/upload] 허용 project 30개 등록` 확인
+- [ ] http://localhost:4000/wiki 우상단 [📤 Wiki 자료 업로드] → 모달 → PDF drag-drop → 업로드 성공
+- [ ] 5초 내 Drive Watcher 회수 → `/notebook-lm` 페이지 회수 자료 등장
+- [ ] 텔레그램 "한남 PF NPV?" → 업로드한 PDF 본문 인용 확인
+
+### 다음 단계
+- Step 2 — nlm-research 별도 폴더 + Aston 텔레그램 단추 (회장님 PC 1회 설치 + claude CLI 비대화식 조사)
+
+---
+
 ## 2026-05-11 Step 1 — driveSync .pdf 본문 자동 추출 (Claude Code)
 
 ### 작업 내용

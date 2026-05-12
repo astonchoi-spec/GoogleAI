@@ -1,14 +1,40 @@
 ﻿# HANDOFF.md — 에스턴 워크스테이션
-> 업데이트: 2026-05-11 Step 1 완료 (driveSync .pdf 본문 자동 추출) — 다음 Step 1.5(업로드 UI) | 브랜치: codex-google-workspace-expansion
+> 업데이트: 2026-05-12 Step 1.5 구현 완료 (Wiki 업로드 UI) — 회장님 라이브 검증만 남음 | 브랜치: codex-google-workspace-expansion
 
 ---
 
-## 🏠 집에서 이어갈 작업 (Step 1.5)
+## 🏠 다음 작업 (Step 1.5 라이브 검증 → Step 2)
 
-### Step 1 — ✅ 2026-05-11 완료
+### Step 1.5 — ✅ 2026-05-12 구현 완료 (Claude Code)
+
+**구현**
+- 백엔드: `server/knowledge/wikiUpload.ts` (Express handler, base64-in-JSON, 신규 의존성 0)
+  - POST `/api/wiki/upload` + GET 헬스체크 + OPTIONS CORS
+  - project 화이트리스트(yaml 28 + research-inbox + _unmapped) / 확장자 7종 / 35MB / 경로 traversal 차단 / 충돌 시 `(2)` rename
+- tRPC: `rag.listUploadProjects` — 모달 드롭다운용 (displayName + isSpecial 플래그)
+- 부팅: `setUploadAllowedProjects(projectList)` 를 `server/_core/index.ts` 의 매핑 yaml 로드 분기에 추가
+- 클라이언트: `client/src/components/WikiUpload.tsx` (drag-drop + 모달 + XHR 진행률)
+- 통합: `client/src/pages/WikiPage.tsx` 헤더 우측 [📤 Wiki 자료 업로드] 버튼
+
+**검증**
+- `npm run check` ✅ (모듈 경계 0건 / tsc 통과)
+- `npm run build` ✅ (797.9kb → 805.4kb, +7.5kb)
+- `npx vitest run server/__tests__/wikiUpload.test.ts` ✅ **11 passed** (화이트리스트/저장경로/rename/path-traversal/data-URL prefix/research-inbox/이미지 willAutoIngest=false)
+- 전체 `npx vitest run`: 832 passed / 4 failed — 실패 4건 모두 격리 실행 시 27/27 통과 (전체 suite 동시 실행 시 5s 타임아웃 초과하는 사전 존재 flaky 테스트). 내 변경 회귀 0건
+
+**회장님 라이브 검증 필요**
+- [ ] PM2 재시작 (`pm2 restart aston`) — 부팅 로그에 `[wiki/upload] 허용 project 30개 등록` 확인
+- [ ] http://localhost:4000/wiki 우상단 [📤 Wiki 자료 업로드] 클릭 → 모달 등장 + project 드롭다운에 28+research-inbox+_unmapped 표시
+- [ ] PDF 1개 drag-drop → 업로드 → `${ASTON_WIKI_ROOT}/notebooklm-exports/{project}/` 에 저장 확인
+- [ ] 5초 내 Drive Watcher 가 회수 → `/notebook-lm` 페이지 회수 자료 목록 등장
+- [ ] 텔레그램 자연 질의 → 업로드한 PDF 본문 인용 확인
+
+---
+
+### Step 1 — ✅ 2026-05-11 코드 / 2026-05-12 라이브 검증 완료
 - driveSync `.pdf` 본문 자동 추출 활성화 (`extractAttachmentText` 재사용, 신규 의존성 0)
 - `npm run check` / `npm run build` / `npm test driveSyncPdf` 전부 통과
-- 회장님 라이브 검증만 남음 (PM2 재시작 + PDF 1개 떨궈서 5초 내 회수 확인)
+- 2026-05-12 회장님 라이브 검증 통과 — PM2 재시작 후 `[rag/driveSync] 🚀 시작: 29 폴더 감시` 부팅, PDF 회수·인용 동작 확인
 
 ### Step 1.5 — Aston Wiki 페이지 업로드 UI (다음 작업, ~5시간)
 - 백엔드: `server/routers/wikiUpload.ts` (또는 기존 라우터 확장) — POST `/api/wiki/upload` multipart
@@ -40,10 +66,9 @@
 - `npm test driveSyncPdf` ✅ 5 passed
 - 전체 `npm test` 823 passed / 2 failed — 두 실패 모두 **stash 상태(내 변경 제거)에서도 동일 실패** → 환경 의존(실제 `ASTON_WIKI_ROOT` 회수 자료 존재), 내 변경 회귀 0건
 
-### 회장님 라이브 검증 필요
-- [ ] PM2 `aston` 재기동 (또는 `npm run dev`) — driveSync 가 새 `SUPPORTED_AUTO_INGEST` 로 부팅
-- [ ] `G:\내 드라이브\Aston-Wiki\notebooklm-exports\hannam-644\test.pdf` (또는 다른 매핑 project) 1개 떨궈서 5초 내 `/notebook-lm` 페이지 회수 자료 목록 등장 확인
-- [ ] 텔레그램 자연 질의(예: "한남 PF NPV?") → PDF 본문 인용 확인
+### 회장님 라이브 검증 — ✅ 2026-05-12 통과
+- [x] PM2 `aston` 재기동 — driveSync 가 새 `SUPPORTED_AUTO_INGEST` (`.pdf` 포함) 로 부팅 (`🚀 29 폴더 감시`)
+- [x] PDF 회수·인용 동작 확인 (회장님 직접)
 
 ---
 

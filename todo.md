@@ -13,21 +13,26 @@
 - [x] 모듈 경계 검사: `knowledge → llm` 직접 import는 `llm`이 도메인 모듈 아니라 OK (위반 0건)
 - [x] 회귀 테스트: `server/__tests__/driveSyncPdf.test.ts` (5 passed) — 확장자 매핑 상수 가드. PDF 본문 추출은 기존 `server/llm/attachmentExtract.test.ts` 가 검증.
 - [x] check / build / test 통과 (전체 823 passed, 환경 의존 2건 사전 존재) → 커밋 + push 예정
-- [ ] **회장님 라이브 검증**: PM2 재시작 + G드라이브 `notebooklm-exports/{project}/` 에 PDF 1개 떨궈서 5초 내 Wiki 적재 + RAG 인용 확인
+- [x] **회장님 라이브 검증** (2026-05-12): PM2 재시작 + driveSync 29폴더 감시 부팅 확인 + PDF 회수·인용 동작 확인
 
-### Step 1.5 — Aston Wiki 페이지 업로드 UI (옵션 A: project 직접 선택)
-- [ ] 백엔드 multipart 업로드 라우터 (`server/routers/wikiUpload.ts` 또는 기존 라우터 확장)
-  - POST /api/wiki/upload — multipart form (file + project + artifact_kind + tags)
-  - project 화이트리스트 검증 (rag-mapping.yaml 의 28개 + research-inbox + _unmapped)
-  - 파일 저장 경로: `{ASTON_WIKI_ROOT}/notebooklm-exports/{project}/{원본파일명}` (또는 슬러그화)
-  - 크기 50MB 상한, 확장자 화이트리스트(.pdf/.docx/.md/.txt/.png/.jpg)
-- [ ] 클라이언트 업로드 컴포넌트 (`client/src/components/WikiUpload.tsx`)
+### Step 1.5 — Aston Wiki 페이지 업로드 UI (옵션 A: project 직접 선택) ✅ (2026-05-12 구현)
+- [x] 백엔드 업로드 라우터 — `server/knowledge/wikiUpload.ts` (Express handler, base64-in-JSON, 신규 의존성 0)
+  - POST /api/wiki/upload — { project, filename, base64, contentType?, tags? }
+  - project 화이트리스트 검증 (yaml 28개 + research-inbox + _unmapped 자동 추가)
+  - 파일 저장 경로: `${ASTON_WIKI_ROOT}/notebooklm-exports/{project}/{원본파일명}`
+  - 35MB 상한 (express.json 50MB / base64 1.37x), 확장자 화이트리스트(.pdf/.docx/.md/.txt/.png/.jpg/.jpeg)
+  - 동일 파일명 충돌 시 ` (2).pdf` 자동 rename
+  - 경로 분리자/`..`/윈도 예약명 차단
+- [x] tRPC `rag.listUploadProjects` — 28개 + research-inbox + _unmapped + 한글 displayName 반환
+- [x] 클라이언트 업로드 컴포넌트 — `client/src/components/WikiUpload.tsx`
   - drag-drop + 클릭 파일 선택
-  - 모달: project 드롭다운(28+research-inbox+_unmapped+"새 프로젝트") / artifact_kind 자동추론+수정가능 / 태그(선택)
-  - 업로드 진행률 + 결과 토스트
-- [ ] `client/src/pages/WikiPage.tsx` (또는 /wiki 페이지) 우측에 업로드 영역 통합
-- [ ] 검증: PDF 업로드 → 폴더 저장 → Drive Watcher 회수 → Wiki 적재 → RAG 인용 end-to-end
-- [ ] 새 프로젝트 생성 흐름: 슬러그 입력 → yaml 즉시 추가 → setAllowedProjects 갱신
+  - 모달: project 드롭다운(displayName 우선) / 태그(쉼표 구분, 선택)
+  - XMLHttpRequest 기반 업로드 진행률 + 성공/에러 토스트
+- [x] WikiPage.tsx 헤더 우측에 업로드 버튼 통합 (다크 테마 유지, 최소 변경)
+- [x] 테스트 11건 추가 (`server/__tests__/wikiUpload.test.ts`) — 화이트리스트/저장경로/rename/path-traversal/data-URL prefix
+- [x] check ✅ / build ✅ (797.9kb → 805.4kb, +7.5kb) / wikiUpload 11 passed
+- [ ] **회장님 라이브 검증**: http://localhost:4000/wiki 우상단 [📤 Wiki 자료 업로드] → PDF 1개 → 5초 내 Drive Watcher 회수 + 텔레그램 자연 질의에 본문 인용 확인
+- [ ] (보류) 새 프로젝트 생성 흐름 — 슬러그 입력 → yaml 즉시 추가 → setAllowedProjects 갱신 (Step 1.5 마감 후 회장님 결정)
 
 ### Step 2 — nlm-research 별도 폴더 + Aston 텔레그램 단추
 - [ ] 회장님 워크스테이션에 nlm-research 1회 설치 (`git clone` + `uv tool install notebooklm-mcp-cli yt-dlp` + `nlm login`)

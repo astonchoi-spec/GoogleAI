@@ -34,17 +34,30 @@
 - [ ] **회장님 라이브 검증**: http://localhost:4000/wiki 우상단 [📤 Wiki 자료 업로드] → PDF 1개 → 5초 내 Drive Watcher 회수 + 텔레그램 자연 질의에 본문 인용 확인
 - [ ] (보류) 새 프로젝트 생성 흐름 — 슬러그 입력 → yaml 즉시 추가 → setAllowedProjects 갱신 (Step 1.5 마감 후 회장님 결정)
 
-### Step 2 — nlm-research 별도 폴더 + Aston 텔레그램 단추
-- [x] **사전 조사 완료** (2026-05-12): `claude -p "<prompt>"` 비대화식 실행 지원 확인. `--add-dir / --output-format / --max-budget-usd / --dangerously-skip-permissions` 옵션 활용 가능 → child_process 자동화 OK.
-- [x] **인텐트 핸들러 구현 완료** (2026-05-12): `server/intent/handlers/researchRun.ts` (~200줄, env 가드 + spawn + 수동 안내 분기). `IntentAction "research_run"` 신규. `fallbackIntent.ts` `리서치 <주제>` 매처 + `classifier.md` 액션 등록.
-- [x] **회귀 가드 테스트 10건** (`researchRun.test.ts`): 매칭 / 비활성 안내 / ROOT 미존재 / 주제 누락 / 200자 초과.
-- [x] `.env.example` 보강 — `NLM_RESEARCH_ENABLED / ROOT / OUTPUT / MAX_USD` 4종.
-- [ ] **회장님 워크스테이션 1회 설치** (회장님 직접): `git clone <nlm-research> D:\nlm-research` + `uv tool install notebooklm-mcp-cli yt-dlp` + `nlm login`
-- [ ] 회장님 수동 검증: `cd D:\nlm-research && claude` → `/research run "테스트 주제" --auto` → `~/research-output/테스트-주제/` 에 .md 떨어지는지
-- [ ] mklink: `~/research-output` → `G:\내 드라이브\Aston-Wiki\notebooklm-exports\research-inbox\`
-- [ ] yaml 에 research-inbox project 등록 (이미 setUploadAllowedProjects 가 자동 추가하므로 별도 등록 불필요)
-- [ ] `.env` 활성화: `NLM_RESEARCH_ENABLED=true` + `NLM_RESEARCH_ROOT=D:\nlm-research` → PM2 재시작
-- [ ] 라이브 검증: 텔레그램 `리서치 몽골 광산 동향` → 5~10분 후 Wiki 회수 자료 등장 확인
+### Step 2 — nlm-research 별도 폴더 + Aston 텔레그램 단추 ⏸ **보류** (2026-05-12 결정)
+
+**결정 사유** — 설치 타당성 검토 결과 보류:
+1. 현재 4채널 회수 라인이 이미 작동 (Chrome Extension / Drive Watcher / 업로드 UI / nb save) → 한계 효용 작음
+2. 비공식 NotebookLM API(`notebooklm-mcp-cli`, `nlm login`) 의존 — 보안·합법성·유지보수 리스크
+3. 회장님 NotebookLM 노트북 생성 빈도가 자동화 ROI 회수 기준 불명확
+4. Google 자동화 감지 시 계정 차단 위험
+
+**코드 골격은 보존** (재활성화 시 즉시 사용 가능):
+- [x] 사전 조사 (`claude -p` 비대화식 OK)
+- [x] 인텐트 핸들러 `server/intent/handlers/researchRun.ts` (env 가드 + spawn + 수동 안내 분기)
+- [x] 회귀 가드 테스트 10건
+- [x] `.env.example` 보강 — `NLM_RESEARCH_ENABLED=false` 기본값 (비활성 시 텔레그램 `리서치 ...` 는 수동 안내 메시지만 출력, 무해)
+
+**재활성화 조건** (이 3가지 모두 충족 시):
+- `D:\nlm-research` repo URL 출처 신뢰 가능
+- 회장님 NotebookLM 노트북 생성 빈도 ≥ 주 3개
+- NotebookLM 계정 자동화 차단 위험 감수 의사
+
+조건 충족 시 동선:
+1. `git clone <repo> D:\nlm-research` + `uv tool install notebooklm-mcp-cli yt-dlp` + `nlm login`
+2. 1회 수동 검증: `cd D:\nlm-research && claude` → `/research run "테스트" --auto`
+3. mklink: `~/research-output` → `G:\내 드라이브\Aston-Wiki\notebooklm-exports\research-inbox\`
+4. `.env` 활성화 + PM2 재시작 + 텔레그램 라이브 검증
 
 ### 검증 누적 (Step 1, 1.5, 2 완료 후)
 - [ ] Aston Wiki 페이지에서 PDF 업로드 → 5초 내 Wiki 적재 확인

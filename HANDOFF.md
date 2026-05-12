@@ -21,13 +21,13 @@
 - `npm run check` ✅ / `npm run build` ✅ (809.4 → 815.6kb, +6.2kb)
 - `npx vitest run researchRun` ✅ **10 passed** (매칭 4 / 비활성 3 / 검증 3)
 
-**회장님 직접 작업 (집에서 워크스테이션)**
-- [ ] `git clone <nlm-research repo> D:\nlm-research`
-- [ ] `uv tool install notebooklm-mcp-cli yt-dlp` + `nlm login` (NotebookLM 계정 인증)
-- [ ] 1회 수동 검증: `cd D:\nlm-research && claude` → `/research run "테스트" --auto` → `~/research-output/테스트/*.md` 떨어지는지
-- [ ] mklink (PowerShell admin): `New-Item -ItemType Junction -Path "$env:USERPROFILE\research-output" -Target "G:\내 드라이브\Aston-Wiki\notebooklm-exports\research-inbox"`
-- [ ] `.env`: `NLM_RESEARCH_ENABLED=true` + `NLM_RESEARCH_ROOT=D:\nlm-research`
-- [ ] `pm2 restart aston` 후 텔레그램 `리서치 몽골 광산 동향` → 5~10분 후 Wiki 회수 자료에 자동 등장 + RAG 인용 동작 확인
+**활성화 보류** (2026-05-12 결정) — 설치 타당성 검토 결과:
+- 비공식 NotebookLM API 의존(보안·합법성·차단 리스크)
+- 현재 4채널 회수 라인 이미 작동 (한계 효용 작음)
+- 회장님 사용 빈도 미확정 (자동화 ROI 회수 기준 불명)
+- `NLM_RESEARCH_ENABLED=false` 기본값 — 텔레그램 `리서치 ...` 는 수동 안내만 출력 (무해)
+- 코드 골격은 보존 — 재활성화 조건(repo URL 신뢰 + 주 3+ 노트북 + 차단 위험 감수) 충족 시 즉시 사용 가능
+- 동선·재활성화 조건 상세: TODO.md "Step 2" 참조
 
 ---
 

@@ -18,6 +18,31 @@
 
 ---
 
+## Quick Commands
+
+```bash
+# 검증 (수정 후 매번)
+npm run check               # tsc --noEmit + scripts/check-module-boundaries.ts
+npm run build               # esbuild server bundle + vite client bundle
+npm test                    # vitest 전체
+npx vitest run server/__tests__/<name>.test.ts  # 단일 테스트
+npm run smoke:routes        # 빌드 스모크 (CI용)
+
+# 개발
+npm run dev                 # PM2 없을 때만 사용 (PM2 살아있으면 4000 충돌)
+
+# PM2 운영
+pm2 list                    # aston 상태 확인 (npm run dev 전 필수)
+pm2 restart aston           # TS 소스 즉시 반영
+pm2 logs aston --lines 50 --nostream   # 부팅·런타임 로그
+
+# 좀비 프로세스 진단 (Port 4000 fallback 시)
+netstat -ano | findstr ":4000"
+# PowerShell: Stop-Process -Id <pid> -Force
+```
+
+---
+
 ## 🛑 브랜치 / Worktree 베이스 규칙 (필수 — 코드 수정 전 매번 준수)
 
 **작업 시작 전 반드시 다음 4-step을 실행하고, codex 라인이 아니면 코드 작성 금지.** 아래 규칙은 2026-05-10 worktree 사고(master 베이스 worktree에서 6시간 작업 → 사용자 진짜 작업물과 무관한 별개 패치) 재발 방지를 위한 것.
@@ -27,7 +52,9 @@
 pwd
 
 # 2. 메인 디렉토리 활성 브랜치 (반드시 codex-google-workspace-expansion 이어야 함)
-cd "C:\Users\user\Desktop\구글연동AI" && git branch --show-current
+# 메인 디렉토리 경로: 집컴 → C:\Users\user\Desktop\구글연동AI / 회사컴 → D:\구글연동AI
+# (양쪽 모두 같은 원격 https://github.com/astonchoi-spec/GoogleAI 추적)
+git branch --show-current
 
 # 3. 코드베이스 풍부도 — 16개 라우터 / 13개 페이지가 있어야 정상
 ls server/routers/   # agents, alerts, analysis, finance, intent, rag, trading, wiki, ...
@@ -94,9 +121,11 @@ Remove-Item ".claude\worktrees\<이름>" -Recurse -Force
 4. `TODO.md`, `CHANGELOG.md`, `HANDOFF.md`를 읽어 현재 상태를 확인한다.
 5. `CURRENT_TASK.md`에 명시된 범위 내 작업만 수행한다. 범위 밖 작업은 하지 않는다.
 6. 작업 완료 후 `npm run check && npm run build`를 실행한다.
-7. `TODO.md`, `CHANGELOG.md`, `HANDOFF.md`를 갱신한다.
-8. 변경분을 논리 단위로 커밋하고 `git push origin 현재브랜치`를 실행한다.
-9. 결과만 요약 보고한다.
+7. 완료된 지시서를 `docs/tasks/YYYY-MM-DD-{slug}.md` 로 아카이브한다.
+8. `CURRENT_TASK.md` 를 빈 템플릿으로 초기화한다 (상태: 없음).
+9. `TODO.md`, `CHANGELOG.md`, `HANDOFF.md`를 갱신한다.
+10. 변경분을 논리 단위로 커밋하고 `git push origin 현재브랜치`를 실행한다.
+11. 결과만 요약 보고한다.
 
 ---
 
@@ -142,16 +171,24 @@ Remove-Item ".claude\worktrees\<이름>" -Recurse -Force
 ## 3. 핵심 파일 구조
 
 ```
-server/_core/          → Redis, LLMAdapter, tRPC core
-server/trpc/routers/   → 도메인별 tRPC 라우터
-server/intent/         → 인텐트 파싱 및 실행 (intentService.ts)
-server/exchanges/      → 거래소 커넥터 (Binance/Upbit/Gate/Bybit)
-server/google/         → Google Workspace 연동
-server/realestate/     → 부동산 PF 엔진
-server/finance/        → DART API
+server/_core/          → Redis, LLMAdapter, tRPC core, intentRouter
+server/routers/        → 도메인별 tRPC 라우터 (16개: agents/alerts/analysis/finance/intent/llm/notebooklm/rag/realestate/tradingRisk/trading/wiki 등)
+server/intent/         → 인텐트 파싱·라우팅 (handlers/ + fallbackIntent.ts + classifier.md + registry.ts)
+server/exchanges/      → 거래소 커넥터 (Binance/Upbit/Gate/Bybit, 인증 필요한 호출만)
+server/google/         → Gmail/Calendar/Drive/Sheets/OAuth
+server/realestate/     → 부동산 PF 엔진 (feasibility, dealPipeline)
+server/finance/        → DART 공시·재무
+server/trading/        → 매매·riskGuard·preCheckEngine·reviewReport
+server/knowledge/      → Wiki 파이프라인·driveSync·extensionIngest·wikiUpload (모듈 외부 setter 주입)
+server/rag/            → 로컬 RAG 검색·Vertex AI Search 클라이언트·rag-mapping.yaml 로더
+server/agents/         → 에이전트 큐·템플릿·OpenClaw 연동
+server/llm/            → LLM 어댑터·텔레그램봇·attachmentInject·attachmentExtract
+server/deals/          → 부동산 딜 폴더·Sheets sync·D-day notifier·folderWatcher
+server/intelligence/   → 모닝 브리핑·MTProto collector
+server/notebooklm/     → NotebookLM 매핑 yaml 로더 (legacy, rag/ 로 점진 이동)
+client/src/pages/      → 13개 페이지 (AgentControl/Chat/FinancePage/Home/KnowledgeRagPage/RealEstatePage/TradingPage/WikiPage 등)
 client/src/components/UnifiedChatInterface.tsx  → 메인 AI 채팅 UI
-.env                   → 환경변수 (절대 커밋 금지)
-.env.example           → 환경변수 템플릿
+.env / .env.example    → 환경변수 (절대 커밋 금지)
 ```
 
 ---
@@ -209,22 +246,9 @@ client/src/components/UnifiedChatInterface.tsx  → 메인 AI 채팅 UI
 
 ## 5. Claude Code-specific Rules
 
-### "현재작업"
-1. git fetch origin 실행
-2. git log HEAD..origin/현재브랜치 --oneline 으로 원격 변경 확인. 변경 있으면 git pull --rebase 실행.
-3. CLAUDE.md, TODO.md, CHANGELOG.md, HANDOFF.md, docs/PROJECT_BRIEFING.md를 읽어 현재 상태 파악.
-4. CURRENT_TASK.md 읽기. 상태가 "없음"이면 "CURRENT_TASK.md에 작업 지시 없음" 보고하고 종료.
-5. CURRENT_TASK.md 지시서대로만 작업. 범위 밖 작업 절대 금지.
-6. 자율 결정 원칙 적용 (아래 섹션 참조).
-7. 완료 후 npm run check && npm run build 실행.
-8. 완료된 지시서를 docs/tasks/YYYY-MM-DD-{slug}.md 로 아카이브.
-9. CURRENT_TASK.md를 빈 템플릿으로 초기화 (상태: 없음).
-10. TODO.md, CHANGELOG.md, HANDOFF.md 갱신.
-11. 논리 단위로 커밋 + git push origin 현재브랜치.
-12. 결과 요약 보고.
+자동 명령어("현재작업" / "커밋" / "작업준비" / "작업정리") 정의는 §자동 명령어(상단) 참조 — 단일 출처(SSOT) 유지.
 
-### "커밋"
-작업정리 수행 후, 변경분을 논리 단위(feat/fix/docs)로 커밋. 커밋 후 반드시 git push origin 현재브랜치 실행.
+§5 는 Claude Code 만의 추가 규칙(자율 결정 / Codex 와 충돌 회피)만 다룬다.
 
 ## 자율 결정 원칙
 구현 디테일(슬러그 규칙, 정규식, 변수명, 에러 문구, 정렬 순서, 파일 포맷 세부사항, frontmatter 필드, 충돌 처리 방식, 카테고리 매핑 초기 테이블 등)은 AI가 자율 결정한다. 회장에게 묻지 않는다.
@@ -328,8 +352,12 @@ Aston Workstation은 별도 앱/레포로 쪼개지 않는 **Modular Monolith**�
 ## 9. 파일 크기 제한
 
 - **단일 파일 500줄 초과 금지**. 초과 시 도메인/관심사별 분리 필수.
-- **현재 위반 파일** (P1 분리 대상):
-  - `server/intent/intentService.ts` — 900줄+ → `intent/trading.ts`, `intent/google.ts`, `intent/general.ts`로 분리 예정
+- **분리 완료 이력**: `intentService.ts` 는 2026-05-09 Phase 7-B 에서 11개 도메인 핸들러(`intent/handlers/*.ts`) + `pipeline/{planIntent,dispatchIntent,formatReply}.ts` 로 분리 완료. 현재 192줄.
+- **신규 위반 점검** (주기적으로 실행):
+  ```bash
+  find server client -name "*.ts" -o -name "*.tsx" | grep -v __tests__ | grep -v node_modules \
+    | xargs wc -l 2>/dev/null | awk '$1>500 && $2!="total" {print $1, $2}' | sort -rn | head -10
+  ```
 - **분리 원칙**:
   - 핸들러는 도메인별 파일로
   - `IntentAction` 유니온 타입은 `intent/types.ts`에 모은다

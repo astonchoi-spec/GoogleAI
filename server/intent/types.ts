@@ -20,6 +20,7 @@ export type IntentAction =
   | "trading_approval_list"
   | "intelligence_morning_briefing"
   | "notebooklm_query"
+  | "research_run"
   | "monitoring_status"
   | "analysis_indicators"
   | "analysis_rsi"

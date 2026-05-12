@@ -21,6 +21,7 @@
 - google_send_email: 이메일 전송 → params: {to, subject, body}
 - google_list_events: 캘린더 일정 목록 조회 → params: {maxResults: 5}
 - deals_command: "딜 ..."로 시작하는 자료 창고 명령
+- research_run: "/리서치 ...", "리서치 시작 ...", "리서치 <주제>" → params: {topic: "주제 텍스트"}
 - execute_placeholder
 - chat
 

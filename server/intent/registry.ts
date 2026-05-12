@@ -10,6 +10,7 @@ import { agentHandlers } from "./handlers/agents.ts";
 import { chatHandlers } from "./handlers/chat.ts";
 import { knowledgeHandlers } from "./handlers/knowledgePipeline.ts";
 import { notebooklmHandlers } from "./handlers/notebooklm.ts";
+import { researchHandlers } from "./handlers/researchRun.ts";
 import type { IntentAction, IntentHandler } from "./types.ts";
 
 export const handlerRegistry: Partial<Record<IntentAction, IntentHandler>> = {
@@ -25,4 +26,5 @@ export const handlerRegistry: Partial<Record<IntentAction, IntentHandler>> = {
   ...chatHandlers,
   ...knowledgeHandlers,
   ...notebooklmHandlers,
+  ...researchHandlers,
 };

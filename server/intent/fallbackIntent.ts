@@ -307,6 +307,20 @@ export function fallbackIntent(message: string): IntentResult {
     };
   }
 
+  // Step 2 (2026-05-12) — 리서치 자동 실행 (nlm-research 단추).
+  // 형태: `/리서치 <주제>` 또는 `리서치 <주제>` 또는 `리서치 시작 <주제>`.
+  // 워크스테이션에 NLM_RESEARCH_ENABLED=true 설정 시 child_process 자동 트리거.
+  const researchMatch = message.match(/^\s*\/?리서치(?:\s+시작)?\s+(.+)$/);
+  if (researchMatch && researchMatch[1].trim().length >= 2) {
+    return {
+      domain: "intelligence",
+      action: "research_run",
+      type: "execute",
+      confidence: 0.95,
+      params: { topic: researchMatch[1].trim() },
+    };
+  }
+
   // 잔고
   if (lower.includes("잔고") || lower.includes("balance")) {
     return {

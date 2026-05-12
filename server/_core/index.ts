@@ -31,6 +31,10 @@ import {
   handleExtensionIngest,
   setExtensionUrlMappings,
 } from "../knowledge/extensionIngest.ts"; // MODIFIED: Chrome Extension 수신 엔드포인트.
+import {
+  handleWikiUpload,
+  setUploadAllowedProjects,
+} from "../knowledge/wikiUpload.ts"; // MODIFIED: /wiki 페이지 업로드 UI 수신 엔드포인트 (Step 1.5).
 
 function isPortAvailable(port: number): Promise<boolean> {
   return new Promise(resolve => {
@@ -79,6 +83,11 @@ async function startServer() {
   app.options("/api/rag/extension-ingest", handleExtensionIngest);
   app.post("/api/rag/extension-ingest", handleExtensionIngest);
   app.get("/api/rag/extension-ingest", handleExtensionIngest); // 헬스체크 — 브라우저로 직접 접속 가능
+
+  // Aston Wiki 페이지 업로드 UI 수신 엔드포인트 (Step 1.5, 2026-05-12)
+  app.options("/api/wiki/upload", handleWikiUpload);
+  app.post("/api/wiki/upload", handleWikiUpload);
+  app.get("/api/wiki/upload", handleWikiUpload); // 헬스체크 — 허용 project 목록 + 확장자 노출
 
   // TradingView webhook route
   registerTvWebhookRoutes(app); // MODIFIED: POST /api/tv-webhook handler.
@@ -140,7 +149,10 @@ async function startServer() {
   }
   try {
     const ragMapping = loadRagMapping();
-    setRagAllowedProjects(ragMapping.notebooks.map((n) => n.project));
+    const projectList = ragMapping.notebooks.map((n) => n.project);
+    setRagAllowedProjects(projectList);
+    // Wiki 업로드 UI 화이트리스트도 같은 출처에서 채움 (Step 1.5).
+    setUploadAllowedProjects(projectList);
     // Chrome Extension 의 URL→project 매핑도 함께 주입.
     const urlMappings = ragMapping.notebooks
       .filter((n) => n.notebook_url && n.notebook_url.trim().length > 0)
@@ -148,6 +160,9 @@ async function startServer() {
     setExtensionUrlMappings(urlMappings);
     console.log(
       `[rag/extension] URL→project 매핑 ${urlMappings.length}건 등록됨 (yaml 의 notebook_url 채워진 노트북)`,
+    );
+    console.log(
+      `[wiki/upload] 허용 project ${projectList.length + 2}개 등록 (yaml ${projectList.length} + research-inbox + _unmapped)`,
     );
   } catch (e) {
     console.error("[rag/driveSync] 매핑 로드 실패:", e);

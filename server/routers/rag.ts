@@ -90,6 +90,36 @@ export const ragRouter = router({
     }));
   }),
 
+  // Step 1.5 — /wiki 페이지 업로드 모달용 project 드롭다운 데이터.
+  // 매핑 yaml 28개 + research-inbox + _unmapped + display_name 라벨까지 한 번에 반환.
+  listUploadProjects: publicProcedure.query(() => {
+    const mapping = loadRagMapping();
+    const yamlEntries = mapping.notebooks.map((n) => ({
+      project: n.project,
+      displayName: n.display_name,
+      category: n.category,
+      isSpecial: false as const,
+    }));
+    const specials = [
+      {
+        project: "research-inbox",
+        displayName: "리서치 인박스 (nlm-research 결과)",
+        category: "research" as const,
+        isSpecial: true as const,
+      },
+      {
+        project: "_unmapped",
+        displayName: "미매핑 (project 미정)",
+        category: "research" as const,
+        isSpecial: true as const,
+      },
+    ];
+    return {
+      projects: [...yamlEntries, ...specials],
+      total: yamlEntries.length + specials.length,
+    };
+  }),
+
   // Phase 2 — Track B Discovery Engine 인증·환경 상태 조회.
   // UI 배지(🟢/🔴)에 사용. 실제 GCP 호출 0건.
   trackBStatus: publicProcedure.query(() => {

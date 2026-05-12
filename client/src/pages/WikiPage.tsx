@@ -16,6 +16,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { trpc } from "@/lib/trpc";
+import WikiUpload from "@/components/WikiUpload";
 
 // 카테고리 정의 — title은 UI 표시용 한글, key는 wikiStore의 categories[] 매칭용 영문
 interface Category {
@@ -130,16 +131,19 @@ export default function WikiPage() {
     <div className="min-h-screen bg-[var(--aston-bg)] text-[var(--aston-text)] p-6 lg:p-8">
       <div className="mx-auto max-w-6xl">
         {/* Header */}
-        <div className="flex items-center gap-3 mb-2">
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-cyan-500/20 bg-cyan-500/10 text-cyan-300">
-            <Library className="h-5 w-5" />
+        <div className="flex items-center justify-between gap-3 mb-2">
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-cyan-500/20 bg-cyan-500/10 text-cyan-300">
+              <Library className="h-5 w-5" />
+            </div>
+            <div>
+              <h1 className="text-xl font-semibold">에스턴 위키 - 개인 지식 저장소</h1>
+              <p className="text-sm text-[var(--aston-muted)]">
+                가족 · 사업 · 투자 · AI · 리서치 자료를 한 곳에 정리하는 개인 지식 허브
+              </p>
+            </div>
           </div>
-          <div>
-            <h1 className="text-xl font-semibold">에스턴 위키 - 개인 지식 저장소</h1>
-            <p className="text-sm text-[var(--aston-muted)]">
-              가족 · 사업 · 투자 · AI · 리서치 자료를 한 곳에 정리하는 개인 지식 허브
-            </p>
-          </div>
+          <WikiUpload />
         </div>
 
         {/* Search */}
